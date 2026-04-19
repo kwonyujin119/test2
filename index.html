@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>현장지휘관 체크리스트</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --accent: #c0392b;
+    --border-dark: #2a2a2a;
+    --muted: #555;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: #f0f0f0;
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: #000;
+    border-bottom: 3px solid var(--accent);
+    padding: 22px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-emblem {
+    width: 38px; height: 38px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .header-text p {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 2px;
+    margin-top: 3px;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap {
+    background: #000;
+    padding: 10px 32px;
+    border-bottom: 1px solid var(--border-dark);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .progress-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width .4s ease;
+    border-radius: 2px;
+  }
+  .progress-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
+  }
+  .progress-text span { color: var(--accent); font-weight: 500; }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    padding: 28px 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: #000;
+    border: 2px solid #2a2a2a;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, transform .15s, box-shadow .2s;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 흰 배경 레이어 */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    z-index: 0;
+  }
+  .card.on::before { transform: scaleY(1); }
+
+  .card:hover { border-color: #555; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.7); }
+  .card.on { border-color: #bbb; }
+  .card.on:hover { border-color: #888; }
+
+  /* 번호 배지 */
+  .card-num {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #333;
+    z-index: 1;
+    transition: color .28s;
+  }
+  .card.on .card-num { color: #bbb; }
+
+  /* 체크 아이콘 */
+  .card-check {
+    position: absolute;
+    top: 10px; left: 12px;
+    width: 18px; height: 18px;
+    border: 1.5px solid #333;
+    border-radius: 50%;
+    z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .28s, background .28s;
+  }
+  .card-check svg {
+    width: 10px; height: 10px;
+    stroke: #fff;
+    stroke-width: 2.5;
+    fill: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .card.on .card-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .card.on .card-check svg { opacity: 1; }
+
+  /* 내용 */
+  .card-body {
+    position: relative;
+    z-index: 1;
+    padding: 38px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .card-subtitle {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #fff;
+    transition: color .28s;
+    line-height: 1.3;
+  }
+  .card.on .card-subtitle { color: #000; }
+
+  .card-divider {
+    width: 24px;
+    height: 2px;
+    background: var(--accent);
+    transition: background .28s;
+    flex-shrink: 0;
+  }
+  .card.on .card-divider { background: #ccc; }
+
+  .card-content {
+    font-size: 11.5px;
+    color: #999;
+    line-height: 1.7;
+    transition: color .28s;
+    word-break: keep-all;
+  }
+  .card.on .card-content { color: #444; }
+
+  /* 마지막 카드 (초진/완진) 강조 */
+  .card.final { border-color: #3a2020; }
+  .card.final .card-subtitle { color: var(--accent); }
+  .card.final.on .card-subtitle { color: #c0392b; }
+
+  /* 리셋 버튼 */
+  .reset-wrap {
+    text-align: center;
+    padding: 8px 32px 0;
+  }
+  .reset-btn {
+    background: none;
+    border: 1px solid #333;
+    color: #555;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 8px 24px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* responsive */
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 10px; }
+    header { padding: 16px 20px; }
+    .progress-wrap { padding: 10px 20px; }
+  }
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-emblem">🚒</div>
+  <div class="header-text">
+    <h1>현장지휘관 체크리스트</h1>
+    <p>권유진 · 인천소방학교 · FIELD COMMANDER CHECKLIST</p>
+  </div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <div class="progress-text"><span id="progressCount">0</span> / 12</div>
+</div>
+
+<div class="grid" id="cardGrid">
+
+  <!-- 1 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">01</div>
+    <div class="card-body">
+      <div class="card-subtitle">출동보고</div>
+      <div class="card-divider"></div>
+      <div class="card-content">진압1대 차량2대 인원7명 출동중</div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">02</div>
+    <div class="card-body">
+      <div class="card-subtitle">출동중 정보수집</div>
+      <div class="card-divider"></div>
+      <div class="card-content">화재 대상물 정보카드 송신바람</div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">03</div>
+    <div class="card-body">
+      <div class="card-subtitle">정보전파</div>
+      <div class="card-divider"></div>
+      <div class="card-content">출동 중 도로 협소 — 후착대 우회바람<br>검은연기 사일 등</div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">04</div>
+    <div class="card-body">
+      <div class="card-subtitle">도착보고 / 지휘권선언</div>
+      <div class="card-divider"></div>
+      <div class="card-content">현장도착 / 현시간 현장지휘</div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">05</div>
+    <div class="card-body">
+      <div class="card-subtitle">초기상황보고</div>
+      <div class="card-divider"></div>
+      <div class="card-content">10층건물 5층에서 화재발생<br>독점불가</div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">06</div>
+    <div class="card-body">
+      <div class="card-subtitle">차량배치</div>
+      <div class="card-divider"></div>
+      <div class="card-content">1선 펌프차·물탱크 지정<br>특수차 배치장소 확보<br>대기 1단계 운영</div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">07</div>
+    <div class="card-body">
+      <div class="card-subtitle">방면설정</div>
+      <div class="card-divider"></div>
+      <div class="card-content">주출입구 A방면 지정<br>시계방향 B·C·D방면 지정</div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">08</div>
+    <div class="card-body">
+      <div class="card-subtitle">지휘형태 / 전략</div>
+      <div class="card-divider"></div>
+      <div class="card-content">A방면 고정지휘<br>공격 — 방어전략</div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">09</div>
+    <div class="card-body">
+      <div class="card-subtitle">임무지정</div>
+      <div class="card-divider"></div>
+      <div class="card-content">화재진압 · 인명구조 · RIT<br>드론 · 임시의료소 · 통제선</div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">10</div>
+    <div class="card-body">
+      <div class="card-subtitle">추가출동대 요청</div>
+      <div class="card-divider"></div>
+      <div class="card-content">특수차 · 조연차 · 펌프<br>탱크 · 구조 · 구급 등</div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="card" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">11</div>
+    <div class="card-body">
+      <div class="card-subtitle">유관기관 요청</div>
+      <div class="card-divider"></div>
+      <div class="card-content">구청 · 경찰 · 가스 · 한전<br>수도 · 보건소 · DMAT 등</div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="card final" onclick="toggle(this)">
+    <div class="card-check"><svg viewBox="0 0 12 10"><polyline points="1,5 4.5,9 11,1"/></svg></div>
+    <div class="card-num">12</div>
+    <div class="card-body">
+      <div class="card-subtitle">초진 / 완진 / 지휘권이양</div>
+      <div class="card-divider"></div>
+      <div class="card-content">현장 종료 단계<br>지휘권 이양 및 철수</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="reset-wrap">
+  <button class="reset-btn" onclick="resetAll()">↺ &nbsp;전체 초기화</button>
+</div>
+
+<script>
+  const TOTAL = 12;
+
+  function toggle(el) {
+    el.classList.toggle('on');
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const count = document.querySelectorAll('.card.on').length;
+    document.getElementById('progressCount').textContent = count;
+    document.getElementById('progressFill').style.width = (count / TOTAL * 100) + '%';
+  }
+
+  function resetAll() {
+    document.querySelectorAll('.card.on').forEach(c => c.classList.remove('on'));
+    updateProgress();
+  }
+</script>
+</body>
+</html>
