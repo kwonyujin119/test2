@@ -229,6 +229,18 @@
   .toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--card); font-size: 14px; font-weight: 600; padding: 12px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: .25s; z-index: 300; white-space: nowrap; }
   .toast.show { opacity: 1; transform: translateX(-50%); }
 
+  /* ── 잠금 화면 ── */
+  .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: none; align-items: center; justify-content: center; padding: 20px; }
+  .lock.open { display: flex; }
+  .lock-card { background: var(--card); border-radius: 24px; box-shadow: var(--shadow-lg); padding: 32px 28px; width: 100%; max-width: 380px; text-align: center; animation: fade .25s ease; }
+  .lock-ico { width: 56px; height: 56px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-text); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .lock h2 { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+  .lock p { font-size: 13.5px; color: var(--text-3); margin: 6px 0 20px; line-height: 1.5; }
+  .lock input { width: 100%; text-align: center; font-size: 22px; letter-spacing: 6px; font-weight: 700; background: var(--card-2); border: 1.5px solid transparent; border-radius: var(--radius-sm); padding: 14px; outline: none; color: var(--text); font-family: inherit; }
+  .lock input:focus { border-color: var(--primary); background: var(--card); }
+  .lock .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 8px 0 4px; }
+  .lock .btn { width: 100%; margin-top: 6px; }
+
   /* ── PC ── */
   .side-actions { display: none; }
   @media (min-width: 1024px) {
@@ -330,6 +342,7 @@
   <button onclick="importJSON(currentTab())">⬆️&nbsp; JSON 가져오기</button>
   <hr>
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
+  <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
   <button class="danger" id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
 </div>
 
@@ -406,6 +419,16 @@
   </form>
 </div>
 
+<div class="lock" id="lock">
+  <form class="lock-card" onsubmit="submitViewPin(event)">
+    <div class="lock-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <h2>ICTC 일정 · 업무</h2>
+    <p>팀 조회 PIN을 입력하세요.<br>이 기기에 한 번만 저장됩니다.</p>
+    <input id="viewPinInput" inputmode="numeric" autocomplete="off" placeholder="조회 PIN" required>
+    <div class="err" id="lockErr"></div>
+    <button type="submit" class="btn primary">들어가기</button>
+  </form>
+</div>
 <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
 <div class="toast" id="toast"></div>
 
@@ -417,7 +440,7 @@
   const TASK_CATEGORIES = ['교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
   const STATUSES = ['예정', '진행중', '완료', '보류'];
   const STATUS_ORDER = { '진행중': 0, '예정': 1, '보류': 2, '완료': 3 };
-  const LS_KEY = { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1', pin: 'ictc.pin', server: 'ictc.serverUrl' };
+  const LS_KEY = { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1', pin: 'ictc.pin', viewPin: 'ictc.viewPin', server: 'ictc.serverUrl' };
   const FILE = { schedule: 'data/schedule.json', tasks: 'data/tasks.json' };
   const CFG = window.ICTC_CONFIG || {};
   const SUPABASE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
@@ -474,10 +497,19 @@
     return new Error(msg);
   }
   const rowsToState = rows => ({ updated: rows[0]?.updated_at || null, items: rows.map(r => r.data) });
+  const viewPin = () => lsGet(LS_KEY.viewPin) || lsGet(LS_KEY.pin) || '';
+  class ViewPinError extends Error { constructor(required) { super(required ? '조회 PIN이 필요합니다' : '조회 PIN이 올바르지 않습니다'); this.viewPin = true; } }
+  async function readListError(res) {
+    let msg = '';
+    try { const j = await res.json(); msg = j.message || j.hint || ''; } catch (e) {}
+    if (/VIEW_PIN_REQUIRED/.test(msg)) return new ViewPinError(true);
+    if (/VIEW_PIN_INVALID/.test(msg)) { lsDel(LS_KEY.viewPin); return new ViewPinError(false); }
+    return new Error(msg || '서버 응답 ' + res.status);
+  }
   const api = LOCALSRV ? {
     async fetchAll(kind) {
-      const res = await fetch(`${CFG.apiUrl}/api/items?kind=${kind}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('서버 응답 ' + res.status);
+      const res = await fetch(`${CFG.apiUrl}/api/items?kind=${kind}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } });
+      if (!res.ok) throw await readListError(res);
       return rowsToState(await res.json());
     },
     async call(fn, pin, kind, payload) {
@@ -487,8 +519,8 @@
   } : {
     headers: () => ({ apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' }),
     async fetchAll(kind) {
-      const res = await fetch(`${CFG.supabaseUrl}/rest/v1/ictc_items?kind=eq.${kind}&select=data,updated_at&order=updated_at.desc`, { headers: this.headers(), cache: 'no-store' });
-      if (!res.ok) throw new Error('서버 응답 ' + res.status);
+      const res = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/ictc_list`, { method: 'POST', headers: this.headers(), cache: 'no-store', body: JSON.stringify({ p_pin: viewPin(), p_kind: kind }) });
+      if (!res.ok) throw await readListError(res);
       return rowsToState(await res.json());
     },
     async call(fn, pin, kind, payload) {
@@ -508,6 +540,21 @@
     return pin;
   }
   function changePin() { if (getPin(true)) { toast('PIN을 저장했어요'); renderNotice(); } }
+  /* ── 조회 PIN 잠금 화면 ── */
+  function showLock(msg) {
+    const l = document.getElementById('lock'); l.classList.add('open');
+    document.getElementById('lockErr').textContent = msg || '';
+    const i = document.getElementById('viewPinInput'); i.value = ''; setTimeout(() => i.focus(), 50);
+  }
+  function hideLock() { document.getElementById('lock').classList.remove('open'); }
+  async function submitViewPin(e) {
+    e.preventDefault();
+    const v = document.getElementById('viewPinInput').value.trim(); if (!v) return;
+    lsSet(LS_KEY.viewPin, v);
+    try { await api.fetchAll('schedule'); hideLock(); await init('schedule'); await init('tasks'); }
+    catch (err) { lsDel(LS_KEY.viewPin); showLock(err.viewPin ? '조회 PIN이 올바르지 않습니다' : '연결 실패: ' + err.message); }
+  }
+  function changeViewPin() { lsDel(LS_KEY.viewPin); showLock(); }
   function setServer() {
     const cur = lsGet(LS_KEY.server) || 'http://192.168.0.10:8080';
     let v = prompt('사내 서버 주소를 입력하세요 (start.bat 창의 "팀원 접속" 주소)', cur);
@@ -556,6 +603,7 @@
     try {
       state[kind] = normalize(await api.fetchAll(kind)); state.source[kind] = 'remote'; state.lastSync = new Date(); render(kind);
     } catch (e) {
+      if (e.viewPin) { showLock(lsGet(LS_KEY.viewPin) === null && silent ? '' : e.message === '조회 PIN이 필요합니다' ? '' : e.message); return; }
       if (!state[kind]) { state[kind] = { updated: null, items: [] }; state.source[kind] = 'error'; render(kind); }
       if (!silent) toast('불러오기 실패: ' + e.message);
       setSyncStatus('연결 안 됨 · ' + e.message, true);
@@ -837,6 +885,7 @@
 
   if (REMOTE) {
     document.getElementById('menuPin').style.display = '';
+    document.getElementById('menuViewPin').style.display = '';
     document.getElementById('menuReset').textContent = '🔄  서버에서 새로고침';
     const every = Math.max(10, Number(CFG.pollSeconds) || 30) * 1000;
     const busy = () => document.hidden || document.querySelector('.sheet-bg.open, .pop.open');

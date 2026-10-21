@@ -10,6 +10,7 @@ ICTC 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
   ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
   pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
+  view_pin.txt     조회 PIN (처음 실행 시 0000 으로 생성). 내용을 비우면 누구나 조회 가능
 
 실행:  python ictc_server.py  [--port 8080] [--db 경로] [--pin-file 경로] [--static 경로]
 접속:  본인  http://localhost:8080
@@ -31,13 +32,17 @@ def find_static():
     return None
 
 
-def read_pin(path):
+def read_pin(path, default='1234', label='편집'):
     if not os.path.exists(path):
         with open(path, 'w', encoding='utf-8') as f:
-            f.write('1234\n')
-        print(f'[안내] 편집 PIN 파일을 만들었습니다: {path}  (기본 PIN 1234, 메모장으로 바꾸세요)')
+            f.write(default + '\n')
+        print(f'[안내] {label} PIN 파일을 만들었습니다: {path}  (기본 PIN {default}, 메모장으로 바꾸세요)')
     with open(path, encoding='utf-8-sig') as f:
         return f.read().strip()
+
+
+def view_pin_path(pin_path):
+    return os.path.join(os.path.dirname(pin_path), 'view_pin.txt')
 
 
 class DB:
@@ -126,6 +131,10 @@ def make_handler(db, static_dir, pin_path, poll):
                 kind = parse_qs(u.query).get('kind', [''])[0]
                 if kind not in ('schedule', 'tasks'):
                     return self._json(400, {'message': 'kind 오류'})
+                vp = read_pin(view_pin_path(pin_path), '0000', '조회')
+                given = (self.headers.get('X-Pin') or '').strip()
+                if vp and given not in (vp, read_pin(pin_path)):
+                    return self._json(403, {'message': 'VIEW_PIN_INVALID' if given else 'VIEW_PIN_REQUIRED'})
                 return self._json(200, db.list(kind))
             if u.path == '/api/health':
                 return self._json(200, {'ok': True, 'time': db.now()})
@@ -207,13 +216,15 @@ def main():
             print(f'[안내] 데이터 폴더를 만들었습니다: {d}')
     db = DB(a.db)
     read_pin(a.pin_file)
+    read_pin(view_pin_path(a.pin_file), '0000', '조회')
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
     print('=' * 56)
     print(' ICTC 일정·업무 보드 서버 실행 중')
     print(f'   화면 폴더 : {static}')
     print(f'   DB 파일   : {a.db}')
-    print(f'   PIN 파일  : {a.pin_file}')
+    print(f'   편집 PIN  : {a.pin_file}')
+    print(f'   조회 PIN  : {view_pin_path(a.pin_file)}  (비우면 누구나 조회)')
     print(f'   본인 접속 : http://localhost:{a.port}')
     for ip in lan_ips():
         print(f'   팀원 접속 : http://{ip}:{a.port}')
