@@ -2,14 +2,16 @@
 r"""
 ICTC 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 사용)
 
-폴더 구성 예 (D:\ICTC일정표,주요업무\):
+프로그램 폴더 (압축 푼 위치, 어디든 상관없음):
   ictc_server.py   이 파일
-  start.bat        더블클릭 실행용
-  pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
-  ictc.db          SQLite 데이터베이스 (자동 생성)
-  ictc\            웹앱 화면 (저장소의 ictc 폴더를 그대로 복사)
+  start.bat        더블클릭 실행용 (DB 위치를 D:\일정표,주요업무\ 로 지정)
+  ictc\            웹앱 화면
 
-실행:  python ictc_server.py  [--port 8080] [--db 경로] [--static 경로]
+데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
+  ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
+  pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
+
+실행:  python ictc_server.py  [--port 8080] [--db 경로] [--pin-file 경로] [--static 경로]
 접속:  본인  http://localhost:8080
        팀원  http://<이 PC의 IP>:8080
 r"""
@@ -197,6 +199,11 @@ def main():
     if not static:
         print('[오류] ictc 폴더(index.html)를 찾을 수 없습니다. 이 파일 옆에 ictc 폴더를 복사하세요.')
         sys.exit(1)
+    for path in (a.db, a.pin_file):
+        d = os.path.dirname(os.path.abspath(path))
+        if d and not os.path.isdir(d):
+            os.makedirs(d, exist_ok=True)
+            print(f'[안내] 데이터 폴더를 만들었습니다: {d}')
     db = DB(a.db)
     read_pin(a.pin_file)
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))

@@ -25,6 +25,13 @@
     --c-방문: #02a262; --c-방문-soft: #e6f6ef;
     --c-출장: #ff9500; --c-출장-soft: #fff4e5;
     --c-기타: #8b95a1; --c-기타-soft: #f2f4f6;
+    /* 업무 카테고리 색 */
+    --t-교육운영: #3182f6; --t-교육운영-soft: #e8f3ff;
+    --t-행정: #7c5cff; --t-행정-soft: #efebff;
+    --t-시설장비: #ff9500; --t-시설장비-soft: #fff4e5;
+    --t-대외협력: #02a262; --t-대외협력-soft: #e6f6ef;
+    --t-예산: #f04452; --t-예산-soft: #ffeef0;
+    --t-기타: #8b95a1; --t-기타-soft: #f2f4f6;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -36,6 +43,9 @@
       --c-교육: #5b9dff; --c-교육-soft: #1b2a44; --c-평가: #ff6b76; --c-평가-soft: #3a1f23;
       --c-회의: #a08cff; --c-회의-soft: #27224a; --c-방문: #2ec27e; --c-방문-soft: #143225;
       --c-출장: #ffab3d; --c-출장-soft: #3a2c15; --c-기타: #9aa4b2; --c-기타-soft: #262a32;
+      --t-교육운영: #5b9dff; --t-교육운영-soft: #1b2a44; --t-행정: #a08cff; --t-행정-soft: #27224a;
+      --t-시설장비: #ffab3d; --t-시설장비-soft: #3a2c15; --t-대외협력: #2ec27e; --t-대외협력-soft: #143225;
+      --t-예산: #ff6b76; --t-예산-soft: #3a1f23; --t-기타: #9aa4b2; --t-기타-soft: #262a32;
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -115,6 +125,15 @@
   .cat-방문 { --cat: var(--c-방문); --cat-soft: var(--c-방문-soft); }
   .cat-출장 { --cat: var(--c-출장); --cat-soft: var(--c-출장-soft); }
   .cat-기타 { --cat: var(--c-기타); --cat-soft: var(--c-기타-soft); }
+  .tcat-교육운영 { --cat: var(--t-교육운영); --cat-soft: var(--t-교육운영-soft); }
+  .tcat-행정 { --cat: var(--t-행정); --cat-soft: var(--t-행정-soft); }
+  .tcat-시설장비 { --cat: var(--t-시설장비); --cat-soft: var(--t-시설장비-soft); }
+  .tcat-대외협력 { --cat: var(--t-대외협력); --cat-soft: var(--t-대외협력-soft); }
+  .tcat-예산 { --cat: var(--t-예산); --cat-soft: var(--t-예산-soft); }
+  .tcat-기타 { --cat: var(--t-기타); --cat-soft: var(--t-기타-soft); }
+  .filter-label { font-size: 11.5px; font-weight: 700; color: var(--text-3); margin: 2px 4px 6px; letter-spacing: .3px; }
+  .chips + .filter-label { margin-top: 2px; }
+  .chip .avatar { width: 18px; height: 18px; font-size: 9px; margin-right: 0; }
 
   /* ── 시간 팝오버 ── */
   .pop-bg { position: fixed; inset: 0; z-index: 90; display: none; }
@@ -135,10 +154,12 @@
 
   /* ── 업무 ── */
   .task-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .task { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+  .task { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 18px 18px 20px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .15s, box-shadow .15s; position: relative; overflow: hidden; }
+  .task::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--cat, var(--t-기타)); }
   .task:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
   .task-top { display: flex; align-items: center; gap: 8px; }
-  .task-cat { font-size: 12px; font-weight: 600; color: var(--text-3); }
+  .task-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--cat-soft, var(--t-기타-soft)); color: var(--cat, var(--t-기타)); }
+  .task-cat .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .status { margin-left: auto; border: none; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
   .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .status.s-진행중 { background: var(--primary-soft); color: var(--primary-text); }
@@ -283,7 +304,12 @@
   <section id="tasks">
     <aside class="side">
       <div class="summary" id="tasksSummary"></div>
+      <div class="filter-label">상태</div>
       <div class="chips" id="tasksFilters"></div>
+      <div class="filter-label">분류</div>
+      <div class="chips" id="tasksCatFilters"></div>
+      <div class="filter-label">담당자</div>
+      <div class="chips" id="tasksOwnerFilters"></div>
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button>
         <button class="btn ghost" onclick="exportJSON('tasks')">JSON 내보내기</button>
@@ -361,14 +387,14 @@
   <form class="sheet" id="taskForm" onsubmit="saveTask(event)">
     <div class="handle"></div>
     <h2 id="taskFormTitle">업무 추가</h2>
-    <input type="hidden" name="id"><input type="hidden" name="status" value="예정">
+    <input type="hidden" name="id"><input type="hidden" name="status" value="예정"><input type="hidden" name="category" value="기타">
     <div class="field"><label>업무명</label><input name="title" required maxlength="100" placeholder="예) 2027년 교육계획 수립"></div>
+    <div class="field"><label>분류</label><div class="picker" id="taskCatPicker"></div></div>
     <div class="field"><label>상태</label><div class="picker" id="statusPicker"></div></div>
     <div class="row">
-      <div class="field"><label>분류</label><input name="category" list="catList" placeholder="교육운영, 행정 …" maxlength="20"><datalist id="catList"></datalist></div>
-      <div class="field"><label>담당</label><input name="owner" maxlength="30"></div>
+      <div class="field"><label>담당</label><input name="owner" list="ownerList" maxlength="30"><datalist id="ownerList"></datalist></div>
+      <div class="field"><label>기한</label><input name="due" type="date"></div>
     </div>
-    <div class="field"><label>기한</label><input name="due" type="date"></div>
     <div class="field"><label>상세</label><textarea name="detail" maxlength="1000"></textarea></div>
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="taskDelete" onclick="deleteItem('tasks')">삭제</button>
@@ -386,6 +412,7 @@
   const DOW = ['일','월','화','수','목','금','토'];
   const CATEGORIES = ['교육', '평가', '회의', '방문', '출장', '기타'];
   const LEGACY_CAT = { '실습': '교육', '점검': '기타', '행사': '기타' };
+  const TASK_CATEGORIES = ['교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
   const STATUSES = ['예정', '진행중', '완료', '보류'];
   const STATUS_ORDER = { '진행중': 0, '예정': 1, '보류': 2, '완료': 3 };
   const LS_KEY = { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1', pin: 'ictc.pin' };
@@ -394,13 +421,14 @@
   const SUPABASE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
   const LOCALSRV = typeof CFG.apiUrl === 'string';   // 로컬(D드라이브) 서버 모드
   const REMOTE = SUPABASE || LOCALSRV;               // 팀 공유 모드 여부
-  const state = { schedule: null, tasks: null, scheduleTag: '전체', taskStatus: '전체', source: {}, lastSync: null };
+  const state = { schedule: null, tasks: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', source: {}, lastSync: null };
 
   const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const initial = s => (s || '').trim().charAt(0) || '?';
   const catOf = ev => CATEGORIES.includes(ev.tag) ? ev.tag : (LEGACY_CAT[ev.tag] || '기타');
+  const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : '기타';
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]}) ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
 
@@ -552,12 +580,14 @@
       const b = document.createElement('button');
       b.className = 'chip' + (o.key === current ? ' active' : '');
       if (o.color) b.style.setProperty('--dot', o.color);
-      b.innerHTML = (o.color ? '<span class="dot"></span>' : '') + esc(o.key) + (o.count != null ? ` <span class="cnt">${o.count}</span>` : '');
+      b.innerHTML = (o.avatar ? `<span class="avatar">${esc(initial(o.key))}</span>` : (o.color ? '<span class="dot"></span>' : '')) + esc(o.key) + (o.count != null ? ` <span class="cnt">${o.count}</span>` : '');
       b.onclick = () => onPick(o.key); container.appendChild(b);
     });
   }
   function fillDatalist(id, values) { document.getElementById(id).innerHTML = [...new Set(values.filter(Boolean))].map(v => `<option value="${esc(v)}">`).join(''); }
-  const catColor = c => getComputedStyle(document.documentElement).getPropertyValue('--c-' + c).trim();
+  const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const catColor = c => cssVar('--c-' + c);
+  const tcatColor = c => cssVar('--t-' + c);
 
   /* ── 일정 ── */
   function renderSchedule() {
@@ -643,23 +673,32 @@
     document.getElementById('tasksSummary').innerHTML = `
       <div><div class="big">${counts['진행중'] || 0}건 진행중</div><div class="label">${overdueCnt ? `<span style="color:var(--red);font-weight:600">기한 지연 ${overdueCnt}건</span>` : '지연된 업무 없음'}</div></div>
       <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
-    fillDatalist('catList', data.items.map(i => i.category));
+    fillDatalist('ownerList', data.items.map(i => i.owner));
     const statuses = STATUSES.filter(s => counts[s]);
     if (state.taskStatus !== '전체' && !statuses.includes(state.taskStatus)) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), statuses.map(s => ({ key: s, count: counts[s] })), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
+    const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
+    renderChips(document.getElementById('tasksCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: tcatColor(c), count: catCounts[c] || 0 })), state.taskCat, c => { state.taskCat = c; renderTasks(); });
+    const ownerCounts = {}; data.items.forEach(i => { const o = (i.owner || '').trim() || '미지정'; ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
+    const owners = Object.keys(ownerCounts).sort((a, b) => ownerCounts[b] - ownerCounts[a] || a.localeCompare(b, 'ko'));
+    if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
+    renderChips(document.getElementById('tasksOwnerFilters'), owners.map(o => ({ key: o, avatar: true, count: ownerCounts[o] })), state.taskOwner, o => { state.taskOwner = o; renderTasks(); });
 
-    const items = data.items.filter(i => state.taskStatus === '전체' || i.status === state.taskStatus).slice()
+    const items = data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus)
+        && (state.taskCat === '전체' || tcatOf(i) === state.taskCat)
+        && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner)).slice()
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || (a.due || '9999').localeCompare(b.due || '9999'));
     if (!items.length) {
       list.innerHTML = state.source.tasks === 'error'
         ? '<div class="empty" style="grid-column:1/-1"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br>서버가 켜져 있는지, 같은 네트워크인지 확인해 주세요</div>'
-        : '<div class="empty" style="grid-column:1/-1"><div class="ico">✅</div>표시할 업무가 없어요<br>버튼을 눌러 업무를 추가해 보세요</div>';
+        : '<div class="empty" style="grid-column:1/-1"><div class="ico">✅</div>표시할 업무가 없어요<br>필터를 바꾸거나 버튼을 눌러 업무를 추가해 보세요</div>';
       return;
     }
     list.innerHTML = items.map(t => {
       const overdue = t.due && t.due < TODAY && t.status !== '완료';
-      return `<div class="task ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}')">
-        <div class="task-top"><span class="task-cat">${esc(t.category || '미분류')}</span>
+      const tc = tcatOf(t);
+      return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}')">
+        <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="클릭하면 다음 상태로" onclick="event.stopPropagation();cycleStatus('${esc(t.id)}')">${esc(t.status)}</button></div>
         <div class="task-title">${esc(t.title)}</div>
         ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
@@ -712,12 +751,18 @@
     document.getElementById('taskForm').elements.status.value = current;
   }
   function pickStatus(s) { renderStatusPicker(s); }
+  function renderTaskCatPicker(current) {
+    document.getElementById('taskCatPicker').innerHTML = TASK_CATEGORIES.map(c =>
+      `<button type="button" class="tcat-${c} ${c === current ? 'on' : ''}" onclick="pickTaskCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
+    document.getElementById('taskForm').elements.category.value = current;
+  }
+  function pickTaskCat(c) { renderTaskCatPicker(c); }
   function openTaskForm(id) {
     const form = document.getElementById('taskForm'); form.reset();
     const item = id ? state.tasks.items.find(i => i.id === id) : null;
     document.getElementById('taskFormTitle').textContent = item ? '업무 수정' : '새 업무';
     document.getElementById('taskDelete').style.display = item ? '' : 'none';
-    fillForm(form, item || {}); renderStatusPicker(item ? item.status : '예정');
+    fillForm(form, item || {}); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(item ? tcatOf(item) : '교육운영');
     openModal('taskModal'); if (!item) setTimeout(() => form.title.focus(), 300);
   }
   async function saveTask(e) {

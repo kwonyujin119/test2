@@ -1,30 +1,33 @@
 # ICTC 보드 로컬 서버 (D드라이브 운영용)
 
-데이터를 외부 클라우드 없이 **본인 PC의 D드라이브(SQLite 파일)** 에 저장하고,
+데이터를 외부 클라우드 없이 **본인 PC의 `D:\일정표,주요업무\` 폴더(SQLite 파일)** 에 저장하고,
 같은 사무실 네트워크의 팀원이 브라우저로 접속해 보는 방식입니다.
+
+## 다운로드
+
+- 설치 패키지(ZIP): https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip
+- 저장소 전체: https://github.com/kwonyujin119/test2/archive/refs/heads/main.zip (`server\` 와 `ictc\` 폴더만 사용)
 
 ## 1회 설치
 
 1. Python 설치 (이미 있으면 생략): https://www.python.org/downloads/
    설치 첫 화면에서 **"Add python.exe to PATH" 체크** 후 Install Now.
-2. `D:\ICTC일정표,주요업무\` 폴더를 만들고 아래를 복사합니다.
-   - 이 저장소의 `server\` 안의 파일 전부 (`ictc_server.py`, `start.bat`)
-   - 이 저장소의 `ictc\` 폴더 통째로
-   결과:
+2. 위 ZIP을 받아 아무 곳(예: `D:\ICTC보드\`)에 압축을 풉니다. 구성:
    ```
-   D:\ICTC일정표,주요업무\
+   ictc-board-server\
    ├─ ictc_server.py
    ├─ start.bat
-   └─ ictc\
-       ├─ index.html
-       ├─ config.js
-       └─ data\
+   ├─ 설치안내.txt
+   └─ ictc\            (웹앱 화면)
    ```
-3. `start.bat` 더블클릭. Windows 방화벽 창이 뜨면 **"개인 네트워크"와 "공용 네트워크" 모두 체크 → 액세스 허용**.
+3. `start.bat` 더블클릭. 처음 실행하면 **`D:\일정표,주요업무\`** 폴더가 자동으로 만들어지고 그 안에
+   `ictc.db`(전체 데이터)와 `pin.txt`(편집 PIN, 기본 1234)가 생깁니다.
+4. Windows 방화벽 창이 뜨면 **"개인 네트워크"와 "공용 네트워크" 모두 체크 → 액세스 허용**.
    (허용하지 않으면 본인만 접속되고 팀원은 접속이 안 됩니다.)
-4. 검은 창에 표시되는 `팀원 접속 : http://192.168.x.x:8080` 주소를 팀원에게 공유합니다.
-5. 처음 실행 시 같은 폴더에 `pin.txt`(편집 PIN, 기본 1234)와 `ictc.db`(데이터)가 생깁니다.
-   `pin.txt` 를 메모장으로 열어 PIN을 바꾸세요. 서버 재시작 없이 바로 적용됩니다.
+5. 검은 창에 표시되는 `팀원 접속 : http://192.168.x.x:8080` 주소를 팀원에게 공유합니다.
+6. `D:\일정표,주요업무\pin.txt` 를 메모장으로 열어 PIN을 바꾸세요. 서버 재시작 없이 바로 적용됩니다.
+
+프로그램(압축 푼 폴더)과 데이터(`D:\일정표,주요업무\`)가 분리되어 있어, 프로그램을 새 버전으로 바꿔도 데이터는 유지됩니다.
 
 ## 매일 사용
 
@@ -39,7 +42,7 @@
 
 ## 백업
 
-`ictc.db` 파일 하나가 전체 데이터입니다. 주기적으로 복사해 두면 됩니다.
+`D:\일정표,주요업무\ictc.db` 파일 하나가 전체 데이터입니다. 주기적으로 복사해 두면 됩니다.
 웹앱 ⋮ 메뉴의 **JSON 내보내기** 로도 백업할 수 있습니다.
 
 ## 한계
@@ -50,8 +53,9 @@
 
 ## 옵션
 
+start.bat 을 메모장으로 열어 수정하거나, 직접 실행할 때:
 ```
-python ictc_server.py --port 9000          포트 변경
-python ictc_server.py --db E:\backup\ictc.db   DB 위치 변경
-python ictc_server.py --host 127.0.0.1     이 PC에서만 접속 (테스트용)
+python ictc_server.py --port 9000                          포트 변경
+python ictc_server.py --db "E:\백업\ictc.db" --pin-file "E:\백업\pin.txt"   데이터 위치 변경
+python ictc_server.py --host 127.0.0.1                     이 PC에서만 접속 (테스트용)
 ```
