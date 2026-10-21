@@ -48,6 +48,17 @@
     letter-spacing: -0.3px;
     line-height: 1.2;
   }
+  .header-link {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border-dark);
+    padding: 6px 12px;
+    white-space: nowrap;
+    transition: color .2s, border-color .2s;
+  }
+  .header-link:hover { color: #f0f0f0; border-color: #555; }
   .header-text p {
     font-size: 10px;
     color: var(--muted);
@@ -248,6 +259,7 @@
     <h1>현장지휘관 체크리스트</h1>
     <p>권유진 · 인천소방학교 · FIELD COMMANDER CHECKLIST</p>
   </div>
+  <a class="header-link" href="ictc/">ICTC 일정표 · 주요업무 →</a>
 </header>
 
 <div class="progress-wrap">
