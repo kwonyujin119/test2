@@ -20,26 +20,20 @@
 
 ### 데이터 저장 방식
 
-두 가지 모드가 있으며 `ictc/config.js` 로 결정됩니다.
-
 | 모드 | 조건 | 동작 |
 |---|---|---|
-| **팀 공유 모드** (권장) | `config.js`에 Supabase URL·anon key 입력 | 누구나 조회, PIN을 아는 사람만 편집. 저장 즉시 모든 팀원에게 반영, 30초마다 자동 새로고침 |
-| 브라우저 저장 모드 | `config.js` 값이 비어 있음 | `ictc/data/*.json`을 기본값으로 읽고, 수정은 각자 브라우저에만 저장 |
+| **사내 서버 모드** (권장) | `server/ictc_server.py` 를 본인 PC(D드라이브)에서 실행 | DB가 PC의 `ictc.db` 파일에 저장. 같은 네트워크 팀원이 `http://PC주소:8080` 으로 접속해 조회, PIN 아는 사람만 편집. 15초마다 자동 갱신 |
+| Supabase 모드 | `ictc/config.js` 에 Supabase URL·anon key 입력 | 외부 클라우드 DB. GitHub Pages 주소 그대로 사용 가능 |
+| 브라우저 저장 모드 | 위 둘 다 아님 (GitHub Pages 기본 상태) | 수정 내용이 각자 브라우저에만 저장 |
 
-### 팀 공유 모드 설정 (약 5분, 1회)
+**사내 서버 모드 설치 방법은 [`server/README.md`](server/README.md) 를 보세요.** (Python 설치 → 폴더 복사 → start.bat 실행)
 
-1. https://supabase.com 에 가입(GitHub 계정으로 가능) → **New project** 생성. Region은 Northeast Asia (Seoul) 권장.
-2. 좌측 **SQL Editor** → **New query** → 저장소의 `ictc/supabase.sql` 내용을 전부 붙여넣기.
-   파일 안의 `'1234'` 를 팀 편집 PIN으로 바꾼 뒤 **Run**.
-3. 좌측 **Project Settings → API** 에서 **Project URL** 과 **anon public** 키를 복사.
-4. `ictc/config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
-5. 사이트를 열면 안내 문구가 "팀 공유 모드"로 바뀝니다. 편집 시 처음 한 번 PIN을 묻고 브라우저에 기억합니다.
+Supabase 모드는 `ictc/supabase.sql` 을 SQL Editor 에서 실행한 뒤 `config.js` 를 채우면 됩니다.
 
-- anon 키는 공개용 키입니다(브라우저에 노출되도록 설계됨). 쓰기 권한은 모두 PIN 검증 함수를 거치므로 키만으로는 편집할 수 없습니다.
-- PIN 변경: SQL Editor에서 `select ictc_set_pin('기존PIN', '새PIN');`
-- 기존 `ictc/data/*.json` 데이터를 서버로 올리려면 ⋮ 메뉴 → **JSON 가져오기**.
-- 무료 플랜은 1주일간 접속이 없으면 프로젝트가 일시중지됩니다. 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
+### 일정 구분(카테고리)
+
+교육 · 평가 · 회의 · 방문 · 출장 · 기타 6종 고정이며 색으로 구분됩니다.
+일정의 **시간을 클릭**하면 일시만 바꾸는 작은 창이, **제목을 클릭**하면 제목·장소·담당·메모 수정 창이 열립니다.
 
 ### JSON 형식
 
@@ -47,6 +41,7 @@
 // schedule.json 항목
 { "id": "s001", "date": "2026-10-22", "start": "09:00", "end": "12:00",
   "title": "일정 제목", "place": "장소", "owner": "담당", "tag": "교육", "note": "메모" }
+// tag: 교육 / 평가 / 회의 / 방문 / 출장 / 기타
 
 // tasks.json 항목
 { "id": "t001", "category": "교육운영", "title": "업무명", "status": "진행중",
