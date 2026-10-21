@@ -5,7 +5,7 @@ ICTC 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 
 프로그램 폴더 (압축 푼 위치, 어디든 상관없음):
   ictc_server.py   이 파일
   start.bat        더블클릭 실행용 (DB 위치를 D:\일정표,주요업무\ 로 지정)
-  ictc\            웹앱 화면
+  site\            웹앱 화면 (index.html, config.js, data\, checklist\)
 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
   ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
@@ -24,8 +24,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def find_static():
-    for c in (os.path.join(HERE, 'ictc'), os.path.join(os.path.dirname(HERE), 'ictc')):
-        if os.path.isfile(os.path.join(c, 'index.html')):
+    parent = os.path.dirname(HERE)
+    for c in (os.path.join(HERE, 'site'), os.path.join(HERE, 'ictc'), parent):
+        if os.path.isfile(os.path.join(c, 'index.html')) and os.path.isdir(os.path.join(c, 'data')):
             return c
     return None
 
@@ -197,7 +198,7 @@ def main():
 
     static = a.static or find_static()
     if not static:
-        print('[오류] ictc 폴더(index.html)를 찾을 수 없습니다. 이 파일 옆에 ictc 폴더를 복사하세요.')
+        print('[오류] 웹앱 폴더(site)를 찾을 수 없습니다. 이 파일 옆에 site 폴더를 복사하세요.')
         sys.exit(1)
     for path in (a.db, a.pin_file):
         d = os.path.dirname(os.path.abspath(path))

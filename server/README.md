@@ -6,7 +6,7 @@
 ## 다운로드
 
 - 설치 패키지(ZIP): https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip
-- 저장소 전체: https://github.com/kwonyujin119/test2/archive/refs/heads/main.zip (`server\` 와 `ictc\` 폴더만 사용)
+- 저장소 전체: https://github.com/kwonyujin119/test2/archive/refs/heads/main.zip (ZIP 패키지가 더 간단합니다)
 
 ## 1회 설치
 
@@ -18,7 +18,7 @@
    ├─ ictc_server.py
    ├─ start.bat
    ├─ 설치안내.txt
-   └─ ictc\            (웹앱 화면)
+   └─ site\            (웹앱 화면: index.html, data\, checklist\)
    ```
 3. `start.bat` 더블클릭. 처음 실행하면 **`D:\일정표,주요업무\`** 폴더가 자동으로 만들어지고 그 안에
    `ictc.db`(전체 데이터)와 `pin.txt`(편집 PIN, 기본 1234)가 생깁니다.
@@ -33,6 +33,7 @@
 
 - PC를 켜고 `start.bat` 실행 → 검은 창을 그대로 둡니다. 창을 닫으면 서버가 꺼집니다.
 - 본인: http://localhost:8080 / 팀원: 공유받은 주소
+- GitHub Pages 주소(https://kwonyujin119.github.io/test2/)는 미리보기용입니다. 그 화면 상단의 "사내 서버 주소 연결"에 팀원 접속 주소를 넣어 두면 버튼 한 번으로 서버 화면으로 이동합니다.
 - 조회는 누구나, 추가·수정·삭제는 PIN 입력 후 가능. 팀원 화면은 15초마다 자동 갱신.
 
 ### 부팅 시 자동 실행 (선택)

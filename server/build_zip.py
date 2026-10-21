@@ -25,11 +25,13 @@ with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
     for name in ('ictc_server.py', 'start.bat'):
         z.write(os.path.join(ROOT, 'server', name), TOP + name)
     z.writestr(TOP + '설치안내.txt', GUIDE.replace('\n', '\r\n').encode('utf-8-sig'))
-    for dirpath, _, files in os.walk(os.path.join(ROOT, 'ictc')):
-        for f in sorted(files):
-            if f == 'supabase.sql': continue
-            full = os.path.join(dirpath, f)
-            z.write(full, TOP + os.path.relpath(full, ROOT).replace(os.sep, '/'))
+    z.write(os.path.join(ROOT, 'index.html'), TOP + 'site/index.html')
+    z.write(os.path.join(ROOT, 'config.js'), TOP + 'site/config.js')
+    for sub in ('data', 'checklist'):
+        for dirpath, _, files in os.walk(os.path.join(ROOT, sub)):
+            for f in sorted(files):
+                full = os.path.join(dirpath, f)
+                z.write(full, TOP + 'site/' + os.path.relpath(full, ROOT).replace(os.sep, '/'))
 print('wrote', os.path.relpath(OUT, ROOT), os.path.getsize(OUT), 'bytes')
 with zipfile.ZipFile(OUT) as z:
     for i in z.infolist(): print('  ', i.filename)

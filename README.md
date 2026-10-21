@@ -4,8 +4,8 @@
 
 | 페이지 | 주소 | 파일 |
 |---|---|---|
-| 현장지휘관 체크리스트 | https://kwonyujin119.github.io/test2/ | `index.html` |
-| ICTC 일정 · 주요업무 | https://kwonyujin119.github.io/test2/ictc/ | `ictc/index.html` |
+| ICTC 일정 · 주요업무 (메인) | https://kwonyujin119.github.io/test2/ | `index.html` |
+| 현장지휘관 체크리스트 | https://kwonyujin119.github.io/test2/checklist/ | `checklist/index.html` |
 
 ## ICTC 일정 · 주요업무 (웹앱 초안)
 
@@ -23,18 +23,20 @@
 | 모드 | 조건 | 동작 |
 |---|---|---|
 | **사내 서버 모드** (권장) | 설치 패키지([ZIP 다운로드](https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip))를 본인 PC에서 실행 | DB가 PC의 `D:\일정표,주요업무\ictc.db` 에 저장. 같은 네트워크 팀원이 `http://PC주소:8080` 으로 접속해 조회, PIN 아는 사람만 편집. 15초마다 자동 갱신 |
-| Supabase 모드 | `ictc/config.js` 에 Supabase URL·anon key 입력 | 외부 클라우드 DB. GitHub Pages 주소 그대로 사용 가능 |
-| 브라우저 저장 모드 | 위 둘 다 아님 (GitHub Pages 기본 상태) | 수정 내용이 각자 브라우저에만 저장 |
+| Supabase 모드 | `config.js` 에 Supabase URL·anon key 입력 | 외부 클라우드 DB. GitHub Pages 주소 그대로 사용 가능 |
+| 미리보기(브라우저 저장) 모드 | 위 둘 다 아님 = **GitHub Pages 주소의 기본 상태** | 수정 내용이 각자 브라우저에만 저장. 상단 안내의 "사내 서버 주소 연결"에 PC 서버 주소를 넣어 두면 "사내 서버로 이동" 버튼으로 바로 넘어갈 수 있음 |
+
+GitHub Pages(HTTPS)는 사내 PC 서버(HTTP)의 데이터를 직접 읽을 수 없습니다(브라우저 보안 정책). 팀 공유 데이터는 반드시 PC 서버 주소(`http://PC주소:8080`)로 접속해서 봐야 합니다.
 
 **사내 서버 모드 설치 방법은 [`server/README.md`](server/README.md) 를 보세요.** (Python 설치 → 폴더 복사 → start.bat 실행)
 
-Supabase 모드는 `ictc/supabase.sql` 을 SQL Editor 에서 실행한 뒤 `config.js` 를 채우면 됩니다.
+Supabase 모드는 `server/supabase.sql` 을 SQL Editor 에서 실행한 뒤 `config.js` 를 채우면 됩니다.
 
 ### 구분(카테고리)와 필터
 
 - 일정: 교육 · 평가 · 회의 · 방문 · 출장 · 기타 6종 고정, 색으로 구분. **시간 클릭** → 일시 변경 창, **제목 클릭** → 제목·장소·담당·메모 수정 창.
 - 주요업무: 교육운영 · 행정 · 시설장비 · 대외협력 · 예산 · 기타 6종 고정, 카드 왼쪽 색 막대로 구분. 상태 · 분류 · 담당자 필터를 조합할 수 있습니다.
-- 카테고리 이름을 바꾸려면 `ictc/index.html` 상단의 `CATEGORIES`, `TASK_CATEGORIES` 와 같은 이름의 색 변수(`--c-*`, `--t-*`)를 함께 수정합니다.
+- 카테고리 이름을 바꾸려면 `index.html` 스크립트 상단의 `CATEGORIES`, `TASK_CATEGORIES` 와 같은 이름의 색 변수(`--c-*`, `--t-*`)를 함께 수정합니다.
 
 ### JSON 형식
 
