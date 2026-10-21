@@ -18,16 +18,28 @@
 - 단축키: `N` 새 항목, `1`/`2` 탭 전환, `Esc` 닫기
 - 다크모드 자동 대응
 
-### 데이터 저장 방식 (중요)
+### 데이터 저장 방식
 
-GitHub Pages는 정적 호스팅이라 서버 저장소가 없습니다. 현재 초안의 저장 구조는 다음과 같습니다.
+두 가지 모드가 있으며 `ictc/config.js` 로 결정됩니다.
 
-1. 처음 열면 저장소의 `ictc/data/schedule.json`, `ictc/data/tasks.json`을 읽어 표시합니다 (팀 공통 기본값).
-2. 브라우저에서 추가·수정한 내용은 **그 브라우저(localStorage)에만** 저장됩니다. 다른 팀원에게는 보이지 않습니다.
-3. 팀 전체에 반영하려면 **JSON 내보내기**로 받은 파일을 `ictc/data/`의 같은 이름 파일에 덮어써서 커밋합니다.
-4. 팀원은 ⋮ 메뉴 → **기본값으로 복원**을 누르면 저장소의 최신 데이터를 다시 불러옵니다.
+| 모드 | 조건 | 동작 |
+|---|---|---|
+| **팀 공유 모드** (권장) | `config.js`에 Supabase URL·anon key 입력 | 누구나 조회, PIN을 아는 사람만 편집. 저장 즉시 모든 팀원에게 반영, 30초마다 자동 새로고침 |
+| 브라우저 저장 모드 | `config.js` 값이 비어 있음 | `ictc/data/*.json`을 기본값으로 읽고, 수정은 각자 브라우저에만 저장 |
 
-실시간 공동 편집이 필요하면 백엔드(예: Supabase, Firebase)나 Google Sheets 연동이 필요합니다.
+### 팀 공유 모드 설정 (약 5분, 1회)
+
+1. https://supabase.com 에 가입(GitHub 계정으로 가능) → **New project** 생성. Region은 Northeast Asia (Seoul) 권장.
+2. 좌측 **SQL Editor** → **New query** → 저장소의 `ictc/supabase.sql` 내용을 전부 붙여넣기.
+   파일 안의 `'1234'` 를 팀 편집 PIN으로 바꾼 뒤 **Run**.
+3. 좌측 **Project Settings → API** 에서 **Project URL** 과 **anon public** 키를 복사.
+4. `ictc/config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
+5. 사이트를 열면 안내 문구가 "팀 공유 모드"로 바뀝니다. 편집 시 처음 한 번 PIN을 묻고 브라우저에 기억합니다.
+
+- anon 키는 공개용 키입니다(브라우저에 노출되도록 설계됨). 쓰기 권한은 모두 PIN 검증 함수를 거치므로 키만으로는 편집할 수 없습니다.
+- PIN 변경: SQL Editor에서 `select ictc_set_pin('기존PIN', '새PIN');`
+- 기존 `ictc/data/*.json` 데이터를 서버로 올리려면 ⋮ 메뉴 → **JSON 가져오기**.
+- 무료 플랜은 1주일간 접속이 없으면 프로젝트가 일시중지됩니다. 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
 
 ### JSON 형식
 
