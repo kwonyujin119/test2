@@ -22,7 +22,7 @@
 
 | 모드 | 조건 | 동작 |
 |---|---|---|
-| **사내 서버 모드** (권장) | 설치 패키지([ZIP 다운로드](https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip))를 본인 PC에서 실행 | DB가 PC의 `D:\일정표,주요업무\ictc.db` 에 저장. 같은 네트워크 팀원이 `http://PC주소:8080` 으로 접속해 조회, PIN 아는 사람만 편집. 15초마다 자동 갱신 |
+| **사내 서버 모드** (권장) | 설치 패키지([ZIP 다운로드](https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip))를 본인 PC에서 실행 | DB가 PC의 `D:\일정표,주요업무\ictc.db` 에 저장. 같은 네트워크 팀원이 `http://PC주소:8080` 으로 접속. 조회 PIN·편집 PIN 2단계. 15초마다 자동 갱신 |
 | Supabase 모드 | `config.js` 에 Supabase URL·anon key 입력 | 외부 클라우드 DB. GitHub Pages 주소 그대로 사용 가능 |
 | 미리보기(브라우저 저장) 모드 | 위 둘 다 아님 = **GitHub Pages 주소의 기본 상태** | 수정 내용이 각자 브라우저에만 저장. 상단 안내의 "사내 서버 주소 연결"에 PC 서버 주소를 넣어 두면 "사내 서버로 이동" 버튼으로 바로 넘어갈 수 있음 |
 
@@ -30,7 +30,27 @@ GitHub Pages(HTTPS)는 사내 PC 서버(HTTP)의 데이터를 직접 읽을 수 
 
 **사내 서버 모드 설치 방법은 [`server/README.md`](server/README.md) 를 보세요.** (Python 설치 → 폴더 복사 → start.bat 실행)
 
-Supabase 모드는 `server/supabase.sql` 을 SQL Editor 에서 실행한 뒤 `config.js` 를 채우면 됩니다.
+### Supabase 모드 설정 (약 10분, 1회) — 링크 하나로 어디서나 공유
+
+1. https://supabase.com 가입(GitHub 계정 로그인 가능) → **New project**. Region은 Northeast Asia (Seoul).
+2. 좌측 **SQL Editor** → **New query** → 저장소의 `server/supabase.sql` 내용을 전부 붙여넣기.
+   파일 상단의 `'1234'`(편집 PIN)와 `'0000'`(조회 PIN)을 팀 PIN으로 바꾼 뒤 **Run**.
+3. **Project Settings → API** 에서 **Project URL** 과 **anon public** 키를 복사.
+4. `config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
+5. https://kwonyujin119.github.io/test2/ 를 열면 조회 PIN 잠금 화면이 뜨고, 통과하면 "팀 공유 모드"가 됩니다.
+
+anon 키는 브라우저에 노출되도록 설계된 공개 키입니다. 조회·편집 모두 PIN을 검증하는 DB 함수만 거치므로 키만으로는 데이터를 읽거나 쓸 수 없습니다.
+무료 플랜은 1주일간 접속이 없으면 프로젝트가 일시중지되며, 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
+
+### 접근 통제 (PIN 2종)
+
+| PIN | 용도 | 기본값 | 변경 |
+|---|---|---|---|
+| 조회 PIN | 링크를 여는 직원이 처음 한 번 입력. 기기에 저장됨 | `0000` | Supabase: `select ictc_set_view_pin('편집PIN', '새PIN');` / 로컬 서버: `view_pin.txt` |
+| 편집 PIN | 추가·수정·삭제 시 처음 한 번 입력 | `1234` | Supabase: `select ictc_set_pin('기존PIN', '새PIN');` / 로컬 서버: `pin.txt` |
+
+조회 PIN을 빈 문자열로 두면 링크를 아는 누구나 조회할 수 있습니다. 편집 PIN은 조회 PIN을 겸합니다.
+PIN을 바꾸면 직원 기기에 잠금 화면이 다시 뜨므로 새 PIN을 공지해야 합니다.
 
 ### 구분(카테고리)와 필터
 
