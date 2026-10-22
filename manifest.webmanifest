@@ -1,7 +1,7 @@
 {
-  "name": "SAIL — 지휘역량강화센터 일정·업무",
-  "short_name": "SAIL",
-  "description": "SAIL: Schedule · Attention · Individual Log. 인천소방학교 지휘역량강화센터 팀 보드",
+  "name": "SAIL:41 — 지휘역량강화센터 일정·업무",
+  "short_name": "SAIL:41",
+  "description": "SAIL:41 — Schedule · Attention · Individual Log. 인천소방학교 지휘역량강화센터 팀 보드",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
@@ -10,8 +10,21 @@
   "background_color": "#0A2F7E",
   "theme_color": "#0A2F7E",
   "icons": [
-    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "assets/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
