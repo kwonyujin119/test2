@@ -44,14 +44,17 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true }); const Q = await ctx2.newPage(); Q.on('pageerror', e => errors.push('mobile: ' + e.message));
   await Q.goto(URL + '#personal', { waitUntil: 'networkidle' }); await Q.waitForTimeout(400);
   if (shared) { await Q.fill('#viewPinInput', '0000'); await Q.click('#lock button[type=submit]'); await Q.waitForTimeout(800); }
-  await Q.fill('#loginForm [name=uid]', '1234'); await Q.fill('#loginForm [name=uname]', '김영희'); await Q.click('#loginSubmit'); await Q.waitForTimeout(700);
-  r.wrongName = await Q.locator('#loginErr').innerText();
+  await Q.fill('#loginForm [name=uid]', '1234');
+  if (shared) { // 미리보기 모드는 브라우저별 저장이라 다른 이름이 자동 등록되므로 공유 모드에서만 검사
+    await Q.fill('#loginForm [name=uname]', '김영희'); await Q.click('#loginSubmit'); await Q.waitForTimeout(700);
+    r.wrongName = await Q.locator('#loginErr').innerText();
+  }
   await Q.fill('#loginForm [name=uname]', '홍길동'); await Q.click('#loginSubmit'); await Q.waitForTimeout(800);
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
   const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false };
-  if (shared) Object.assign(expect, { lock: 1, otherDeviceSees: 1 });
+  if (shared) Object.assign(expect, { lock: 1, otherDeviceSees: 1, wrongName: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);
