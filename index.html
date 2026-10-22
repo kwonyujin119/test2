@@ -163,6 +163,10 @@
   .cat-기타 { --cat: var(--c-기타); --cat-soft: var(--c-기타-soft); }
   .cat-주요업무 { --cat: var(--c-주요업무); --cat-soft: var(--c-주요업무-soft); }
   .task-foot .linked { color: var(--c-주요업무); font-weight: 700; }
+  .task-list .month-head { grid-column: 1 / -1; font-size: 13px; font-weight: 700; color: var(--text-3); margin: 10px 4px 0; display: flex; align-items: center; gap: 10px; }
+  .task-list .month-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .task-list .month-head .cnt { font-weight: 600; font-size: 12px; }
+  .task-list .month-head:first-child { margin-top: 0; }
   .tcat-교육운영 { --cat: var(--t-교육운영); --cat-soft: var(--t-교육운영-soft); }
   .tcat-행정 { --cat: var(--t-행정); --cat-soft: var(--t-행정-soft); }
   .tcat-시설장비 { --cat: var(--t-시설장비); --cat-soft: var(--t-시설장비-soft); }
@@ -246,6 +250,7 @@
   .picker button { border: 1.5px solid var(--line); background: transparent; border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
   .picker button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat); }
   .picker button.on { border-color: transparent; background: var(--cat-soft); color: var(--cat); }
+  .picker-hint { flex-basis: 100%; font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
   .picker button.on.s-진행중 { background: var(--primary-soft); color: var(--primary-text); }
   .picker button.on.s-예정 { background: var(--amber-soft); color: var(--amber); }
   .picker button.on.s-완료 { background: var(--green-soft); color: var(--green); }
@@ -562,6 +567,9 @@
         <div class="chips" id="personalFilters"></div>
         <div class="filter-label">분류</div>
         <div class="chips" id="personalCatFilters"></div>
+        <div class="filter-label">연도 · 월</div>
+        <div class="chips" id="personalYearFilters"></div>
+        <div class="chips" id="personalMonthFilters"></div>
       </div>
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
@@ -576,12 +584,12 @@
 <button class="fab" id="fab" onclick="fabClick()" aria-label="추가"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="fabLabel">일정 추가</span></button>
 
 <div class="menu" id="menu" role="menu">
-  <button onclick="exportJSON(currentTab())">⬇️&nbsp; JSON 내보내기</button>
+  <button id="menuExport" onclick="exportJSON(currentTab())">⬇️&nbsp; JSON 내보내기</button>
   <button onclick="importJSON(currentTab())" id="menuImport">⬆️&nbsp; JSON 가져오기</button>
-  <hr>
+  <hr class="admin-only">
   <button id="menuBoardRename" onclick="renameBoard()">✏️&nbsp; 대시보드 이름 변경</button>
   <button id="menuBoardDelete" class="danger" onclick="deleteBoard()">🗑️&nbsp; 이 대시보드 삭제</button>
-  <hr>
+  <hr class="admin-only">
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 관리자(편집 PIN) 입력/변경</button>
   <button id="menuAdminOff" style="display:none" onclick="adminOff()">🟢&nbsp; 관리자 모드 해제 (편집 PIN 지우기)</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
@@ -730,14 +738,16 @@
   const REMOTE = SUPABASE || LOCALSRV;
   const DEFAULT_BOARD = { id: 'main', name: '지휘역량강화센터' };
   const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, me: null,
-    view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체',
+    view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체', pYear: String(new Date().getFullYear()), pMonth: '전체',
     source: {}, lastSync: null };
 
   const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const initial = s => (s || '').trim().charAt(0) || '?';
-  const catOf = ev => CATEGORIES.includes(ev.tag) ? ev.tag : (LEGACY_CAT[ev.tag] || '기타');
+  const normCat = t => CATEGORIES.includes(t) ? t : (LEGACY_CAT[t] || '기타');
+  const tagsOf = ev => { const raw = Array.isArray(ev.tags) && ev.tags.length ? ev.tags : [ev.tag]; return [...new Set(raw.map(normCat))]; };
+  const catOf = ev => tagsOf(ev)[0];
   const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : '기타';
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -945,14 +955,29 @@
     e.stopPropagation(); closeBoardMenu();
     const m = document.getElementById('menu'); const r = e.currentTarget.getBoundingClientRect();
     m.style.top = (r.bottom + 6) + 'px'; m.style.right = (window.innerWidth - r.right) + 'px';
-    document.getElementById('menuBoardDelete').style.display = state.board === 'main' ? 'none' : '';
-    document.getElementById('menuLogout').style.display = state.me ? '' : 'none';
-    document.getElementById('menuImport').style.display = currentTab() === 'personal' ? 'none' : '';
+    const admin = document.body.classList.contains('admin') || !REMOTE;
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+    // 일반 사용자: 로그아웃 · 홈 화면 추가 · 새로고침 만
+    ['menuExport', 'menuImport', 'menuBoardRename', 'menuBoardDelete', 'menuUsers', 'menuPin', 'menuViewPin', 'menuAdminOff'].forEach(id => show(id, admin));
+    m.querySelectorAll('hr.admin-only').forEach(h => h.style.display = admin ? '' : 'none');
+    if (admin) {
+      show('menuBoardDelete', state.board !== 'main'); show('menuImport', currentTab() !== 'personal');
+      show('menuPin', REMOTE); show('menuViewPin', REMOTE); show('menuAdminOff', REMOTE && document.body.classList.contains('admin'));
+    }
+    show('menuLogout', !!state.me);
     m.classList.toggle('open');
   }
   document.addEventListener('click', () => { document.getElementById('menu').classList.remove('open'); closeBoardMenu(); });
 
   /* ── 대시보드 ── */
+  (function setupAdminLongPress() {
+    const btn = document.getElementById('boardBtn'); let timer = null, fired = false;
+    const start = () => { fired = false; timer = setTimeout(() => { fired = true; if (REMOTE) { changePin(); } }, 700); };
+    const stop = () => { clearTimeout(timer); };
+    btn.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+    btn.addEventListener('click', e => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } }, true);
+    btn.addEventListener('contextmenu', e => { if (REMOTE) e.preventDefault(); });
+  })();
   function renderBoardTitle() { document.getElementById('boardName').textContent = boardName(); document.title = boardName() + ' · 일정 · 업무'; }
   function toggleBoardMenu(e) {
     e.stopPropagation(); document.getElementById('menu').classList.remove('open');
@@ -1047,7 +1072,7 @@
     [{ key: '전체' }, ...options].forEach(o => {
       const b = document.createElement('button'); b.className = 'chip' + (o.key === current ? ' active' : '');
       if (o.color) b.style.setProperty('--dot', o.color);
-      b.innerHTML = (o.avatar ? `<span class="avatar">${esc(initial(o.key))}</span>` : (o.color ? '<span class="dot"></span>' : '')) + esc(o.key) + (o.count != null ? ` <span class="cnt">${o.count}</span>` : '');
+      b.innerHTML = (o.avatar ? `<span class="avatar">${esc(initial(o.key))}</span>` : (o.color ? '<span class="dot"></span>' : '')) + esc(o.label ?? o.key) + (o.count != null ? ` <span class="cnt">${o.count}</span>` : '');
       b.onclick = () => onPick(o.key); container.appendChild(b);
     });
   }
@@ -1063,11 +1088,11 @@
     document.getElementById('scheduleSummary').innerHTML = `
       <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건</div></div>
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>`;
-    const counts = {}; data.items.forEach(i => { const c = catOf(i); counts[c] = (counts[c] || 0) + 1; });
+    const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
     renderChips(document.getElementById('scheduleFilters'), zerosLast(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
     document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
-    const items = data.items.filter(i => state.scheduleTag === '전체' || catOf(i) === state.scheduleTag).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+    const items = data.items.filter(i => state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
     if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
       list.innerHTML = state.source.schedule === 'error' ? '<div class="empty"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh(\'schedule\')">다시 시도</button></div>'
@@ -1094,7 +1119,7 @@
         html += `<div class="event cat-${cat}"><div class="event-bar"></div>
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
-            <div class="event-body"><div class="event-title">${esc(ev.title)}<span class="pill">${esc(cat)}</span></div>
+            <div class="event-body"><div class="event-title">${esc(ev.title)}${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
               ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub">${esc(ev.note)}</div>` : ''}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
@@ -1141,7 +1166,7 @@
           const sub = [multi ? `<span class="range">📅 ${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? '📍 ' + esc(ev.place) : '', ev.owner ? esc(ev.owner) : ''].filter(Boolean).join('');
           html += `<div class="event cat-${cat}"><div class="event-bar"></div>
             <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
-            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title">${esc(ev.title)}<span class="pill">${esc(cat)}</span></div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title">${esc(ev.title)}${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
         });
         html += `</div>`;
@@ -1156,7 +1181,7 @@
   function calCellClick(e, date) {
     if (window.innerWidth <= 640) { state.calSelected = date; state.calScrollAgenda = true; renderSchedule(); return; }
     if (e.target.closest('.cal-ev')) return;
-    const has = state.schedule.items.some(i => i.date <= date && endOf(i) >= date && (state.scheduleTag === '전체' || catOf(i) === state.scheduleTag));
+    const has = state.schedule.items.some(i => i.date <= date && endOf(i) >= date && (state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)));
     if (!has) { openScheduleForm(null, null, date); return; }
     state.view = 'list'; state.focusDate = date; if (date < TODAY) state.showPast = true; renderSchedule();
   }
@@ -1256,8 +1281,31 @@
     renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
     renderChips(document.getElementById('personalCatFilters'), zerosLast(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
-    const items = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)));
-    list.innerHTML = items.length ? taskCards(items, 'personal') : '<div class="empty" style="grid-column:1/-1"><div class="ico">📝</div>아직 개인업무가 없어요<br>버튼을 눌러 첫 업무를 추가해 보세요</div>';
+    // 연도·월 (기한, 없으면 등록일 기준)
+    const keyOf = t => (t.due || t.created || '').slice(0, 7);
+    const yearOf = t => keyOf(t).slice(0, 4);
+    const thisYear = String(new Date().getFullYear());
+    const yearCounts = {}; data.items.forEach(i => { const y = yearOf(i) || '미정'; yearCounts[y] = (yearCounts[y] || 0) + 1; });
+    const years = [...new Set([thisYear, ...Object.keys(yearCounts).filter(y => y !== '미정')])].sort((a, b) => b.localeCompare(a));
+    if (state.pYear !== '전체' && !years.includes(state.pYear)) state.pYear = thisYear;
+    renderChips(document.getElementById('personalYearFilters'), years.map(y => ({ key: y, count: yearCounts[y] || 0 })), state.pYear, y => { state.pYear = y; state.pMonth = '전체'; renderPersonal(); });
+    const inYear = data.items.filter(i => state.pYear === '전체' || yearOf(i) === state.pYear);
+    const monthCounts = {}; inYear.forEach(i => { const m = keyOf(i).slice(5, 7) || '미정'; monthCounts[m] = (monthCounts[m] || 0) + 1; });
+    const months = Array.from({ length: 12 }, (_, k) => String(k + 1).padStart(2, '0'));
+    if (state.pMonth !== '전체' && state.pMonth !== '미정' && !months.includes(state.pMonth)) state.pMonth = '전체';
+    const monthOpts = zerosLast(months.map(m => ({ key: m, label: Number(m) + '월', count: monthCounts[m] || 0 })));
+    if (monthCounts['미정']) monthOpts.push({ key: '미정', label: '날짜 미정', count: monthCounts['미정'] });
+    renderChips(document.getElementById('personalMonthFilters'), monthOpts, state.pMonth, m => { state.pMonth = m; renderPersonal(); });
+
+    const items = sortTasks(inYear.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)
+      && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth))));
+    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">📝</div>${data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>버튼을 눌러 첫 업무를 추가해 보세요'}</div>`; return; }
+    if (state.pMonth === '전체') {
+      // 월별 묶음 (최근 월부터)
+      const groups = {}; items.forEach(i => { const k = keyOf(i) || '미정'; (groups[k] = groups[k] || []).push(i); });
+      const keys = Object.keys(groups).sort((a, b) => a === '미정' ? 1 : b === '미정' ? -1 : b.localeCompare(a));
+      list.innerHTML = keys.map(k => `<div class="month-head grid-span">${k === '미정' ? '날짜 미정' : `${Number(k.slice(0, 4))}년 ${Number(k.slice(5, 7))}월`} <span class="cnt">${groups[k].length}건</span></div>` + taskCards(groups[k], 'personal')).join('');
+    } else list.innerHTML = taskCards(items, 'personal');
   }
   function renderLoginForm() {}
   async function submitLogin(e) {
@@ -1336,10 +1384,16 @@
   function setBusy(form, busy) { const b = form.querySelector('button[type=submit]'); b.disabled = busy; b.textContent = busy ? '저장 중…' : '저장'; }
 
   function renderCatPicker(current) {
-    document.getElementById('catPicker').innerHTML = CATEGORIES.map(c => `<button type="button" class="cat-${c} ${c === current ? 'on' : ''}" onclick="pickCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
-    document.getElementById('scheduleForm').elements.tag.value = current;
+    const sel = Array.isArray(current) ? current : [current];
+    document.getElementById('catPicker').innerHTML = CATEGORIES.map(c => `<button type="button" class="cat-${c} ${sel.includes(c) ? 'on' : ''}" aria-pressed="${sel.includes(c)}" onclick="pickCat('${c}')"><span class="dot"></span>${c}</button>`).join('')
+      + '<div class="picker-hint">여러 개 선택 가능 · 첫 번째가 기준색</div>';
+    document.getElementById('scheduleForm').elements.tag.value = sel.join(',');
   }
-  function pickCat(c) { renderCatPicker(c); }
+  function pickCat(c) {
+    const cur = (document.getElementById('scheduleForm').elements.tag.value || '').split(',').filter(Boolean);
+    const next = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c];
+    renderCatPicker(next.length ? next : cur);   // 마지막 하나는 해제 불가
+  }
   function expandWhen() { document.getElementById('scheduleForm').classList.remove('compact'); }
   function openScheduleForm(id, mode, presetDate, preset) {
     const form = document.getElementById('scheduleForm'); form.reset(); form.classList.remove('compact'); form.classList.toggle('copying', !!preset);
@@ -1347,7 +1401,7 @@
     document.getElementById('scheduleFormTitle').textContent = preset ? '일정 복사' : item ? '일정 수정' : '새 일정';
     document.getElementById('scheduleDelete').style.display = item ? '' : 'none';
     document.getElementById('scheduleCopy').style.display = item ? '' : 'none';
-    fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? catOf(item) : preset ? catOf(preset) : '교육');
+    fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? tagsOf(item) : preset ? tagsOf(preset) : ['교육']);
     if (item && mode === 'detail') { form.classList.add('compact'); document.getElementById('whenText').textContent = fmtWhen(item); }
     openModal('scheduleModal'); setTimeout(() => (preset ? form.date : form.title).focus(), 300);
   }
@@ -1362,14 +1416,15 @@
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
     if (!v.endDate) v.endDate = v.date;
     if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
-    if (!v.id) v.id = uid();
+    v.tags = (v.tag || '').split(',').filter(Boolean); if (!v.tags.length) v.tags = ['기타']; v.tag = v.tags[0];
+    if (!v.id) { v.id = uid(); v.created = TODAY; }
     setBusy(form, true); const ok = await saveItem('schedule', v); setBusy(form, false);
     if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('주요업무에도 등록했어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast('저장했어요'); }
   }
   /* 일정 구분 '주요업무' ↔ 주요업무 카드 연동 */
   async function syncLinkedTask(ev) {
     const tid = TASK_OF(ev.id); const existing = (state.tasks?.items || []).find(t => t.id === tid);
-    if (catOf(ev) === '주요업무') {
+    if (tagsOf(ev).includes('주요업무')) {
       const task = { id: tid, fromSchedule: ev.id, title: ev.title, due: endOf(ev), owner: ev.owner || '', category: existing?.category || '교육운영', status: existing?.status || '예정',
         detail: [ev.place ? '📍 ' + ev.place : '', ev.note || '', `일정 ${fmtWhen(ev)}`].filter(Boolean).join('\n') };
       if (!existing || JSON.stringify(existing) !== JSON.stringify(task)) await saveItem('tasks', task);
@@ -1410,7 +1465,7 @@
   async function saveTask(e) {
     e.preventDefault();
     const form = document.getElementById('taskForm'); const v = readForm(form); const scope = v.scope; delete v.scope;
-    if (!v.id) v.id = uid();
+    if (!v.id) { v.id = uid(); v.created = TODAY; } else { const prev = state[scope].items.find(i => i.id === v.id); if (prev?.created) v.created = prev.created; }
     setBusy(form, true); const ok = await saveItem(scope, v); setBusy(form, false);
     if (ok) { closeModal('taskModal'); toast('저장했어요'); }
   }
