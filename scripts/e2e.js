@@ -44,6 +44,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.calendar = await P.locator('.cal-grid').count(); r.calEvent = await P.locator('.cal-ev', { hasText: 'E2E 일정' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-calendar.png` });
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300); r.backToList = await P.locator('.cal-grid').count() === 0;
+  if (shared) { await P.evaluate(() => changePin()); await P.waitForTimeout(700); }   // 대시보드 + 는 관리자에게만 보인다
   await P.click('.board-add'); await P.waitForTimeout(800);
   r.boardTitle = await P.locator('#boardName').innerText(); r.boardEmpty = await P.locator('.event').count();
   await P.click('#boardBtn'); await P.waitForTimeout(200); await P.locator('#boardMenu button', { hasText: '지휘역량강화센터' }).click(); await P.waitForTimeout(700);
