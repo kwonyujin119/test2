@@ -283,6 +283,17 @@
   .lock .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 8px 0 4px; }
   .lock .btn { width: 100%; margin-top: 6px; }
 
+  /* ── 관리자 모드 표시 (편집 PIN 저장됨) ── */
+  body.admin::after { content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none; border: 4px solid transparent;
+    background: linear-gradient(135deg, #3DBA12 0%, #1A7F37 45%, #4CC38A 100%) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); mask-composite: exclude;
+    box-shadow: inset 0 0 28px rgba(61, 186, 18, .22); }
+  .title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .admin-badge { display: none; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .3px; color: #fff; background: linear-gradient(135deg, #3DBA12, #1A7F37); padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  body.admin .admin-badge { display: inline-flex; }
+  body.admin .appbar { border-bottom-color: #3DBA12; }
+  @media (max-width: 640px) { body.admin::after { border-width: 3px; } .admin-badge { font-size: 9.5px; padding: 1px 6px; margin-left: 4px; } }
+
   /* ── 필터 고정 (모바일·태블릿) ── */
   @media (max-width: 1023px) {
     .side { display: contents; }   /* 칩이 섹션 전체(목록 포함)를 기준으로 붙도록 */
@@ -466,7 +477,7 @@
       </div>
       <div class="board-title">
         <button class="board-btn" id="boardBtn" onclick="toggleBoardMenu(event)" title="대시보드 선택">
-          <div><h1 id="boardName">지휘역량강화센터</h1><div class="sub">인천소방학교 · 팀 공유 보드</div></div>
+          <div><div class="title-row"><h1 id="boardName">지휘역량강화센터</h1><span class="admin-badge" title="이 기기에 편집 PIN이 저장되어 있습니다">● 관리자</span></div><div class="sub">인천소방학교 · 팀 공유 보드</div></div>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <button class="board-add" onclick="addBoard()" title="새 대시보드 추가"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -564,6 +575,7 @@
   <button id="menuBoardDelete" class="danger" onclick="deleteBoard()">🗑️&nbsp; 이 대시보드 삭제</button>
   <hr>
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
+  <button id="menuAdminOff" style="display:none" onclick="adminOff()">🟢&nbsp; 관리자 모드 해제 (편집 PIN 지우기)</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
   <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
   <button id="menuUsers" onclick="manageUsers()">👥&nbsp; 개인업무 사용자 관리</button>
@@ -744,7 +756,7 @@
     let code = '';
     try { const j = await res.json(); code = (j.message || j.hint || '').trim(); } catch (e) {}
     const known = Object.keys(ERR).filter(k => code === k || new RegExp('(^|[^A-Z_])' + k + '($|[^A-Z_])').test(code)).sort((a, b) => b.length - a.length)[0]; code = known || code;
-    if (code === 'PIN_INVALID') lsDel(LS.pin);
+    if (code === 'PIN_INVALID') { lsDel(LS.pin); updateAdminUI(); }
     if (code === 'VIEW_PIN_INVALID') lsDel(LS.viewPin);
     throw new ApiError(code, res.status);
   }
@@ -834,10 +846,12 @@
   function getPin(force) {
     if (!REMOTE) return 'local';
     let pin = force ? null : (lsGet(LS.pin) || null);
-    if (!pin) { pin = prompt('편집 PIN을 입력하세요 (팀 담당자에게 문의)'); if (!pin) return null; pin = pin.trim(); lsSet(LS.pin, pin); }
+    if (!pin) { pin = prompt('편집 PIN을 입력하세요 (팀 담당자에게 문의)'); if (!pin) return null; pin = pin.trim(); lsSet(LS.pin, pin); updateAdminUI(); }
     return pin;
   }
-  function changePin() { if (getPin(true)) { toast('PIN을 저장했어요'); renderNotice(); } }
+  function updateAdminUI() { const on = REMOTE && !!lsGet(LS.pin); document.body.classList.toggle('admin', on); const m = document.getElementById('menuAdminOff'); if (m) m.style.display = on ? '' : 'none'; }
+  function changePin() { if (getPin(true)) { toast('관리자 모드로 들어왔어요'); renderNotice(); } updateAdminUI(); }
+  function adminOff() { lsDel(LS.pin); updateAdminUI(); renderNotice(); toast('관리자 모드를 해제했어요'); }
   async function withPin(fn) {
     const pin = getPin(); if (!pin) { toast('편집 PIN이 필요해요'); return false; }
     try { await fn(pin); return true; } catch (e) { toast(e.message); return false; }
@@ -997,13 +1011,11 @@
   function render(kind) { ({ schedule: renderSchedule, tasks: renderTasks, personal: renderPersonal })[kind](); renderNotice(); }
   function setSyncStatus(text, isError) { const el = document.getElementById('syncStatus'); if (el) { el.textContent = text; el.classList.toggle('err', !!isError); } }
   function renderNotice() {
+    updateAdminUI();
     const ico = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
     const n = document.getElementById('notice');
-    if (REMOTE) {
-      const hasPin = !!lsGet(LS.pin);
-      n.innerHTML = ico + `<span><b>팀 공유 모드${LOCALSRV ? ' (사내 서버)' : ''}</b> · 저장한 내용은 모든 팀원에게 바로 보입니다. ${hasPin ? '편집 PIN 저장됨.' : '편집하려면 PIN이 필요합니다.'} <span id="syncStatus" class="sync">${state.lastSync ? '마지막 동기화 ' + fmtTime(state.lastSync) : '동기화 중…'}</span></span>`;
-      return;
-    }
+    if (REMOTE) { n.style.display = 'none'; n.innerHTML = ''; return; }
+    n.style.display = '';
     const srv = lsGet(LS.server);
     const bridge = srv ? `<button class="link-btn" onclick="goServer()">사내 서버로 이동 →</button><button class="link-btn sub" onclick="setServer()">주소 변경</button>` : `<button class="link-btn" onclick="setServer()">사내 서버 주소 연결</button>`;
     n.innerHTML = ico + `<span><b>테스트 모드</b> · 여기서 저장한 내용은 <b>이 브라우저에만</b> 남고 팀원에게 보이지 않습니다. 팀 공유 데이터는 사내 서버에서 보세요. ${bridge}</span>`;
