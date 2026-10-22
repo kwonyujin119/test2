@@ -2,117 +2,152 @@
 
 **SAIL:41** = **S**chedule(일정표) · **A**ttention(주요업무) · **I**ndividual **L**og(개인업무). 홈 화면 앱 이름도 SAIL:41 입니다.
 
-인천소방학교 지휘역량강화센터 팀 보드와 현장지휘관 체크리스트 (GitHub Pages)
+인천소방학교 지휘역량강화센터 팀 보드와 현장지휘관 체크리스트 (GitHub Pages + Supabase)
 
 | 페이지 | 주소 | 파일 |
 |---|---|---|
-| 지휘역량강화센터 일정 · 업무 보드 (메인) | https://kwonyujin119.github.io/test2/ | `index.html` |
+| SAIL:41 보드 (메인) | https://kwonyujin119.github.io/test2/ | `index.html` |
 | 현장지휘관 체크리스트 | https://kwonyujin119.github.io/test2/checklist/ | `checklist/index.html` |
 
-문서 안내: 직원용 → [`docs/직원안내.md`](docs/직원안내.md) · 담당자용 → [`docs/담당자-운영가이드.md`](docs/담당자-운영가이드.md) · 에이전트 시그니처 → [`SIGNATURE.md`](SIGNATURE.md)
+문서: 직원용 → [`docs/직원안내.md`](docs/직원안내.md) · 담당자용 → [`docs/담당자-운영가이드.md`](docs/담당자-운영가이드.md) · 로컬 서버(대안) → [`server/README.md`](server/README.md) · 에이전트 시그니처 → [`SIGNATURE.md`](SIGNATURE.md) · 작업 규칙 → [`CLAUDE.md`](CLAUDE.md)
 
 ## 보드 기능
 
-팀원이 브라우저에서 일정과 업무를 직접 추가·수정·삭제할 수 있는 보드입니다.
+팀 PIN(조회 PIN) 하나로 들어오면 **누구나** 일정·주요업무를 추가·수정·삭제할 수 있습니다. 관리 작업(대시보드 관리, 사용자 관리, JSON 가져오기)만 관리자 PIN(편집 PIN)이 필요합니다.
 
-- 헤더: 인천소방학교 심벌(클릭 → sachil47.com 새 창), 지휘역량강화센터 심벌(클릭 → 보드 홈)
-- 대시보드: 제목을 누르면 목록이 열리고, 옆의 + 로 새 대시보드 추가(편집 PIN). 대시보드마다 일정·주요업무가 따로 저장됨. ⋮ 메뉴에서 이름 변경·삭제(기본 대시보드는 삭제 불가)
-- 탭 3개: 일정표 · 주요업무 · 개인업무
-- 일정표: 날짜별 그룹, 오늘 강조, 구분(교육/평가/회의/방문/출장/기타) 색·필터. 탭을 **한 번 더** 클릭하면 월 달력 보기 ↔ 목록 보기 전환. 달력의 빈 날짜 클릭 → 그 날짜로 새 일정
-- 주요업무: 상태(예정/진행중/완료/보류) · 분류 · 담당자 필터 조합, 기한 지연 표시, 상태 배지 클릭으로 상태 순환
-- 개인업무: 행정전화번호 뒤 4자리 + 이름만 입력. 처음이면 자동 등록, 이후 어떤 기기에서도 같은 정보로 내 업무 조회·기록 (비밀번호 없음). 로그아웃은 ⋮ 메뉴
-- PC: 좌측 고정 사이드바(요약·필터·버튼) + 우측 콘텐츠 2단, 1400px 이상에서 업무 3열
-- 모바일: 바텀시트 입력, 플로팅 추가 버튼
-- 단축키: `N` 새 항목, `1`/`2`/`3` 탭 전환, `C` 달력 전환, `Esc` 닫기
-- 다크모드 자동 대응, 브라우저 탭·홈화면 아이콘은 인천소방학교 심벌
+### 공통
 
-### 데이터 저장 방식
+- 헤더: 인천소방학교 심벌(클릭 → sachil47.com 새 창), 지휘역량강화센터 심벌(클릭 → 보드 홈), 보드 제목(대시보드 전환), ⋮ 메뉴
+- 탭 3개(라벨 영문): **Schedule** · **Attention** · **Individual Log**. 단축키 `1`/`2`/`3`
+- 대시보드: 제목 ▾ 를 누르면 목록. 옆 **+** 로 추가(관리자 PIN). 목록 안 연필·휴지통으로 이름 변경·삭제(관리자). 기본 대시보드는 삭제 불가. 대시보드마다 일정·주요업무가 따로 저장되고, 주소 `#schedule/대시보드ID` 로 공유 가능
+- 뒤로가기: 모달·탭 이동이 브라우저 기록에 쌓여 뒤로가기로 되돌아감. 처음 화면에서 한 번 더 누르면 "한 번 더 누르면 보드를 나갑니다" 안내 후 종료
+- 30초마다 자동 새로고침(화면이 보일 때만). ⋮ → "서버에서 새로고침"으로 즉시
+- 홈 화면 추가(PWA): 접속 2.5초 뒤 하단 카드. "나중에"는 7일간 숨김. 브라우저별 안내(크롬·삼성 인터넷·웨일·아이폰 Safari·PC). 네이버 앱·카카오톡 인앱은 설치가 안 되므로 "브라우저로 열기" 버튼으로 크롬·삼성 인터넷 전환
+- 다크모드 자동. 아이덴티티 컬러(남색·금색·녹색). 브라우저 탭·홈 화면 아이콘은 인천소방학교 심벌
+- PC: 좌측 고정 사이드바(요약·필터·버튼) + 우측 콘텐츠. 1400px 이상에서 업무 카드 3열. 단축키 `N` 새 항목, `C` 달력 전환, `Esc` 닫기
+- 모바일: 바텀시트 입력, 플로팅 **+** 버튼, 필터 칩이 스크롤해도 상단 고정, 0건인 칩은 뒤로
 
-**현재 운영 모드는 Supabase 모드입니다.** `config.js` 에 프로젝트 URL·anon 키가 들어 있어, https://kwonyujin119.github.io/test2/ 하나로 어디서나 같은 데이터를 봅니다.
+### Schedule (일정표)
+
+- 날짜별 그룹, 오늘 강조, 지난 일정은 접힘("지난 일정 N건 펼치기")
+- 구분 7종: 교육 · 평가 · 회의 · 방문 · 출장 · **주요업무** · 기타. **여러 개 선택** 가능, 첫 번째가 기준색
+- 구분에 "주요업무"가 들어가면 저장 때 Attention 탭에 연동 카드가 같이 만들어지고(🗓 일정 연동 표시) Attention 탭으로 이동. 제목·기한은 일정을 따라감
+- 시작–종료 날짜. 종료를 비우면 시작과 같음. 여러 날 일정은 매일 표시되고 "1/N일차" 배지. 기본 시간 09:00~18:00
+- **시간 클릭** → 일시 변경 팝오버(하루 전/뒤, 일주일 뒤, 종일). **제목 클릭** → 내용 수정 시트(복사·삭제 버튼 포함). 복사는 내용 그대로, 날짜만 비움
+- 달력 보기: Schedule 탭을 **한 번 더** 클릭 또는 `C`. 빈 날짜 클릭 → 그 날짜로 새 일정. 휴대폰 달력은 색 막대로 표시하고 날짜를 누르면 아래 일정 목록
+
+### Attention (주요업무)
+
+- 분류 6종: 교육운영 · 행정 · 시설장비 · 대외협력 · 예산 · 기타 (카드 왼쪽 색 막대). 상태 4종: 예정 · 진행중 · 완료 · 보류
+- 필터: 상태 · 분류 · 담당자 조합. 기한 지연 표시. 정렬은 진행중 → 예정 → 보류 → 완료, 같은 상태면 기한 순
+- **✓ 완료** 버튼 한 번으로 완료(완료 상태면 "되돌리기"). 카드(배지 포함) 클릭 → 수정 시트(복사·삭제)
+
+### Individual Log (개인업무)
+
+- 행정전화번호 **뒤 4자리 + 이름**만 입력. 처음이면 자동 등록, 이름이 다르면 거부. 비밀번호 없음(번호와 이름을 아는 사람은 누구나 볼 수 있음)
+- 연도 · 월 필터, 월별 묶음(기한이 없으면 등록일 기준). 2027년 이후에도 과거 업무를 연도별로 조회
+- 로그아웃: 이름 카드의 버튼 또는 ⋮ → 개인업무 로그아웃. 로그인은 기기에 저장되고, 다른 기기에서 같은 정보를 넣으면 같은 내용
+- JSON 내보내기는 본인 업무만. 가져오기는 없음. 대시보드와 무관하게 사람별 저장
+
+### ⋮ 메뉴 권한
+
+| 항목 | 일반(팀 PIN) | 관리자 |
+|---|---|---|
+| 개인업무 로그아웃(로그인 중일 때) · 홈 화면에 추가 · 서버에서 새로고침 | ○ | ○ |
+| JSON 내보내기 · JSON 가져오기(현재 탭 전체 교체) | | ○ |
+| 대시보드 이름 변경 · 이 대시보드 삭제 | | ○ |
+| 관리자(편집 PIN) 입력/변경 · 관리자 모드 해제 · 조회 PIN 다시 입력 · 개인업무 사용자 관리 | | ○ |
+
+관리자 모드 진입: 보드 제목을 **0.7초 길게 누르기** 또는 대시보드 **+** 등 관리 작업에서 PIN 입력. 들어오면 화면 테두리가 초록 그라데이션, 제목 옆 "● 관리자" 배지. ⋮ → "관리자 모드 해제"로 기기에서 PIN 삭제.
+
+## 데이터 저장 방식
+
+**현재 운영 모드는 Supabase 모드입니다.** `config.js` 에 프로젝트 URL·anon 키가 들어 있어 주소 하나로 어디서나 같은 데이터를 봅니다.
 
 | 모드 | 조건 | 동작 |
 |---|---|---|
-| **Supabase 모드** (현재 운영) | `config.js` 에 Supabase URL·anon key 입력 | 외부 클라우드 DB(싱가포르 리전). GitHub Pages 주소 그대로 사용. 조회 PIN·편집 PIN 2단계. 30초마다 자동 갱신 |
-| 사내 서버 모드 (대안) | 설치 패키지([ZIP 다운로드](https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip))를 본인 PC에서 실행 | DB가 PC의 `D:\일정표,주요업무\ictc.db` 에 저장. 같은 네트워크 팀원이 `http://PC주소:8080` 으로 접속. PC가 켜져 있을 때만 동작. 15초마다 자동 갱신 |
-| 미리보기(브라우저 저장) 모드 | `config.js` 가 비어 있을 때 | 수정 내용이 각자 브라우저에만 저장. 테스트용 |
+| **Supabase** (현재 운영) | `config.js` 에 URL·anon key | 외부 클라우드 DB(싱가포르 리전). RPC 함수로만 접근, PIN 검증. `pollSeconds`(기본 30초)마다 갱신 |
+| 로컬 서버 (대안) | [ZIP](https://github.com/kwonyujin119/test2/raw/main/dist/ictc-board-server.zip) 을 PC에서 실행 | DB가 PC의 `D:\일정표,주요업무\ictc.db`. 같은 네트워크 팀원이 `http://PC주소:8080` 접속. PC가 켜져 있을 때만 |
+| 미리보기(테스트 모드) | `config.js` 두 값이 빔 | 각자 브라우저(localStorage)에만 저장. 화면 상단에 "테스트 모드" 배너 |
 
-세 모드의 화면과 기능은 같고 저장 위치만 다릅니다. 사내 서버 모드로 바꾸려면 `config.js` 의 두 값을 비우고 [`server/README.md`](server/README.md) 를 따르세요. 외부 클라우드를 쓸 수 없는 규정이 생겼을 때의 대안입니다.
+세 모드의 화면과 기능은 같고 저장 위치만 다릅니다. 프론트에서 호출 이름·파라미터를 바꾸면 `server/supabase.sql` 함수와 `server/ictc_server.py` 핸들러를 함께 바꿉니다([`CLAUDE.md`](CLAUDE.md)).
 
-### Supabase 모드 설정 (약 10분, 1회) — 링크 하나로 어디서나 공유
+### Supabase 모드 설정 (약 10분, 1회) — 이미 완료됨
 
-1. https://supabase.com 가입(GitHub 계정 로그인 가능) → **New project**. Region은 가까운 곳(서울 또는 싱가포르). 현재 운영 프로젝트는 Southeast Asia (Singapore, `ap-southeast-1`) 입니다. 이 단계는 이미 끝났습니다.
-2. 좌측 **SQL Editor** → **New query** → 저장소의 `server/supabase.sql` 내용을 전부 붙여넣기.
-   파일 상단의 `'1234'`(편집 PIN)와 `'0000'`(조회 PIN)을 팀 PIN으로 바꾼 뒤 **Run**.
-   **보드가 업데이트되면 이 SQL을 다시 Run** 해야 새 기능이 동작합니다. 여러 번 실행해도 기존 데이터와 PIN은 유지됩니다.
-   아래 "SQL 자동 적용"을 설정해 두면 이 재실행이 자동으로 됩니다.
-3. 키 2개 복사. 왼쪽 메뉴 맨 아래 **Project Settings**(톱니바퀴) 에서
-   - **API Keys** → Publishable key(`sb_publishable_…`) 또는 "Legacy anon, service_role API keys" 탭의 **anon public** 키. 둘 중 하나면 됩니다. `service_role` / `sb_secret_…` 는 절대 쓰지 않습니다.
-   - **Data API** → **Project URL** (`https://프로젝트ID.supabase.co`). 보이지 않으면 **General** 의 Project ID 로 `https://프로젝트ID.supabase.co` 를 만듭니다.
-4. `config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
-5. https://kwonyujin119.github.io/test2/ 를 열면 조회 PIN 잠금 화면이 뜨고, 통과하면 "팀 공유 모드"가 됩니다.
+1. https://supabase.com 가입 → **New project**. 현재 운영 프로젝트는 Southeast Asia (Singapore, `ap-southeast-1`).
+2. 좌측 **SQL Editor** → **New query** → 저장소의 `server/supabase.sql` 전체 붙여넣기. 파일 상단 `'1234'`(편집 PIN)와 `'0000'`(조회 PIN)을 팀 PIN으로 바꾼 뒤 **Run**. 기본값은 **최초 설치 때만** 적용되고, 다시 실행해도 기존 PIN·데이터는 유지됩니다.
+3. 키 복사: **Project Settings**(톱니) → **API Keys** → Publishable key(`sb_publishable_…`) 또는 Legacy 탭의 **anon public**. `service_role` / `sb_secret_…` 는 절대 쓰지 않습니다. **Data API** → **Project URL**(`https://프로젝트ID.supabase.co`).
+4. `config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시. 1~2분 뒤 Pages 반영.
+5. https://kwonyujin119.github.io/test2/ 를 열면 PIN 잠금 화면이 뜹니다.
 
-anon 키는 브라우저에 노출되도록 설계된 공개 키입니다. 조회·편집 모두 PIN을 검증하는 DB 함수만 거치므로 키만으로는 데이터를 읽거나 쓸 수 없습니다.
-무료 플랜은 1주일간 접속이 없으면 프로젝트가 일시중지되며, 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
+anon 키는 브라우저에 노출되도록 설계된 공개 키입니다. 모든 요청이 PIN을 검증하는 DB 함수만 거치므로 키만으로는 데이터를 읽거나 쓸 수 없습니다(테이블 직접 접근은 차단).
+무료 플랜은 1주일간 요청이 없으면 프로젝트가 일시중지되며, 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
 
-### SQL 자동 적용 (1회 설정, 2분)
+### SQL 자동 적용 (1회 설정, 2분) — 이미 완료됨
 
-`server/supabase.sql` 이 바뀌어 푸시되면 GitHub Actions 가 Supabase DB 에 자동으로 실행합니다. 설정은 한 번만 하면 됩니다.
+`server/supabase.sql` 이 바뀌어 푸시되면 GitHub Actions "Apply Supabase SQL" 이 DB에 자동 실행합니다.
 
-1. Supabase 대시보드 상단의 **Connect** 버튼을 누릅니다. PC에서는 초록색 "Connect" 글자 버튼, 휴대폰에서는 프로젝트 이름 오른쪽의 **플러그 모양 동그란 아이콘**입니다.
-   열리는 창에서 **Direct / Connection string** 카드 → Type **URI** → Method **Session pooler** 를 고르고 문자열을 복사합니다.
-   `postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres` 형태이며(`aws-0` 은 `aws-1` 일 수도 있음, 화면 그대로 사용), `[YOUR-PASSWORD]` 를 대괄호까지 지우고 DB 비밀번호를 넣습니다.
-   비밀번호를 모르면 Project Settings → **Database** → **Reset database password** 로 새로 정합니다. 영문·숫자만 쓰면 주소에 넣을 때 문제가 없습니다.
-   "Direct connection"·"Transaction pooler" 주소는 GitHub 서버에서 접속이 안 되므로 반드시 Session pooler 를 씁니다.
-2. GitHub 저장소 → **Settings → Secrets and variables → Actions → New repository secret**
-   Name: `SUPABASE_DB_URL`, Secret: 1번 값. **Add secret**.
-3. 확인: 저장소 **Actions** 탭 → "Apply Supabase SQL" → **Run workflow** → 초록 체크가 뜨면 완료.
+1. Supabase 대시보드 상단 **Connect**(PC: 초록 글자 버튼, 휴대폰: 프로젝트 이름 오른쪽 플러그 아이콘) → **Connection string** → Type **URI** → Method **Session pooler** 문자열 복사.
+   `postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres` 형태(`aws-0` 은 `aws-1` 일 수도 있음). `[YOUR-PASSWORD]` 를 대괄호까지 지우고 DB 비밀번호를 넣습니다.
+   비밀번호를 모르면 Project Settings → **Database** → **Reset database password**. 영문·숫자만 쓰면 주소에 넣을 때 문제가 없습니다.
+   "Direct connection"·"Transaction pooler" 주소는 GitHub 서버에서 접속이 안 됩니다. 반드시 Session pooler.
+2. GitHub 저장소 → **Settings → Secrets and variables → Actions → New repository secret**. Name `SUPABASE_DB_URL`, Secret: 1번 값.
+3. 확인: 저장소 **Actions** 탭 → "Apply Supabase SQL" → **Run workflow** → 초록 체크.
 
-이후에는 SQL이 바뀔 때마다 자동 실행되고, Actions 탭에서 결과를 볼 수 있습니다. 실패하면 빨간 표시와 함께 원인이 로그에 남습니다.
-이 비밀값은 DB 전체 권한이므로 채팅이나 코드에 절대 적지 마세요. GitHub Secret 에만 넣습니다.
+이 접속 문자열은 DB 전체 권한입니다. 채팅·코드·문서에 적지 않고 GitHub Secret 에만 둡니다.
 
-### 접근 통제 (PIN 2종)
+## 접근 통제
 
-| PIN | 용도 | 기본값 | 변경 |
+| 열쇠 | 누가 · 무엇을 | 기본값 | 변경 |
 |---|---|---|---|
-| 조회 PIN | 링크를 여는 직원이 처음 한 번 입력. 기기에 저장됨. **일정·주요업무 추가·수정·삭제까지 가능** | `0000` | Supabase: `select ictc_set_view_pin('편집PIN', '새PIN');` / 로컬 서버: `view_pin.txt` |
-| 편집 PIN(관리자) | 대시보드 관리, 개인업무 사용자 관리, JSON 가져오기 등 관리 작업에만 필요. 저장된 기기는 초록 테두리로 표시 | `1234` | Supabase: `select ictc_set_pin('기존PIN', '새PIN');` / 로컬 서버: `pin.txt` |
-| 개인업무 식별 | 행정전화번호 뒤 4자리 + 이름. 비밀번호 없음 → 번호와 이름을 아는 사람은 누구나 그 개인업무를 볼 수 있음 | 없음 | 이름 오타 정정(담당자): `select ictc_user_reset_pin('편집PIN', '뒤4자리', '바른이름');` 이후 직원은 바른 이름으로 다시 들어감 |
+| **조회 PIN** (직원에게는 "팀 PIN") | 직원 전체. 처음 한 번 입력, 기기에 저장. 일정·주요업무 **추가·수정·삭제까지** 가능. 개인업무 등록도 이 PIN 통과 후 | `0000` | Supabase: `select ictc_set_view_pin('편집PIN', '새PIN');` / 로컬 서버: `view_pin.txt` |
+| **편집 PIN** (화면에서는 "관리자") | 담당자. 대시보드 추가·이름 변경·삭제, 개인업무 사용자 관리, JSON 가져오기, 조회 PIN 변경. 저장된 기기는 초록 테두리 | `1234` | Supabase: `select ictc_set_pin('기존PIN', '새PIN');` / 로컬 서버: `pin.txt` |
+| **개인업무 식별** | 행정전화번호 뒤 4자리 + 이름. 비밀번호 없음. 전체 번호를 넣어도 뒤 4자리만 사용 | 없음 | 이름 정정(담당자): `select ictc_user_reset_pin('편집PIN', '뒤4자리', '바른이름');` 또는 ⋮ → 개인업무 사용자 관리에서 삭제 후 재등록 |
 
-조회 PIN을 빈 문자열로 두면 링크를 아는 누구나 조회할 수 있습니다. 편집 PIN은 조회 PIN을 겸합니다.
-개인업무 등록은 조회 PIN을 통과한 사람(직원)만 할 수 있고, 아이디는 전화번호 뒤 4자리입니다(전체 번호를 넣어도 뒤 4자리만 사용).
-PIN을 바꾸면 직원 기기에 잠금 화면이 다시 뜨므로 새 PIN을 공지해야 합니다.
+- 편집 PIN은 조회 PIN을 겸합니다. 조회 PIN을 빈 문자열로 두면 링크를 아는 누구나 들어옵니다.
+- PIN을 바꾸면 직원 기기에 잠금 화면이 다시 뜹니다. 새 PIN을 먼저 공지하세요.
+- PIN을 연속으로 틀리면 서버가 응답을 늦추고, 로컬 서버는 10분간 차단합니다(무차별 대입 방지).
+- 팀 PIN만으로 누구나 지울 수 있습니다. 화면에는 되돌리기가 없고, 지운 항목은 DB 휴지통(`ictc_items_deleted`)에 **30일** 보관되어 담당자가 SQL 로 복구합니다([운영 가이드 5장](docs/담당자-운영가이드.md#5-백업과-복구)). JSON 내보내기도 주기적으로 받아 두세요.
 
-### 구분(카테고리)와 필터
-
-- 일정: 교육 · 평가 · 회의 · 방문 · 출장 · 기타 6종 고정, 색으로 구분. **시간 클릭** → 일시 변경 창, **제목 클릭** → 제목·장소·담당·메모 수정 창.
-- 주요업무: 교육운영 · 행정 · 시설장비 · 대외협력 · 예산 · 기타 6종 고정, 카드 왼쪽 색 막대로 구분. 상태 · 분류 · 담당자 필터를 조합할 수 있습니다.
-- 카테고리 이름을 바꾸려면 `index.html` 스크립트 상단의 `CATEGORIES`, `TASK_CATEGORIES` 와 같은 이름의 색 변수(`--c-*`, `--t-*`)를 함께 수정합니다.
-
-### JSON 형식
+## JSON 형식 (내보내기·가져오기)
 
 ```json
 // schedule.json 항목
-{ "id": "s001", "date": "2026-10-22", "start": "09:00", "end": "12:00",
-  "title": "일정 제목", "place": "장소", "owner": "담당", "tag": "교육", "note": "메모" }
-// tag: 교육 / 평가 / 회의 / 방문 / 출장 / 기타
+{ "id": "s001", "date": "2026-10-22", "endDate": "2026-10-24",
+  "start": "09:00", "end": "18:00", "title": "일정 제목",
+  "place": "장소", "owner": "담당", "tags": ["교육", "주요업무"], "note": "메모" }
+// tags: 교육 / 평가 / 회의 / 방문 / 출장 / 주요업무 / 기타 중 1개 이상. 옛 파일의 "tag": "교육" 도 읽힘
+// endDate 가 없거나 date 와 같으면 하루 일정
 
 // tasks.json 항목
 { "id": "t001", "category": "교육운영", "title": "업무명", "status": "진행중",
   "due": "2026-11-14", "owner": "담당", "detail": "상세 내용" }
+// 일정에서 연동된 카드는 "id": "sch-<일정ID>", "fromSchedule": "<일정ID>" 가 붙음
 ```
 
-`status`는 `예정` / `진행중` / `완료` / `보류`, `category`는 `교육운영` / `행정` / `시설장비` / `대외협력` / `예산` / `기타` 중 하나. `id`가 없으면 자동 생성됩니다.
+`status`는 `예정` / `진행중` / `완료` / `보류`, `category`는 `교육운영` / `행정` / `시설장비` / `대외협력` / `예산` / `기타`. `id`가 없으면 자동 생성. 가져오기는 **현재 대시보드의 해당 탭 전체를 교체**합니다(개인업무는 가져오기 없음).
+카테고리 이름을 바꾸려면 `index.html` 스크립트 상단 `CATEGORIES`, `TASK_CATEGORIES` 와 같은 이름의 색 변수(`--c-*`, `--t-*`)를 함께 수정합니다.
 
-### 화면에 뜨는 오류 문구와 뜻
+## 화면에 뜨는 오류 문구와 뜻
 
 | 문구 | 뜻 | 조치 |
 |---|---|---|
-| 조회 PIN이 필요합니다 / 올바르지 않습니다 | 잠금 화면 PIN 불일치 | 담당자에게 조회 PIN 확인. ⋮ 메뉴 → 조회 PIN 다시 입력 |
-| 편집 PIN이 올바르지 않습니다 | 추가·수정·삭제 시 PIN 불일치. 저장된 PIN은 지워짐 | 다음 저장 때 다시 입력. ⋮ 메뉴 → 편집 PIN 입력/변경 |
-| 이 번호는 다른 이름으로 등록되어 있습니다 | 개인업무: 뒤 4자리는 있는데 이름이 다름 | 등록 때 쓴 이름 그대로 입력. 오타면 담당자가 정정 |
-| 이름은 2자 이상 / 뒤 4자리를 확인하세요 | 개인업무 입력값 형식 오류 | 숫자 4자리, 이름 2자 이상 |
+| 조회 PIN이 필요합니다 / 조회 PIN이 올바르지 않습니다 | 잠금 화면 PIN 불일치, 또는 PIN이 바뀜 | 담당자에게 현재 PIN 확인. 관리자는 ⋮ → 조회 PIN 다시 입력 |
+| 편집 PIN이 올바르지 않습니다 | 관리 작업(대시보드·가져오기·사용자 관리)에서 PIN 불일치. 저장된 PIN은 지워짐 | 담당자 PIN으로 다시. 일반 직원은 이 작업이 필요 없음 |
+| 편집 PIN이 필요해요 | 관리 작업에서 PIN 입력을 취소함 | 안내일 뿐, 조치 불필요 |
+| 시도가 너무 많습니다. 10분 후 다시 하세요 | PIN을 연속으로 틀림(로컬 서버) | 10분 뒤 재시도 |
+| 이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요 | 개인업무: 뒤 4자리는 있는데 이름이 다름 | 등록 때 쓴 이름 그대로. 오타면 담당자가 정정 |
+| 등록되지 않은 번호입니다 / 이미 등록된 번호입니다 | 개인업무 등록 상태 불일치(드묾) | 새로고침 후 다시 |
+| 이름은 2자 이상 / 이름을 입력하세요 / 뒤 4자리를 확인하세요 | 개인업무 입력 형식 오류 | 숫자 4자리, 이름 2자 이상 |
 | 이미 있는 대시보드입니다 / 기본 대시보드는 삭제할 수 없습니다 | 대시보드 관리 제한 | 다른 이름 사용 / 기본 보드는 유지 |
-| 서버에 연결하지 못했어요 / 연결 안 됨 | 네트워크 또는 Supabase 일시중지 | 잠시 후 재시도. 계속되면 담당자가 Supabase 대시보드에서 프로젝트 상태 확인(Restore) |
-| 서버 응답 404 (function … does not exist) | DB에 최신 SQL이 적용되지 않음 | 담당자가 Actions 자동 적용 확인 또는 SQL Editor 에서 `server/supabase.sql` 재실행 |
+| 항목 ID 오류 / 종류 오류 | 가져온 JSON 형식 문제 | 파일의 `items` 배열과 필드 확인 |
+| 복구할 항목이 없습니다 | 휴지통 복구 SQL 의 seq 가 틀림 또는 30일 지남 | `ictc_deleted_list` 로 seq 다시 확인 |
+| 서버에 연결하지 못했어요 | 네트워크 또는 Supabase 일시중지 | 잠시 후 재시도. 계속되면 담당자가 Supabase 에서 Restore |
+| 연결 실패: 서버 응답 404 (function … does not exist) | DB에 최신 SQL이 적용되지 않음 | 담당자가 Actions 자동 적용 확인 또는 SQL Editor 에서 `server/supabase.sql` 재실행 |
+| 연결 실패: 서버 응답 401/403 | anon 키 오류 | `config.js` 키와 Supabase API Keys 대조 |
 
-프론트나 서버 파일을 수정한 뒤에는 `python server/build_zip.py` 로 설치 패키지를 다시 만들어 커밋하세요.
+## 개발·검증
+
+- 검증: `scripts/verify.sh`(JS·Python 문법, 로컬 PostgreSQL 에 SQL 2회 실행·anon 차단 확인, ZIP 재빌드), `scripts/e2e.sh all`(Playwright, 미리보기·로컬·Supabase 목 3모드)
+- 프론트나 서버 파일을 수정한 뒤에는 `python server/build_zip.py` 로 설치 패키지를 다시 만들어 커밋
+- 커밋 접두어 `[불빛]`(화면) `[불씨]`(데이터·서버) `[횃불]`(운영). 푸시 후 Pages 반영 1~2분
