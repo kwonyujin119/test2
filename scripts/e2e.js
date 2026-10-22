@@ -63,6 +63,22 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.personalName = await P.locator('#personalSummary .name').innerText().catch(() => '');
   await P.keyboard.press('n'); await P.waitForTimeout(300); await P.fill('#taskForm [name=title]', 'E2E 개인'); await P.click('#taskForm button[type=submit]'); await P.waitForTimeout(700);
   r.personalSaved = await P.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count();
+  // 엑셀 가져오기: 머리글이 2행에 있는 샘플(연번·업무명·구분·기한·상태·담당·비고) → 4건 추가, 재가져오기는 전부 '이미 있음'
+  await P.evaluate(() => importExcel()); await P.waitForTimeout(300);
+  await P.setInputFiles('#xlFile', require('path').join(__dirname, 'fixtures', 'personal-sample.xlsx')); await P.waitForTimeout(1500);
+  r.xlRows = await P.locator('#xlRows tbody tr').count();
+  r.xlMap = await P.evaluate(() => [XL.rows[XL.hdr][XL.map.title], XL.rows[XL.hdr][XL.map.due], XL.rows[XL.hdr][XL.map.status], XL.rows[XL.hdr][XL.map.category], XL.rows[XL.hdr][XL.map.detail]].join(','));
+  r.xlDue = await P.locator('#xlRows tbody tr').nth(0).locator('td').nth(2).innerText();
+  r.xlAddLabel = await P.locator('#xlAddBtn').innerText();
+  await P.click('#xlAddBtn'); await P.waitForTimeout(1500);
+  r.xlAdded = await P.locator('#personalList .task-title', { hasText: '장비 점검표 갱신' }).count();
+  r.xlDone = await P.locator('#personalList .task.done .task-title', { hasText: '결과보고' }).count();
+  await P.evaluate(() => importExcel()); await P.waitForTimeout(300);
+  await P.setInputFiles('#xlFile', require('path').join(__dirname, 'fixtures', 'personal-sample.xlsx')); await P.waitForTimeout(1200);
+  r.xlDupCount = await P.locator('#xlRows .xl-flag', { hasText: '이미 있음' }).count();
+  r.xlDupBtnDisabled = await P.locator('#xlAddBtn').isDisabled();
+  await P.screenshot({ path: `${OUT}/e2e-${MODE}-excel.png` });
+  await P.click('#xlsxModal .sheet-foot .btn.ghost'); await P.waitForTimeout(400);
   await P.click('#menuBtn'); await P.waitForTimeout(200); await P.click('#menuUsers'); await P.waitForTimeout(600);
   r.usersSheet = await P.locator('#usersModal.open').count(); r.usersHasMe = await P.locator('#usersList .user-row', { hasText: '홍길동' }).count();
   await P.click('#usersModal .sheet-foot .btn'); await P.waitForTimeout(300);
@@ -79,7 +95,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
   if (shared) Object.assign(expect, { lock: 1, otherDeviceSees: 1, wrongName: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));

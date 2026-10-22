@@ -520,6 +520,29 @@
   .me-card .me-info { flex: 1; min-width: 0; }
   .me-card .logout-btn { flex-shrink: 0; border: 1.5px solid var(--line); background: transparent; color: var(--text-2); font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: 999px; transition: .15s; }
   .me-card .logout-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-soft); }
+  /* 엑셀 가져오기 */
+  .xl-start { display: flex; flex-direction: column; gap: 10px; }
+  .xl-start .xl-cols { font-size: 13px; color: var(--text-3); line-height: 1.6; background: var(--card-2); border-radius: 12px; padding: 12px 14px; }
+  .xl-start .xl-cols b { color: var(--text-2); }
+  .xl-opts { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 13px; color: var(--text-3); margin-bottom: 10px; }
+  .xl-opts label { display: flex; align-items: center; gap: 6px; }
+  .xl-opts select, .xl-map-row select { font: inherit; font-size: 13px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); max-width: 200px; }
+  .xl-mapgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .xl-map-row { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-3); font-weight: 600; }
+  .xl-map-row em { color: var(--red); font-style: normal; }
+  .xl-map-row select { max-width: none; width: 100%; }
+  .xl-scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+  .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 520px; }
+  .xl-table th { position: sticky; top: 0; background: var(--card-2); text-align: left; font-weight: 700; color: var(--text-2); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .xl-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .xl-table tr.off td { opacity: .45; }
+  .xl-table .t { font-weight: 600; color: var(--text); }
+  .xl-table .d { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .xl-table .muted { color: var(--text-3); }
+  .xl-flag { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--text-3); background: var(--card-2); border-radius: 6px; padding: 1px 6px; margin-top: 3px; }
+  .xl-flag.warn { color: var(--red); background: var(--red-soft); }
+  .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .xl-count { font-size: 13px; color: var(--text-2); margin: 10px 0 0; }
   .user-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
   .user-row:last-child { border-bottom: none; }
   .user-row .avatar { width: 34px; height: 34px; font-size: 14px; margin: 0; }
@@ -636,6 +659,7 @@
       </div>
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
+        <button class="btn ghost" onclick="importExcel()">엑셀로 가져오기</button>
         <button class="btn ghost" onclick="logout()">로그아웃</button>
         <div class="hint"><kbd>N</kbd> 새 개인업무 · <kbd>Esc</kbd> 닫기</div>
       </div>
@@ -657,6 +681,7 @@
   <button id="menuAdminOff" data-ico="shieldOff" style="display:none" onclick="adminOff()"><span>관리자 모드 해제</span></button>
   <button id="menuViewPin" data-ico="eye" style="display:none" onclick="changeViewPin()"><span>팀 PIN 다시 입력</span></button>
   <button id="menuLogout" data-ico="logout" style="display:none" onclick="logout()"><span>개인업무 로그아웃</span></button>
+  <button id="menuExcel" data-ico="upload" style="display:none" onclick="importExcel()"><span>엑셀로 개인업무 가져오기</span></button>
   <button id="menuUsers" data-ico="users" onclick="manageUsers()"><span>개인업무 사용자 관리</span></button>
   <button id="menuTrash" data-ico="trash" onclick="openTrash()"><span>휴지통</span></button>
   <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>홈 화면에 추가</span></button>
@@ -759,6 +784,28 @@
   </div>
 </div>
 <!-- 휴지통 시트 (편집 PIN): 삭제된 항목 30일 보관·복구 -->
+<div class="sheet-bg" id="xlsxModal" onclick="if(event.target===this)closeModal('xlsxModal')">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="xlTitle" style="max-width:720px">
+    <div class="handle"></div>
+    <h2 id="xlTitle">엑셀로 개인업무 가져오기</h2>
+    <div id="xlStart" class="xl-start">
+      <p style="font-size:13.5px;color:var(--text-3);margin:-6px 0 4px;line-height:1.55">엑셀(.xlsx, .xls) 또는 CSV 파일의 업무 목록을 내 개인업무로 한 번에 넣어요. 파일은 이 기기에서만 읽고, 고른 행만 저장돼요.</p>
+      <div class="xl-cols"><b>알아보는 열 이름</b> · 업무명(업무·제목·내용) · 기한(마감·일자·날짜) · 상태(진행상태·완료여부) · 구분(분류) · 비고(상세·메모)<br>열 이름이 달라도 다음 화면에서 직접 맞출 수 있어요. 첫 줄이 제목이어도 괜찮아요.</div>
+      <input type="file" id="xlFile" accept=".xlsx,.xls,.xlsm,.csv" style="display:none" onchange="xlPicked(this)">
+      <button type="button" class="btn primary" id="xlPickBtn" onclick="document.getElementById('xlFile').click()">엑셀 파일 선택</button>
+      <button type="button" class="btn ghost" onclick="xlTemplate()">빈 양식 내려받기 (.xlsx)</button>
+    </div>
+    <div id="xlWork" style="display:none">
+      <div class="xl-opts"><span id="xlFileName" style="font-weight:600;color:var(--text-2)"></span>
+        <label style="display:none">시트 <select id="xlSheet" onchange="xlLoadSheet()"></select></label>
+        <label>머리글 행 <select id="xlHeaderRow" onchange="xlHeaderChanged()"></select></label></div>
+      <div class="xl-mapgrid" id="xlMap"></div>
+      <div class="xl-scroll" id="xlRows"></div>
+      <p class="xl-count" id="xlCount"></p>
+    </div>
+    <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('xlsxModal')">닫기</button><button type="button" class="btn primary" id="xlAddBtn" style="display:none;flex:1" onclick="xlCommit()">추가</button></div>
+  </div>
+</div>
 <div class="sheet-bg" id="trashModal" onclick="if(event.target===this)closeModal('trashModal')">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="trashTitle">
     <div class="handle"></div>
@@ -1085,6 +1132,7 @@
       show('menuPin', REMOTE); show('menuViewPin', REMOTE); show('menuAdminOff', REMOTE && document.body.classList.contains('admin'));
     }
     show('menuLogout', !!state.me);
+    show('menuExcel', !!state.me);
     m.classList.toggle('open');
   }
   document.addEventListener('click', () => { document.getElementById('menu').classList.remove('open'); closeBoardMenu(); });
@@ -1437,7 +1485,7 @@
 
     const items = sortTasks(inYear.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)
       && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth))));
-    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가해 보세요'}</div>`; return; }
+    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가하거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
     if (state.pMonth === '전체') {
       // 월별 묶음 (최근 월부터)
       const groups = {}; items.forEach(i => { const k = keyOf(i) || '미정'; (groups[k] = groups[k] || []).push(i); });
@@ -1644,6 +1692,174 @@
       closeModal(kind === 'schedule' ? 'scheduleModal' : 'taskModal'); toast('삭제했어요');
       if (kind === 'schedule' && (state.tasks?.items || []).some(t => t.id === TASK_OF(id))) await removeItem('tasks', TASK_OF(id));
     }
+  }
+
+  /* ── 엑셀 가져오기(개인업무) ── 파일은 이 브라우저에서만 읽고, 고른 행만 내 개인업무로 저장한다 */
+  const XL = { rows: [], hdr: 0, wb: null, sheet: 0, map: {}, pick: [], name: '' };
+  const XL_FIELDS = [
+    ['title', '업무명', true, ['업무명', '업무내용', '추진업무', '세부업무', '세부추진업무', '과제명', '과제', '제목', '업무', '항목', '내용', '할일', '추진사항', '추진내용', 'task', 'title', 'subject']],
+    ['due', '기한', false, ['기한', '마감', '마감일', '완료예정', '완료예정일', '예정일', '기일', '일자', '날짜', '일정', '추진일정', '완료일', '처리기한', '처리일', '기간', 'due', 'date', 'deadline']],
+    ['status', '상태', false, ['상태', '진행상태', '진행', '추진상황', '추진상태', '완료여부', '진척', '진행률', 'status']],
+    ['category', '분류', false, ['구분', '분류', '유형', '영역', '분야', '카테고리', '업무구분', 'category', 'type']],
+    ['detail', '상세·비고', false, ['비고', '상세', '상세내용', '세부내용', '메모', '설명', '특이사항', '참고', '비고란', 'detail', 'note', 'memo', 'remark']],
+  ];
+  const xlNorm = s => String(s ?? '').trim().toLowerCase().replace(/[\s_\-·()\[\]]/g, '');
+  const xlCell = v => (v == null ? '' : String(v)).replace(/\s+/g, ' ').trim();
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve();
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'assets/vendor/xlsx.full.min.js'; s.onload = res; s.onerror = () => rej(new Error('엑셀 처리 파일을 불러오지 못했어요. 인터넷 연결을 확인하세요')); document.head.appendChild(s); });
+  }
+  function importExcel() {
+    if (!state.me) { showTab('personal'); pushNav({ tab: 'personal' }); toast('먼저 개인업무에 들어가세요'); return; }
+    if (currentTab() !== 'personal') { showTab('personal'); pushNav({ tab: 'personal' }); }
+    XL.rows = []; XL.wb = null; XL.name = '';
+    document.getElementById('xlStart').style.display = ''; document.getElementById('xlWork').style.display = 'none';
+    document.getElementById('xlFile').value = ''; document.getElementById('xlAddBtn').style.display = 'none';
+    openModal('xlsxModal');
+  }
+  async function xlPicked(input) {
+    const f = input.files && input.files[0]; if (!f) return;
+    const btn = document.getElementById('xlPickBtn'); btn.disabled = true; btn.textContent = '읽는 중…';
+    try {
+      await loadXLSX();
+      const buf = await f.arrayBuffer();
+      let wb;
+      if (/\.csv$/i.test(f.name)) {
+        let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { text = new TextDecoder('euc-kr').decode(buf); }
+        wb = XLSX.read(text, { type: 'string' });
+      } else wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      if (!wb.SheetNames.length) throw new Error('시트가 없어요');
+      XL.wb = wb; XL.name = f.name; XL.sheet = 0;
+      const sel = document.getElementById('xlSheet'); sel.innerHTML = wb.SheetNames.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join('');
+      sel.parentElement.style.display = wb.SheetNames.length > 1 ? '' : 'none';
+      document.getElementById('xlFileName').textContent = f.name;
+      xlLoadSheet();
+      document.getElementById('xlStart').style.display = 'none'; document.getElementById('xlWork').style.display = ''; document.getElementById('xlAddBtn').style.display = '';
+    } catch (e) { toast(e.message || '파일을 읽지 못했어요'); }
+    btn.disabled = false; btn.textContent = '엑셀 파일 선택';
+  }
+  function xlLoadSheet() {
+    XL.sheet = Number(document.getElementById('xlSheet').value) || 0;
+    const ws = XL.wb.Sheets[XL.wb.SheetNames[XL.sheet]];
+    let rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd', defval: '' }).map(r => (r || []).map(xlCell));
+    while (rows.length && rows[rows.length - 1].every(c => !c)) rows.pop();
+    XL.rows = rows;
+    // 머리글 행: 아는 열 이름이 가장 많이 들어 있는 행. 없으면 채워진 칸이 가장 많은 행
+    let best = 0, bestScore = -1;
+    rows.slice(0, 15).forEach((r, i) => {
+      const filled = r.filter(Boolean).length; if (filled < 2) return;
+      const hits = r.filter(c => XL_FIELDS.some(f => f[3].includes(xlNorm(c)))).length;
+      const score = hits * 100 + filled;
+      if (score > bestScore) { bestScore = score; best = i; }
+    });
+    XL.hdr = best;
+    const hsel = document.getElementById('xlHeaderRow');
+    hsel.innerHTML = rows.slice(0, 15).map((r, i) => `<option value="${i}">${i + 1}행: ${esc(r.filter(Boolean).slice(0, 3).join(' · ').slice(0, 40) || '(빈 행)')}</option>`).join('');
+    hsel.value = String(best);
+    xlAutoMap(); xlRenderMap(); xlPreview(true);
+  }
+  function xlHeaderChanged() { XL.hdr = Number(document.getElementById('xlHeaderRow').value) || 0; xlAutoMap(); xlRenderMap(); xlPreview(true); }
+  function xlAutoMap() {
+    const hdr = XL.rows[XL.hdr] || []; const used = new Set(); XL.map = {};
+    XL_FIELDS.forEach(([key, , , words]) => {
+      let col = hdr.findIndex((h, i) => !used.has(i) && h && words.includes(xlNorm(h)));
+      if (col < 0) col = hdr.findIndex((h, i) => !used.has(i) && h && words.some(w => w.length >= 2 && xlNorm(h).includes(w)));
+      if (col >= 0) { XL.map[key] = col; used.add(col); }
+    });
+    if (XL.map.title == null) { // 업무명 열을 못 찾으면 가장 긴 글이 들어 있는 열
+      const body = XL.rows.slice(XL.hdr + 1, XL.hdr + 30); let bestCol = -1, bestLen = 0;
+      hdr.forEach((_, i) => { if (used.has(i)) return; const len = body.reduce((a, r) => a + (r[i] || '').length, 0); if (len > bestLen) { bestLen = len; bestCol = i; } });
+      if (bestCol >= 0) XL.map.title = bestCol;
+    }
+  }
+  function xlRenderMap() {
+    const hdr = XL.rows[XL.hdr] || [];
+    const opts = col => `<option value="">사용 안 함</option>` + hdr.map((h, i) => `<option value="${i}" ${XL.map[col] === i ? 'selected' : ''}>${esc(h || `${i + 1}번째 열`)}</option>`).join('');
+    document.getElementById('xlMap').innerHTML = XL_FIELDS.map(([key, label, req]) =>
+      `<label class="xl-map-row"><span>${label}${req ? ' <em>*</em>' : ''}</span><select onchange="xlMapChanged('${key}', this.value)">${opts(key)}</select></label>`).join('');
+  }
+  function xlMapChanged(key, v) { if (v === '') delete XL.map[key]; else XL.map[key] = Number(v); xlPreview(true); }
+  function xlDate(s) {
+    s = xlCell(s); if (!s) return '';
+    const pad = n => String(n).padStart(2, '0');
+    const ok = (y, m, d) => (m >= 1 && m <= 12 && d >= 1 && d <= 31) ? `${y}-${pad(m)}-${pad(d)}` : '';
+    let m, last = null, re = /(\d{4})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})/g;
+    while ((m = re.exec(s))) last = m;                       // 기간이면 마지막 날짜를 기한으로
+    if (last) return ok(+last[1], +last[2], +last[3]);
+    if ((m = s.match(/^(\d{2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{1,2})/))) return ok(2000 + +m[1], +m[2], +m[3]);
+    if ((m = s.match(/(\d{4})\s*[.\-\/년]\s*(\d{1,2})\s*월?\s*$/))) return ok(+m[1], +m[2], 1);
+    if ((m = s.match(/(?:^|\D)(\d{1,2})\s*[.\/월]\s*(\d{1,2})\s*일?\s*$/))) return ok(new Date().getFullYear(), +m[1], +m[2]);
+    if (/^\d{5}$/.test(s) && +s > 20000 && +s < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + (+s) * 86400000); return ok(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); }
+    return '';
+  }
+  function xlStatus(s) {
+    s = xlNorm(s); if (!s) return '예정';
+    if (/완료|done|complete|종료|끝|^o$|^v$|✓|✔|100%/.test(s)) return '완료';
+    if (/보류|대기|중단|취소|hold|pending|stop/.test(s)) return '보류';
+    if (/진행|추진|ing|착수/.test(s)) return '진행중';
+    return '예정';
+  }
+  function xlCat(s) {
+    const raw = xlCell(s); const n = xlNorm(raw);
+    if (!n) return { cat: '기타', raw: '' };
+    const exact = TASK_CATEGORIES.find(c => xlNorm(c) === n); if (exact) return { cat: exact, raw: '' };
+    const rules = [['교육운영', /교육|훈련|과정|강의|교관|실습|평가/], ['행정', /행정|서무|문서|인사|복무|보고|회의|계획/], ['시설장비', /시설|장비|장치|물품|시스템|점검|유지/], ['대외협력', /대외|협력|홍보|방문|교류|섭외/], ['예산', /예산|회계|계약|정산|구매|지출/]];
+    const hit = rules.find(([, re]) => re.test(n));
+    return { cat: hit ? hit[0] : '기타', raw: hit ? '' : raw };
+  }
+  function xlItems() {
+    const m = XL.map; if (m.title == null) return [];
+    const existing = new Set((state.personal?.items || []).map(t => xlNorm(t.title) + '|' + (t.due || '')));
+    return XL.rows.slice(XL.hdr + 1).map((r, i) => {
+      const title = xlCell(r[m.title]); if (!title) return null;
+      const due = m.due != null ? xlDate(r[m.due]) : '';
+      const { cat, raw } = m.category != null ? xlCat(r[m.category]) : { cat: '기타', raw: '' };
+      let detail = m.detail != null ? xlCell(r[m.detail]) : '';
+      if (raw) detail = `[${raw}] ${detail}`.trim();
+      const dueRaw = m.due != null ? xlCell(r[m.due]) : '';
+      return { row: XL.hdr + 2 + i, title, due, status: m.status != null ? xlStatus(r[m.status]) : '예정', category: cat, detail,
+        dup: existing.has(xlNorm(title) + '|' + due), badDate: !!(dueRaw && !due), dueRaw };
+    }).filter(Boolean);
+  }
+  function xlPreview(reset) {
+    const items = xlItems(); XL.items = items;
+    if (reset) XL.pick = items.map(it => !it.dup);
+    const el = document.getElementById('xlRows');
+    if (!items.length) { el.innerHTML = `<div class="empty" style="padding:24px;font-size:14px">${XL.map.title == null ? '업무명 열을 골라 주세요' : '가져올 행이 없어요. 머리글 행을 확인해 보세요'}</div>`; }
+    else el.innerHTML = `<table class="xl-table"><thead><tr><th><input type="checkbox" ${XL.pick.every(Boolean) ? 'checked' : ''} onchange="xlPickAll(this.checked)" aria-label="전체 선택"></th><th>업무명</th><th>기한</th><th>상태</th><th>분류</th></tr></thead><tbody>${
+      items.map((it, i) => `<tr class="${XL.pick[i] ? '' : 'off'}"><td><input type="checkbox" ${XL.pick[i] ? 'checked' : ''} onchange="xlPick(${i}, this.checked)" aria-label="${it.row}행 선택"></td>
+        <td><div class="t">${esc(it.title)}</div>${it.detail ? `<div class="d">${esc(it.detail.slice(0, 60))}${it.detail.length > 60 ? '…' : ''}</div>` : ''}${it.dup ? '<span class="xl-flag">이미 있음</span>' : ''}</td>
+        <td>${it.due ? esc(it.due) : it.badDate ? `<span class="xl-flag warn" title="${esc(it.dueRaw)}">날짜 인식 못 함</span>` : '<span class="muted">미정</span>'}</td>
+        <td><span class="status s-${it.status}">${STATUS_ICON[it.status] || ""}${it.status}</span></td><td>${esc(it.category)}</td></tr>`).join('')}</tbody></table>`;
+    const n = XL.pick.filter(Boolean).length, dups = items.filter(x => x.dup).length, bad = items.filter(x => x.badDate).length;
+    document.getElementById('xlCount').textContent = `${items.length}행 중 ${n}건 선택` + (dups ? ` · 이미 있는 ${dups}건은 제외` : '') + (bad ? ` · 날짜 인식 못 한 ${bad}건은 기한 미정으로 들어가요` : '');
+    const b = document.getElementById('xlAddBtn'); b.disabled = !n; b.textContent = n ? `${n}건 추가` : '추가';
+  }
+  function xlPick(i, on) { XL.pick[i] = on; xlPreview(false); }
+  function xlPickAll(on) { XL.pick = XL.items.map(() => on); xlPreview(false); }
+  async function xlCommit() {
+    const picks = XL.items.filter((_, i) => XL.pick[i]); if (!picks.length || !state.me) return;
+    const btn = document.getElementById('xlAddBtn'); btn.disabled = true;
+    const fails = []; let done = 0;
+    const queue = picks.slice();
+    const worker = async () => { let it; while ((it = queue.shift())) {
+      const item = { id: uid(), created: TODAY, title: it.title, status: it.status, category: it.category, due: it.due, owner: state.me.name, detail: it.detail };
+      try { await api.personalSave(state.me.id, state.me.pin, item); } catch (e) { fails.push(`${it.row}행 ${e.message}`); }
+      done++; btn.textContent = `추가 중… ${done}/${picks.length}`;
+    } };
+    await Promise.all(Array.from({ length: Math.min(4, picks.length) }, worker));
+    await refresh('personal', true);
+    btn.disabled = false;
+    if (fails.length) { toast(`${picks.length - fails.length}건 추가, ${fails.length}건 실패: ${fails[0]}`, 6000); xlPreview(true); return; }
+    closeModal('xlsxModal'); toast(`${picks.length}건을 개인업무에 추가했어요`);
+  }
+  async function xlTemplate() {
+    try { await loadXLSX(); } catch (e) { toast(e.message); return; }
+    const ws = XLSX.utils.aoa_to_sheet([['업무명', '구분', '기한', '상태', '비고'],
+      ['교육계획 초안 작성', '행정', '2026-10-28', '진행중', '과정별 정원 확정 후'], ['시뮬레이션실 장비 점검표 갱신', '시설장비', '2026-11-05', '예정', ''], ['3기 과정 결과보고', '교육운영', '2026-10-10', '완료', '만족도 4.6']]);
+    ws['!cols'] = [{ wch: 34 }, { wch: 10 }, { wch: 12 }, { wch: 8 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '개인업무');
+    XLSX.writeFile(wb, 'SAIL41-개인업무-양식.xlsx');
   }
 
   /* ── 내보내기 / 가져오기 / 복원 ── */
