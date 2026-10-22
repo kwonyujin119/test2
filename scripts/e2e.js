@@ -28,6 +28,17 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.endAuto = await P.locator('#scheduleForm [name=endDate]').inputValue();
   await P.fill('#scheduleForm [name=endDate]', '2026-12-09'); await P.click('#scheduleForm button[type=submit]'); await P.waitForTimeout(700);
   r.multiDays = await P.locator('.event', { hasText: 'E2E 출장' }).count(); r.dayIdx = await P.locator('.event', { hasText: 'E2E 출장' }).locator('.dayidx').allInnerTexts();
+  // 구분 '주요업무' → 주요업무 탭 카드 연동
+  await P.keyboard.press('n'); await P.waitForTimeout(300);
+  await P.fill('#scheduleForm [name=title]', 'E2E 연동 업무'); await P.click('#catPicker button.cat-주요업무'); await P.fill('#scheduleForm [name=date]', '2026-12-15'); await P.locator('#scheduleForm [name=date]').dispatchEvent('change');
+  await P.click('#scheduleForm button[type=submit]'); await P.waitForTimeout(1000);
+  r.linkedTab = await P.evaluate(() => currentTab()); r.linkedCard = await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).count();
+  r.linkedDue = (await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).locator('.task-foot').innerText()).includes('2026-12-15');
+  r.linkedMark = await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).locator('.linked').count();
+  await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
+  await P.locator('.event', { hasText: 'E2E 연동 업무' }).locator('.event-main').click(); await P.waitForTimeout(300); P.once('dialog', d => d.accept()); await P.click('#scheduleDelete'); await P.waitForTimeout(900);
+  await P.click('.segment [data-tab=tasks]'); await P.waitForTimeout(300); r.linkedGone = await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).count();
+  await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   r.calendar = await P.locator('.cal-grid').count(); r.calEvent = await P.locator('.cal-ev', { hasText: 'E2E 일정' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-calendar.png` });
@@ -67,7 +78,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1 };
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
   if (shared) Object.assign(expect, { lock: 1, otherDeviceSees: 1, wrongName: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));

@@ -34,6 +34,7 @@
     --c-방문: #1A7F37; --c-방문-soft: #E5F5E8;
     --c-출장: #B45309; --c-출장-soft: #FFF4E5;
     --c-기타: #6b7684; --c-기타-soft: #f2f4f6;
+    --c-주요업무: #8A6A00; --c-주요업무-soft: #FFF6D1;
     /* 업무 카테고리 색 */
     --t-교육운영: #0E7490; --t-교육운영-soft: #E0F2F7;
     --t-행정: #6D4FD6; --t-행정-soft: #EFEBFF;
@@ -56,6 +57,7 @@
       --c-교육: #38C4E0; --c-교육-soft: #0F3140; --c-평가: #FF6B76; --c-평가-soft: #3A1F2A;
       --c-회의: #A99BFF; --c-회의-soft: #27244A; --c-방문: #4CC38A; --c-방문-soft: #123226;
       --c-출장: #FFB347; --c-출장-soft: #3A2A12; --c-기타: #9AA4B8; --c-기타-soft: #263050;
+      --c-주요업무: #F2CD55; --c-주요업무-soft: #3A2F0A;
       --t-교육운영: #38C4E0; --t-교육운영-soft: #0F3140; --t-행정: #A99BFF; --t-행정-soft: #27244A;
       --t-시설장비: #FFB347; --t-시설장비-soft: #3A2A12; --t-대외협력: #4CC38A; --t-대외협력-soft: #123226;
       --t-예산: #FF6B76; --t-예산-soft: #3A1F2A; --t-기타: #9AA4B8; --t-기타-soft: #263050;
@@ -159,6 +161,8 @@
   .cat-방문 { --cat: var(--c-방문); --cat-soft: var(--c-방문-soft); }
   .cat-출장 { --cat: var(--c-출장); --cat-soft: var(--c-출장-soft); }
   .cat-기타 { --cat: var(--c-기타); --cat-soft: var(--c-기타-soft); }
+  .cat-주요업무 { --cat: var(--c-주요업무); --cat-soft: var(--c-주요업무-soft); }
+  .task-foot .linked { color: var(--c-주요업무); font-weight: 700; }
   .tcat-교육운영 { --cat: var(--t-교육운영); --cat-soft: var(--t-교육운영-soft); }
   .tcat-행정 { --cat: var(--t-행정); --cat-soft: var(--t-행정-soft); }
   .tcat-시설장비 { --cat: var(--t-시설장비); --cat-soft: var(--t-시설장비-soft); }
@@ -417,6 +421,7 @@
   .cal-cnt { font-size: 12px; font-weight: 600; color: var(--text-3); margin-left: 4px; }
   @keyframes flash { 0% { box-shadow: 0 0 0 3px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
   .day.flash .card { animation: flash 1.6s ease-out; }
+  .task.flash { animation: flash 1.6s ease-out; }
 
   /* ── 보드 드롭다운 ── */
   .dropdown { position: fixed; z-index: 60; background: var(--card); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 240px; max-width: 320px; display: none; }
@@ -704,7 +709,8 @@
 <script src="config.js"></script>
 <script>
   const DOW = ['일','월','화','수','목','금','토'];
-  const CATEGORIES = ['교육', '평가', '회의', '방문', '출장', '기타'];
+  const CATEGORIES = ['교육', '평가', '회의', '방문', '출장', '주요업무', '기타'];
+  const TASK_OF = id => 'sch-' + id;   // 일정 → 연동 주요업무 카드 id
   const LEGACY_CAT = { '실습': '교육', '점검': '기타', '행사': '기타' };
   const TASK_CATEGORIES = ['교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
   const STATUSES = ['예정', '진행중', '완료', '보류'];
@@ -917,7 +923,7 @@
       exitTimer = setTimeout(() => { exitTimer = null; try { history.pushState({ ...navNow(), app: true }, '', hashFor(navNow())); } catch (err) {} }, 2500);
       return;
     }
-    if (n.app) applyNav(n);
+    if (n.app) applyNav(n).then(() => { const q = pendingNav; pendingNav = []; q.forEach(f => f()); });
   });
   function initHistory() {
     try {
@@ -1176,14 +1182,14 @@
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
     if (v.endDate && v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
     setBusy(f, true); const ok = await saveItem('schedule', { ...ev, date: v.date, endDate: v.endDate || v.date, start: v.start, end: v.end }); setBusy(f, false);
-    if (ok) { closePop(); toast('일시를 변경했어요'); }
+    if (ok) { closePop(); toast('일시를 변경했어요'); const cur = state.schedule.items.find(i => i.id === v.id); if (cur) await syncLinkedTask(cur); }
   }
 
   /* ── 업무 카드 렌더 (팀/개인 공용) ── */
   function taskCards(items, scope) {
     return items.map(t => {
       const overdue = t.due && t.due < TODAY && t.status !== '완료'; const tc = tcatOf(t);
-      return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
+      return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''} ${state.focusTask === t.id ? 'flash' : ''}" data-id="${esc(t.id)}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${esc(t.status)}</button></div>
         <div class="task-title">${esc(t.title)}</div>
@@ -1191,6 +1197,7 @@
         <div class="task-foot">
           ${t.due ? `<span class="${overdue ? 'overdue' : ''}">📆 ${esc(t.due)}${overdue ? ' 지연' : ''}</span>` : '<span>📆 기한 미정</span>'}
           ${t.owner && scope === 'tasks' ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
+          ${t.fromSchedule ? `<span class="linked" title="일정표에서 등록된 업무. 제목·기한은 일정을 따라갑니다">🗓 일정 연동</span>` : ''}
           ${t.status === '완료' ? `<button type="button" class="done-btn undo" title="진행중으로 되돌리기" onclick="event.stopPropagation();setDone('${esc(t.id)}','${scope}',false)">되돌리기</button>`
             : `<button type="button" class="done-btn" title="완료 처리" onclick="event.stopPropagation();setDone('${esc(t.id)}','${scope}',true)">✓ 완료</button>`}
         </div></div>`;
@@ -1221,6 +1228,7 @@
       return;
     }
     list.innerHTML = taskCards(items, 'tasks');
+    if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
 
   /* ── 개인업무 ── */
@@ -1310,10 +1318,11 @@
 
   /* ── 시트 ── */
   function openModal(id) { document.getElementById(id).classList.add('open'); pushNav({ overlay: id }); }
+  let pendingNav = [];
   function closeModal(id) {
-    const el = document.getElementById(id); if (!el.classList.contains('open')) return;
-    if (history.state && history.state.overlay === id) { history.back(); return; }   // popstate 가 닫는다
-    el.classList.remove('open');
+    const el = document.getElementById(id); if (!el.classList.contains('open')) return Promise.resolve();
+    if (history.state && history.state.overlay === id) { return new Promise(res => { pendingNav.push(res); history.back(); setTimeout(res, 800); }); }   // popstate 가 닫는다
+    el.classList.remove('open'); return Promise.resolve();
   }
   function fillForm(form, obj) { [...form.elements].forEach(el => { if (el.name && el.type !== 'hidden' || el.name === 'id') el.value = obj[el.name] ?? ''; }); }
   function readForm(form) { const o = {}; [...form.elements].forEach(el => { if (el.name) o[el.name] = el.value.trim(); }); return o; }
@@ -1342,7 +1351,19 @@
     if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
     if (!v.id) v.id = uid();
     setBusy(form, true); const ok = await saveItem('schedule', v); setBusy(form, false);
-    if (ok) { closeModal('scheduleModal'); toast('저장했어요'); }
+    if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('주요업무에도 등록했어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast('저장했어요'); }
+  }
+  /* 일정 구분 '주요업무' ↔ 주요업무 카드 연동 */
+  async function syncLinkedTask(ev) {
+    const tid = TASK_OF(ev.id); const existing = (state.tasks?.items || []).find(t => t.id === tid);
+    if (catOf(ev) === '주요업무') {
+      const task = { id: tid, fromSchedule: ev.id, title: ev.title, due: endOf(ev), owner: ev.owner || '', category: existing?.category || '교육운영', status: existing?.status || '예정',
+        detail: [ev.place ? '📍 ' + ev.place : '', ev.note || '', `일정 ${fmtWhen(ev)}`].filter(Boolean).join('\n') };
+      if (!existing || JSON.stringify(existing) !== JSON.stringify(task)) await saveItem('tasks', task);
+      return true;
+    }
+    if (existing) await removeItem('tasks', tid);
+    return false;
   }
   function renderStatusPicker(current) {
     document.getElementById('statusPicker').innerHTML = STATUSES.map(s => `<button type="button" class="s-${s} ${s === current ? 'on' : ''}" onclick="pickStatus('${s}')">${s}</button>`).join('');
@@ -1376,7 +1397,10 @@
     const form = document.getElementById(kind === 'schedule' ? 'scheduleForm' : 'taskForm');
     const id = form.elements.id.value; if (kind !== 'schedule') kind = form.elements.scope.value;
     if (!confirm('삭제할까요? 되돌릴 수 없어요.')) return;
-    if (await removeItem(kind, id)) { closeModal(kind === 'schedule' ? 'scheduleModal' : 'taskModal'); toast('삭제했어요'); }
+    if (await removeItem(kind, id)) {
+      closeModal(kind === 'schedule' ? 'scheduleModal' : 'taskModal'); toast('삭제했어요');
+      if (kind === 'schedule' && (state.tasks?.items || []).some(t => t.id === TASK_OF(id))) await removeItem('tasks', TASK_OF(id));
+    }
   }
 
   /* ── 내보내기 / 가져오기 / 복원 ── */
