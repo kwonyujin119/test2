@@ -582,7 +582,7 @@
   <button id="menuBoardRename" onclick="renameBoard()">✏️&nbsp; 대시보드 이름 변경</button>
   <button id="menuBoardDelete" class="danger" onclick="deleteBoard()">🗑️&nbsp; 이 대시보드 삭제</button>
   <hr>
-  <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
+  <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 관리자(편집 PIN) 입력/변경</button>
   <button id="menuAdminOff" style="display:none" onclick="adminOff()">🟢&nbsp; 관리자 모드 해제 (편집 PIN 지우기)</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
   <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
@@ -1302,14 +1302,14 @@
   async function saveItem(kind, item) {
     try {
       if (kind === 'personal') { if (!state.me) return false; await api.personalSave(state.me.id, state.me.pin, item); }
-      else if (!await withPin(pin => api.save(kind, item, state.board, pin))) return false;
+      else await api.save(kind, item, state.board, viewPin());
     } catch (e) { toast(e.message); return false; }
     await refresh(kind, true); return true;
   }
   async function removeItem(kind, id) {
     try {
       if (kind === 'personal') { if (!state.me) return false; await api.personalDelete(state.me.id, state.me.pin, id); }
-      else if (!await withPin(pin => api.remove(kind, id, state.board, pin))) return false;
+      else await api.remove(kind, id, state.board, viewPin());
     } catch (e) { toast(e.message); return false; }
     await refresh(kind, true); return true;
   }

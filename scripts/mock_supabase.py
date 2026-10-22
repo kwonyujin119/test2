@@ -40,8 +40,8 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
             if fn=='ictc_boards': view(g('p_pin') or ''); return self._send(200,json.dumps(BOARDS).encode())
             if fn=='ictc_save':
-                edit(g('p_pin')); it=g('p_item'); ITEMS[it['id']]={'kind':g('p_kind'),'board':g('p_board') or 'main','data':it,'u':now()}; return self._send(204)
-            if fn=='ictc_delete': edit(g('p_pin')); ITEMS.pop(g('p_id'),None); return self._send(204)
+                view(g('p_pin') or ''); it=g('p_item'); ITEMS[it['id']]={'kind':g('p_kind'),'board':g('p_board') or 'main','data':it,'u':now()}; return self._send(204)
+            if fn=='ictc_delete': view(g('p_pin') or ''); ITEMS.pop(g('p_id'),None); return self._send(204)
             if fn=='ictc_replace':
                 edit(g('p_pin')); board=g('p_board') or 'main'
                 for k in [k for k,v in ITEMS.items() if v['kind']==g('p_kind') and v['board']==board]: ITEMS.pop(k)

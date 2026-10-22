@@ -14,7 +14,8 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.title = await P.locator('#boardName').innerText();
   r.logos = await P.locator('.logos img').evaluateAll(els => els.every(e => e.naturalWidth > 0));
   r.tabs = (await P.locator('.segment button').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
-  if (shared) P.once('dialog', d => d.accept('1234'));
+  P.on('dialog', d => { const m = d.message(); if (m.includes('편집 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else d.accept(); });
+  r.noPinPromptOnSave = true;
   await P.keyboard.press('n'); await P.waitForTimeout(300);
   await P.fill('#scheduleForm [name=title]', 'E2E 일정'); await P.click('#catPicker button.cat-회의');
   await P.click('#scheduleForm button[type=submit]'); await P.waitForTimeout(700);
@@ -36,14 +37,14 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.linkedDue = (await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).locator('.task-foot').innerText()).includes('2026-12-15');
   r.linkedMark = await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).locator('.linked').count();
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
-  await P.locator('.event', { hasText: 'E2E 연동 업무' }).locator('.event-main').click(); await P.waitForTimeout(300); P.once('dialog', d => d.accept()); await P.click('#scheduleDelete'); await P.waitForTimeout(900);
+  await P.locator('.event', { hasText: 'E2E 연동 업무' }).locator('.event-main').click(); await P.waitForTimeout(300); await P.click('#scheduleDelete'); await P.waitForTimeout(900);
   await P.click('.segment [data-tab=tasks]'); await P.waitForTimeout(300); r.linkedGone = await P.locator('#taskList .task', { hasText: 'E2E 연동 업무' }).count();
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   r.calendar = await P.locator('.cal-grid').count(); r.calEvent = await P.locator('.cal-ev', { hasText: 'E2E 일정' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-calendar.png` });
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300); r.backToList = await P.locator('.cal-grid').count() === 0;
-  P.once('dialog', d => d.accept('E2E 보드')); await P.click('.board-add'); await P.waitForTimeout(800);
+  await P.click('.board-add'); await P.waitForTimeout(800);
   r.boardTitle = await P.locator('#boardName').innerText(); r.boardEmpty = await P.locator('.event').count();
   await P.click('#boardBtn'); await P.waitForTimeout(200); await P.locator('#boardMenu button', { hasText: '지휘역량강화센터' }).click(); await P.waitForTimeout(700);
   r.mainBack = await P.locator('.event-title', { hasText: 'E2E 일정' }).count();

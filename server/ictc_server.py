@@ -312,7 +312,8 @@ def make_handler(db, static_dir, pin_path, poll):
                 fn = u.path[5:]
                 kind = b.get('kind'); board = (b.get('board') or 'main')
                 if fn in ('save', 'delete', 'replace'):
-                    self.require_edit(b.get('pin'))
+                    if fn == 'replace': self.require_edit(b.get('pin'))
+                    else: self.require_view(b.get('pin'))      # 일정·주요업무 수정은 조회 PIN 으로 누구나
                     if kind not in KINDS: raise ApiError('KIND_INVALID')
                     if fn == 'save':
                         item = b.get('item') or {}

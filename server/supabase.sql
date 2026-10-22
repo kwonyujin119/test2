@@ -4,8 +4,8 @@
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
 -- ★ 처음 설치할 때만 아래 두 PIN을 바꾸세요 (이미 설치된 경우 무시됨):
---    edit_pin : 편집 PIN (추가·수정·삭제, 대시보드 관리)
---    view_pin : 조회 PIN (링크를 여는 직원이 입력). '' 로 두면 누구나 조회 가능.
+--    edit_pin : 편집 PIN (대시보드 관리, 사용자 관리, JSON 가져오기 등 관리 작업)
+--    view_pin : 조회 PIN (링크를 여는 직원이 입력). 조회와 일정·주요업무 추가·수정·삭제 가능. '' 로 두면 누구나.
 -- ============================================================
 -- Supabase 는 pgcrypto 를 extensions 스키마에 두므로 모든 함수의 search_path 에 extensions 를 포함한다.
 -- (로컬 PostgreSQL 처럼 extensions 스키마가 없으면 무시된다)
@@ -106,10 +106,11 @@ begin
     where i.kind = p_kind and i.board = coalesce(p_board, 'main') order by i.updated_at desc;
 end $$;
 
+-- 일정·주요업무의 추가·수정·삭제는 조회 PIN 을 아는 직원 누구나 가능 (편집 PIN 은 관리 작업 전용)
 create or replace function public.ictc_save(p_pin text, p_kind text, p_item jsonb, p_board text default 'main')
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  perform public.ictc_require_edit(p_pin);
+  perform public.ictc_require_view(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
   if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
@@ -120,7 +121,7 @@ end $$;
 create or replace function public.ictc_delete(p_pin text, p_kind text, p_id text, p_board text default 'main')
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  perform public.ictc_require_edit(p_pin);
+  perform public.ictc_require_view(p_pin);
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
 end $$;
 
