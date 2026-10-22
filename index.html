@@ -437,6 +437,9 @@
   .me-card .avatar { width: 40px; height: 40px; font-size: 16px; margin: 0; }
   .me-card .name { font-size: 17px; font-weight: 800; }
   .me-card .id { font-size: 12px; color: var(--text-3); }
+  .me-card .me-info { flex: 1; min-width: 0; }
+  .me-card .logout-btn { flex-shrink: 0; border: 1.5px solid var(--line); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; padding: 6px 11px; border-radius: 999px; transition: .15s; }
+  .me-card .logout-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-soft); }
   .user-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
   .user-row:last-child { border-bottom: none; }
   .user-row .avatar { width: 34px; height: 34px; font-size: 14px; margin: 0; }
@@ -1220,7 +1223,7 @@
     const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('personalSummary').innerHTML = `
-      <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div></div>
+      <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div class="me-info"><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div><button type="button" class="logout-btn" onclick="logout()" aria-label="개인업무 로그아웃">로그아웃</button></div>
       <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
     const statuses = STATUSES.filter(s => counts[s]);
     if (state.pStatus !== '전체' && !statuses.includes(state.pStatus)) state.pStatus = '전체';
