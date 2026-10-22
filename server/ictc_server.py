@@ -9,6 +9,7 @@ r"""
 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
   ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
+  backups\         기동할 때마다 날짜별 사본 자동 생성 (최근 7개 보관)
   pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
   view_pin.txt     조회 PIN (처음 실행 시 0000 으로 생성). 내용을 비우면 누구나 조회 가능
 
@@ -16,13 +17,35 @@ r"""
 접속:  본인  http://localhost:8080
        팀원  http://<이 PC의 IP>:8080
 """
-import argparse, hashlib, hmac, json, os, secrets, socket, sqlite3, sys, threading, time
+import argparse, glob, hashlib, hmac, json, os, secrets, socket, sqlite3, sys, threading, time
+from collections import deque
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')
+VERSION = '2.1'
+BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
+THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
+
+
+class Throttle:
+    """IP 별 PIN 실패 횟수 제한 (메모리, 재시작하면 초기화)"""
+    def __init__(self):
+        self.fails = {}; self.lock = threading.Lock()
+
+    def check(self, ip):
+        with self.lock:
+            q = self.fails.get(ip)
+            if q:
+                now = time.time()
+                while q and q[0] < now - THROTTLE_WINDOW: q.popleft()
+                if len(q) >= THROTTLE_MAX: raise ApiError('TOO_MANY_ATTEMPTS', 429)
+
+    def fail(self, ip):
+        with self.lock:
+            self.fails.setdefault(ip, deque()).append(time.time())
 
 
 class ApiError(Exception):
@@ -65,6 +88,23 @@ def check_hash(pin, stored):
     return hmac.compare_digest(hash_pin(pin, salt), stored)
 
 
+def backup_db(path):
+    """기동 시 데이터 폴더의 backups/ 에 날짜별 사본을 남기고 오래된 것은 지운다."""
+    if not os.path.exists(path): return
+    bdir = os.path.join(os.path.dirname(os.path.abspath(path)), 'backups')
+    os.makedirs(bdir, exist_ok=True)
+    dst = os.path.join(bdir, 'ictc-%s.db' % datetime.now().strftime('%Y%m%d'))
+    try:
+        src = sqlite3.connect(path); out = sqlite3.connect(dst)
+        with out: src.backup(out)
+        src.close(); out.close()
+        old = sorted(glob.glob(os.path.join(bdir, 'ictc-*.db')))[:-BACKUP_KEEP]
+        for f in old: os.remove(f)
+        print(f'[안내] 백업: {dst}  (최근 {BACKUP_KEEP}개 보관)')
+    except Exception as e:
+        print(f'[경고] 백업 실패: {e}')
+
+
 class DB:
     def __init__(self, path):
         self.path = path
@@ -76,7 +116,7 @@ class DB:
         cols = [r[1] for r in con.execute('pragma table_info(items)')]
         if 'board' not in cols:
             con.execute("alter table items add column board text not null default 'main'")
-        con.execute('create index if not exists items_kind_board on items(kind, board)')
+        con.execute('create index if not exists items_kind_board_updated on items(kind, board, updated_at)')
         con.execute('create table if not exists boards (id text primary key, name text not null, created_at text not null)')
         con.execute("insert or ignore into boards(id, name, created_at) values('main', '지휘역량강화센터', ?)", (self.now(),))
         con.execute('create table if not exists users (id text primary key, name text not null, pin_hash text not null, created_at text not null)')
@@ -142,7 +182,22 @@ class DB:
             c.execute('delete from boards where id=?', (id_,))
         self._run(fn)
 
+    def counts(self):
+        rows = self._run(lambda c: c.execute('select kind, count(*) from items group by kind').fetchall())
+        return {k: n for k, n in rows}
+
     # ----- 개인업무 -----
+    def users_list(self):
+        rows = self._run(lambda c: c.execute('''select u.id, u.name, u.created_at,
+            (select count(*) from items i where i.kind='personal' and i.board=u.id) from users u order by u.created_at''').fetchall())
+        return [{'id': i, 'name': n, 'created_at': c, 'item_count': k} for i, n, c, k in rows]
+
+    def user_delete(self, id_):
+        def fn(c):
+            c.execute("delete from items where kind='personal' and board=?", (id_,))
+            if c.execute('delete from users where id=?', (id_,)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
+        self._run(fn)
+
     def user_check(self, id_, pin):
         row = self._run(lambda c: c.execute('select pin_hash, name from users where id=?', (id_,)).fetchone())
         if not row: raise ApiError('USER_NOT_FOUND', 403)
@@ -173,6 +228,8 @@ class DB:
 
 
 def make_handler(db, static_dir, pin_path, poll):
+    throttle = Throttle()
+
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *a, **kw):
             super().__init__(*a, directory=static_dir, **kw)
@@ -197,13 +254,27 @@ def make_handler(db, static_dir, pin_path, poll):
         def _edit_pin(self): return read_pin(pin_path)
         def _view_pin(self): return read_pin(view_pin_path(pin_path), '0000', '조회')
 
+        def _ip(self): return self.client_address[0]
+
         def require_view(self, given):
             vp = self._view_pin(); given = (given or '').strip()
+            if vp and not given: raise ApiError('VIEW_PIN_REQUIRED', 403)
+            throttle.check(self._ip())
             if vp and given not in (vp, self._edit_pin()):
-                raise ApiError('VIEW_PIN_INVALID' if given else 'VIEW_PIN_REQUIRED', 403)
+                throttle.fail(self._ip()); raise ApiError('VIEW_PIN_INVALID', 403)
 
         def require_edit(self, given):
-            if (given or '').strip() != self._edit_pin(): raise ApiError('PIN_INVALID', 403)
+            throttle.check(self._ip())
+            if (given or '').strip() != self._edit_pin():
+                throttle.fail(self._ip()); raise ApiError('PIN_INVALID', 403)
+
+        def user_check(self, uid, pin):
+            throttle.check(self._ip())
+            try:
+                return db.user_check(uid, pin)
+            except ApiError as e:
+                if e.code == 'USER_PIN_INVALID': throttle.fail(self._ip())
+                raise
 
         def do_GET(self):
             u = urlparse(self.path); q = parse_qs(u.query)
@@ -217,7 +288,7 @@ def make_handler(db, static_dir, pin_path, poll):
                 return super().do_GET()
             try:
                 if u.path == '/api/health':
-                    return self._json(200, {'ok': True, 'time': db.now()})
+                    return self._json(200, {'ok': True, 'version': VERSION, 'time': db.now(), 'counts': db.counts(), 'db': os.path.basename(db.path)})
                 self.require_view(self.headers.get('X-Pin'))
                 if u.path == '/api/items':
                     kind = q.get('kind', [''])[0]; board = q.get('board', ['main'])[0] or 'main'
@@ -264,13 +335,17 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.require_view(b.get('view_pin'))
                     return self._json(200, {'name': db.user_register(str(b.get('id', '')), str(b.get('name', '')), str(b.get('user_pin', '')))})
                 if fn == 'user_login':
-                    return self._json(200, {'name': db.user_check(str(b.get('id', '')), str(b.get('user_pin', '')))})
+                    return self._json(200, {'name': self.user_check(str(b.get('id', '')), str(b.get('user_pin', '')))})
                 if fn == 'user_set_pin':
-                    db.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                    self.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
                 if fn == 'user_reset_pin':
                     self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn == 'users_list':
+                    self.require_edit(b.get('pin')); return self._json(200, db.users_list())
+                if fn == 'user_delete':
+                    self.require_edit(b.get('pin')); db.user_delete(str(b.get('id', ''))); return self._json(204)
                 if fn in ('personal_list', 'personal_save', 'personal_delete'):
-                    uid = str(b.get('id', '')); db.user_check(uid, str(b.get('user_pin', '')))
+                    uid = str(b.get('id', '')); self.user_check(uid, str(b.get('user_pin', '')))
                     if fn == 'personal_list': return self._json(200, db.personal_list(uid))
                     if fn == 'personal_save':
                         item = b.get('item') or {}
@@ -321,12 +396,13 @@ def main():
         d = os.path.dirname(os.path.abspath(path))
         if d and not os.path.isdir(d):
             os.makedirs(d, exist_ok=True); print(f'[안내] 데이터 폴더를 만들었습니다: {d}')
+    backup_db(a.db)
     db = DB(a.db)
     read_pin(a.pin_file); read_pin(view_pin_path(a.pin_file), '0000', '조회')
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
     print('=' * 56)
-    print(' 지휘역량강화센터 일정·업무 보드 서버 실행 중')
+    print(f' 지휘역량강화센터 일정·업무 보드 서버 v{VERSION} 실행 중')
     print(f'   화면 폴더 : {static}')
     print(f'   DB 파일   : {a.db}')
     print(f'   편집 PIN  : {a.pin_file}')

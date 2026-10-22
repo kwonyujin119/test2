@@ -355,6 +355,13 @@
   .me-card .avatar { width: 40px; height: 40px; font-size: 16px; margin: 0; }
   .me-card .name { font-size: 17px; font-weight: 800; }
   .me-card .id { font-size: 12px; color: var(--text-3); }
+  .user-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); }
+  .user-row:last-child { border-bottom: none; }
+  .user-row .avatar { width: 34px; height: 34px; font-size: 14px; margin: 0; }
+  .user-row .meta { flex: 1; min-width: 0; }
+  .user-row .meta b { display: block; font-size: 15px; }
+  .user-row .meta span { font-size: 12px; color: var(--text-3); }
+  .user-row .btn.danger { padding: 8px 12px; font-size: 13px; }
   section.personal-login.active { display: block; }
   .stat span { white-space: nowrap; }
   #personalSummary { flex-wrap: wrap; }
@@ -470,6 +477,7 @@
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
   <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
+  <button id="menuUsers" onclick="manageUsers()">👥&nbsp; 개인업무 사용자 관리</button>
   <button id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
 </div>
 
@@ -548,6 +556,16 @@
   </form>
 </div>
 
+<!-- 개인업무 사용자 관리 시트 (편집 PIN) -->
+<div class="sheet-bg" id="usersModal" onclick="if(event.target===this)closeModal('usersModal')">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="usersTitle">
+    <div class="handle"></div>
+    <h2 id="usersTitle">개인업무 사용자 관리</h2>
+    <p style="font-size:13px;color:var(--text-3);margin:-10px 0 14px;line-height:1.5">등록된 직원 목록입니다. 삭제하면 그 사람의 개인업무도 함께 지워집니다. 이름 오타는 SQL(ictc_user_reset_pin)로 정정합니다.</p>
+    <div id="usersList"></div>
+    <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('usersModal')">닫기</button></div>
+  </div>
+</div>
 <div class="lock" id="lock">
   <form class="lock-card" onsubmit="submitViewPin(event)">
     <div class="lock-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
@@ -602,7 +620,8 @@
   const ERR = { VIEW_PIN_REQUIRED: '조회 PIN이 필요합니다', VIEW_PIN_INVALID: '조회 PIN이 올바르지 않습니다', PIN_INVALID: '편집 PIN이 올바르지 않습니다',
     USER_NOT_FOUND: '등록되지 않은 번호입니다', USER_PIN_INVALID: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요', USER_EXISTS: '이미 등록된 번호입니다',
     USER_ID_INVALID: '뒤 4자리를 확인하세요', PIN_TOO_SHORT: '이름은 2자 이상', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
-    BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류' };
+    BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류',
+    TOO_MANY_ATTEMPTS: '시도가 너무 많습니다. 10분 후 다시 하세요' };
   class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
   async function throwApi(res) {
     let code = '';
@@ -635,6 +654,8 @@
       personalList: async (id, upin) => rows2(await rpc('ictc_personal_list', { p_id: id, p_pin: upin })),
       personalSave: (id, upin, item) => rpc('ictc_personal_save', { p_id: id, p_pin: upin, p_item: item }),
       personalDelete: (id, upin, itemId) => rpc('ictc_personal_delete', { p_id: id, p_pin: upin, p_item_id: itemId }),
+      usersList: (pin) => rpc('ictc_users_list', { p_edit_pin: pin }),
+      userDelete: (pin, id) => rpc('ictc_user_delete', { p_edit_pin: pin, p_id: id }),
     };
   } else if (LOCALSRV) {
     const get = async (path) => { const res = await fetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
@@ -654,6 +675,8 @@
       personalList: async (id, upin) => rows2(await post('/api/personal_list', { id, user_pin: upin })),
       personalSave: (id, upin, item) => post('/api/personal_save', { id, user_pin: upin, item }),
       personalDelete: (id, upin, itemId) => post('/api/personal_delete', { id, user_pin: upin, item_id: itemId }),
+      usersList: (pin) => post('/api/users_list', { pin }),
+      userDelete: (pin, id) => post('/api/user_delete', { pin, id }),
     };
   } else {
     /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
@@ -685,6 +708,8 @@
       personalList: async (id) => ({ updated: null, items: getItems('personal', id) }),
       personalSave: async (id, upin, item) => api.save('personal', item, id),
       personalDelete: async (id, upin, itemId) => api.remove('personal', itemId, id),
+      usersList: async () => Object.entries(users()).map(([id, u]) => ({ id, name: u.name, created_at: null, item_count: getItems('personal', id).length })),
+      userDelete: async (pin, id) => { const u = users(); delete u[id]; lsSet(LS.users, u); const s = store(); delete s[key('personal', id)]; lsSet(LS.items, s); },
     };
   }
 
@@ -1025,6 +1050,27 @@
       await refresh('personal'); toast(isNew ? `${nm}님, 등록했어요` : `${nm}님, 환영합니다`); showTab('personal');
     } catch (ex) { err.textContent = ex.message; }
     btn.disabled = false;
+  }
+  async function manageUsers() {
+    let rows;
+    const ok = await withPin(async pin => { rows = await api.usersList(pin); });
+    if (!ok) return;
+    renderUsers(rows || []); openModal('usersModal');
+  }
+  function renderUsers(rows) {
+    const el = document.getElementById('usersList');
+    if (!rows.length) { el.innerHTML = '<div class="empty" style="padding:28px">등록된 사용자가 없어요</div>'; return; }
+    el.innerHTML = rows.map(u => `<div class="user-row"><span class="avatar">${esc(initial(u.name))}</span>
+      <div class="meta"><b>${esc(u.name)}</b><span>${esc(u.id)} · 개인업무 ${u.item_count ?? 0}건${u.created_at ? ' · ' + esc(String(u.created_at).slice(0, 10)) : ''}</span></div>
+      <button type="button" class="btn danger" onclick="deleteUser('${esc(u.id)}','${esc(u.name)}')">삭제</button></div>`).join('');
+  }
+  async function deleteUser(id, name) {
+    if (!confirm(`${name}(${id}) 사용자와 그 사람의 개인업무를 모두 삭제할까요? 되돌릴 수 없어요.`)) return;
+    let rows;
+    const ok = await withPin(async pin => { await api.userDelete(pin, id); rows = await api.usersList(pin); });
+    if (!ok) return;
+    if (state.me && state.me.id === id) logout(true);
+    renderUsers(rows || []); toast('삭제했어요');
   }
   function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); document.getElementById('loginErr').textContent = ''; renderPersonal(); if (!silent) toast('로그아웃했어요'); }
   /* ── 저장 계층 ── */

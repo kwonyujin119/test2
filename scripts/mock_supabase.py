@@ -8,7 +8,7 @@ for m in re.finditer(r'create or replace function public\.(ictc_\w+)\((.*?)\)\s*
     params=[p.strip().split()[0] for p in m.group(2).split(',') if p.strip()]
     SIGS[m.group(1)]=params
 EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}
-def now(): return datetime.datetime.utcnow().isoformat()+'Z'
+def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00','Z')
 class H(BaseHTTPRequestHandler):
     def log_message(self,*a): pass
     def _send(self,code,body=b''):
@@ -60,7 +60,7 @@ class H(BaseHTTPRequestHandler):
             if fn=='ictc_user_register':
                 view(g('p_view_pin') or '')
                 if g('p_id') in USERS: raise ValueError('USER_EXISTS')
-                if len(g('p_pin') or '')<4: raise ValueError('PIN_TOO_SHORT')
+                if len((g('p_pin') or '').strip())<2: raise ValueError('PIN_TOO_SHORT')   # supabase.sql 과 동일 (이름 2자 이상)
                 USERS[g('p_id')]={'name':g('p_name'),'pin':g('p_pin')}; return self._send(200,json.dumps(g('p_name')).encode())
             if fn=='ictc_user_login': user(g('p_id'),g('p_pin')); return self._send(200,json.dumps(USERS[g('p_id')]['name']).encode())
             if fn=='ictc_user_set_pin': user(g('p_id'),g('p_old')); USERS[g('p_id')]['pin']=g('p_new'); return self._send(204)
@@ -70,6 +70,13 @@ class H(BaseHTTPRequestHandler):
             if fn=='ictc_personal_save':
                 user(g('p_id'),g('p_pin')); it=g('p_item'); ITEMS[it['id']]={'kind':'personal','board':g('p_id'),'data':it,'u':now()}; return self._send(204)
             if fn=='ictc_personal_delete': user(g('p_id'),g('p_pin')); ITEMS.pop(g('p_item_id'),None); return self._send(204)
+            if fn=='ictc_users_list':
+                edit(g('p_edit_pin')); rows=[{'id':i,'name':u['name'],'created_at':now(),'item_count':sum(1 for v in ITEMS.values() if v['kind']=='personal' and v['board']==i)} for i,u in USERS.items()]
+                return self._send(200,json.dumps(rows).encode())
+            if fn=='ictc_user_delete':
+                edit(g('p_edit_pin'))
+                if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')
+                USERS.pop(g('p_id')); [ITEMS.pop(k) for k,v in list(ITEMS.items()) if v['kind']=='personal' and v['board']==g('p_id')]; return self._send(204)
             return self._send(404,b'{"message":"unhandled"}')
         except ValueError as e: return self.err(str(e))
 print('mock sigs:', len(SIGS)); sys.stdout.flush()

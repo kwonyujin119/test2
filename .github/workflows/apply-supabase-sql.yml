@@ -1,8 +1,8 @@
 # server/supabase.sql 이 main 에 푸시되면 Supabase DB 에 자동 실행합니다.
 # 1회 설정: GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
 #   이름: SUPABASE_DB_URL
-#   값  : Supabase 대시보드 상단 [Connect] → Session pooler 의 URI (비밀번호 포함)
-#         예) postgresql://postgres.xxxx:비밀번호@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+#   값  : Supabase 대시보드 상단 [Connect] → Direct/Connection string → Type URI, Method "Session pooler"
+#         화면에 표시된 주소를 그대로 복사하고 [YOUR-PASSWORD] 만 DB 비밀번호로 바꾼다 (리전·호스트는 프로젝트마다 다름)
 # 수동 실행: Actions 탭 → "Apply Supabase SQL" → Run workflow
 name: Apply Supabase SQL
 
@@ -44,6 +44,16 @@ jobs:
           psql --version
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f server/supabase.sql
           echo "적용 완료: $(git log -1 --format='%h %s' -- server/supabase.sql)"
+
+      - name: 실패 원인 안내
+        if: failure()
+        run: |
+          echo "::error::SQL 적용에 실패했습니다. 위 로그의 마지막 ERROR 줄을 확인하세요."
+          echo "흔한 원인:"
+          echo "  1) password authentication failed  → Secret 의 비밀번호 오타. Supabase Project Settings → Database → Reset database password 후 Secret 갱신"
+          echo "  2) could not translate host name / Network is unreachable → Direct connection 주소를 씀. Connect → Session pooler 주소로 교체"
+          echo "  3) Tenant or user not found → 주소의 postgres.<ref> 부분이 다른 프로젝트. Connect 창에서 다시 복사"
+          echo "  4) syntax error → server/supabase.sql 문법 오류. 데이터·서버 에이전트에 보고"
 
       - name: 적용 결과 확인
         env:

@@ -19,7 +19,9 @@ create table if not exists public.ictc_items (
 alter table public.ictc_items add column if not exists board text not null default 'main';
 alter table public.ictc_items drop constraint if exists ictc_items_kind_check;
 alter table public.ictc_items add constraint ictc_items_kind_check check (kind in ('schedule', 'tasks', 'personal'));
-create index if not exists ictc_items_kind_board_idx on public.ictc_items (kind, board);
+drop index if exists public.ictc_items_kind_board_idx;
+create index if not exists ictc_items_kind_board_updated_idx on public.ictc_items (kind, board, updated_at desc);
+
 
 -- 대시보드 목록
 create table if not exists public.ictc_boards (
@@ -67,18 +69,29 @@ returns boolean language sql security definer set search_path = public as $$
   select coalesce((select value from public.ictc_settings where key = 'view_pin'), '') = ''
       or exists (select 1 from public.ictc_settings where key in ('view_pin', 'edit_pin') and value = coalesce(p_pin, ''));
 $$;
+-- PIN 틀릴 때마다 0.8초 지연 (무차별 대입 완화). 함수 안의 raise 는 트랜잭션을 롤백하므로
+-- 실패 횟수를 테이블에 남기는 방식은 Supabase(자율 트랜잭션 없음)에서 동작하지 않는다. 지연은 롤백과 무관하게 적용된다.
+create or replace function public.ictc_fail_delay()
+returns void language sql security definer as $$ select pg_sleep(0.8); $$;
+
 create or replace function public.ictc_require_view(p_pin text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
+  if coalesce(p_pin, '') = '' and coalesce((select value from public.ictc_settings where key = 'view_pin'), '') <> '' then
+    raise exception 'VIEW_PIN_REQUIRED';
+  end if;
   if not public.ictc_check_view_pin(p_pin) then
-    if coalesce(p_pin, '') = '' then raise exception 'VIEW_PIN_REQUIRED'; end if;
+    perform public.ictc_fail_delay();
     raise exception 'VIEW_PIN_INVALID';
   end if;
 end $$;
 create or replace function public.ictc_require_edit(p_pin text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if not public.ictc_check_pin(p_pin) then raise exception 'PIN_INVALID'; end if;
+  if not public.ictc_check_pin(p_pin) then
+    perform public.ictc_fail_delay();
+    raise exception 'PIN_INVALID';
+  end if;
 end $$;
 
 -- ---------- 공용 항목 ----------
@@ -161,7 +174,10 @@ declare h text;
 begin
   select pin_hash into h from public.ictc_users where id = p_id;
   if h is null then raise exception 'USER_NOT_FOUND'; end if;
-  if h <> crypt(coalesce(p_pin, ''), h) then raise exception 'USER_PIN_INVALID'; end if;
+  if h <> crypt(coalesce(p_pin, ''), h) then
+    perform public.ictc_fail_delay();
+    raise exception 'USER_PIN_INVALID';
+  end if;
 end $$;
 
 -- 등록: 팀 조회 PIN을 아는 사람(직원)만 가능
@@ -192,7 +208,7 @@ begin
   update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')) where id = p_id;
 end $$;
 
--- 비밀번호 분실 시 담당자가 편집 PIN으로 재설정
+-- 개인업무 이름 정정 (개인업무는 뒤4자리 + 이름으로 로그인하므로 이름이 곧 확인값). 담당자가 편집 PIN으로 실행
 create or replace function public.ictc_user_reset_pin(p_edit_pin text, p_id text, p_new text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
@@ -228,6 +244,26 @@ begin
   delete from public.ictc_items where id = p_item_id and kind = 'personal' and board = p_id;
 end $$;
 
+-- 개인업무 사용자 목록: select * from ictc_users_list('편집PIN');
+create or replace function public.ictc_users_list(p_edit_pin text)
+returns table (id text, name text, created_at timestamptz, item_count bigint) language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  return query select u.id, u.name, u.created_at,
+    (select count(*) from public.ictc_items i where i.kind = 'personal' and i.board = u.id)
+    from public.ictc_users u order by u.created_at;
+end $$;
+
+-- 개인업무 사용자 삭제(개인업무 포함): select ictc_user_delete('편집PIN', '뒤4자리');
+create or replace function public.ictc_user_delete(p_edit_pin text, p_id text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  delete from public.ictc_items where kind = 'personal' and board = p_id;
+  delete from public.ictc_users where id = p_id;
+  if not found then raise exception 'USER_NOT_FOUND'; end if;
+end $$;
+
 -- ---------- 관리 ----------
 -- 편집 PIN 변경: select ictc_set_pin('기존편집PIN', '새편집PIN');
 -- 조회 PIN 변경: select ictc_set_view_pin('편집PIN', '새조회PIN');   ('' 이면 누구나 조회)
@@ -251,9 +287,13 @@ end $$;
 do $$
 declare f record;
 begin
-  for f in select p.oid::regprocedure as sig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    execute format('grant execute on function %s to anon, authenticated', f.sig);
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit') then
+      execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
+    else
+      execute format('grant execute on function %s to anon, authenticated', f.sig);
+    end if;
   end loop;
 end $$;

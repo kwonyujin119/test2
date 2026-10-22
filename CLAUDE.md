@@ -7,17 +7,17 @@
 
 | 경로 | 역할 | 담당 에이전트 |
 |---|---|---|
-| `index.html` | 보드 전체 (CSS+HTML+JS 단일 파일). 탭 3개: 일정표(목록/달력)·주요업무·개인업무, 대시보드 전환, PIN 잠금 | 화면 |
+| `index.html` | 보드 전체 (CSS+HTML+JS 단일 파일). 탭 3개: 일정표(목록/달력)·주요업무·개인업무, 대시보드 전환, PIN 잠금, 사용자 관리 | 화면(불빛) |
 | `config.js` | 저장 모드 설정. Supabase URL·anon key(공개 키, 커밋 OK) | 화면 |
 | `assets/` | 심벌(ifa.png, ictc.png), 파비콘 | 화면 |
 | `data/*.json` | 미리보기 모드 기본 데이터(예시) | 화면 |
 | `checklist/index.html` | 기존 현장지휘관 체크리스트 (독립 페이지) | 화면 |
-| `server/supabase.sql` | Supabase 스키마·RPC 함수 전체. 멱등(여러 번 실행 안전). PIN 기본값은 최초 설치 때만 적용 | 데이터·서버 |
-| `server/ictc_server.py` | D드라이브 로컬 서버(Python 표준 라이브러리, SQLite). Supabase RPC 와 같은 의미의 `/api/*` | 데이터·서버 |
-| `server/start.bat`, `server/README.md`, `server/build_zip.py`, `dist/*.zip` | Windows 배포 패키지 | 데이터·서버 |
-| `.github/workflows/apply-supabase-sql.yml` | supabase.sql 푸시 시 DB 자동 적용 (Secret `SUPABASE_DB_URL` 필요) | 데이터·서버 |
-| `README.md` | 사용자용 설치·운영 안내 | 운영 |
-| `SIGNATURE.md`, `.claude/agents/*.md` | 에이전트 정체성·역할 | 운영 |
+| `server/supabase.sql` | Supabase 스키마·RPC 함수 전체. 멱등(여러 번 실행 안전). PIN 기본값은 최초 설치 때만 적용 | 데이터·서버(불씨) |
+| `server/ictc_server.py` | D드라이브 로컬 서버(Python 표준 라이브러리, SQLite). Supabase RPC 와 같은 의미의 `/api/*` | 데이터·서버(불씨) |
+| `server/start.bat`, `server/README.md`, `server/build_zip.py`, `dist/*.zip` | Windows 배포 패키지 | 데이터·서버(불씨) |
+| `.github/workflows/apply-supabase-sql.yml` | supabase.sql 푸시 시 DB 자동 적용 (Secret `SUPABASE_DB_URL` 필요) | 데이터·서버(불씨) |
+| `README.md` | 사용자용 설치·운영 안내 | 운영(횃불) |
+| `SIGNATURE.md`, `.claude/agents/*.md` | 에이전트 정체성·역할 | 운영(횃불) |
 
 ## 저장 모드 (index.html 의 `api` 어댑터)
 
@@ -38,7 +38,7 @@
 - `server/supabase.sql` 을 바꾸면: (1) 멱등성 유지, (2) 기존 PIN·데이터 보존, (3) 로컬 PostgreSQL 로 v1→v2 순서 재현 검증, (4) 사용자에게 "Actions 자동 적용 확인 또는 SQL Editor 재실행" 안내.
 - 파일 경계를 지킨다. 화면 에이전트는 server/ 를, 데이터 에이전트는 index.html 을 고치지 않는다. 둘이 함께 바뀌어야 하는 기능은 한 에이전트(오케스트레이터)가 맡는다.
 - 셸에서 `pkill -f` 로 자기 명령줄과 겹치는 패턴을 죽이지 않는다(세션 셸이 끊긴다). PID 파일로 종료한다.
-- 커밋 메시지는 한국어, 접두어 `[화면]` `[데이터]` `[운영]` (SIGNATURE.md 참조). 푸시 후 Pages 반영 1~2분.
+- 커밋 메시지는 한국어, 접두어 `[불빛]`(화면) `[불씨]`(데이터·서버) `[횃불]`(운영). 둘 이상이면 나열 (SIGNATURE.md 참조). 푸시 후 Pages 반영 1~2분.
 
 ## 검증 절차 (`scripts/verify.sh`)
 

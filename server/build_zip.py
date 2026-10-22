@@ -14,10 +14,12 @@ GUIDE = """지휘역량강화센터 일정·업무 보드 - 설치 안내
 3. Windows 방화벽 창이 뜨면 개인/공용 네트워크 모두 체크 후 "액세스 허용".
 4. 검은 창의 "팀원 접속: http://192.168.x.x:8080" 주소를 팀원에게 공유합니다.
    본인은 http://localhost:8080 으로 접속합니다.
-5. PIN 변경: D:\\일정표,주요업무\\pin.txt 를 메모장으로 수정 (즉시 적용).
+5. PIN 변경: D:\\일정표,주요업무\\pin.txt(편집 PIN), view_pin.txt(조회 PIN, 비우면 누구나 조회)를 메모장으로 수정 (즉시 적용).
+   개인업무는 뒤 4자리 + 이름으로 로그인합니다 (비밀번호 없음).
+6. 백업: 서버를 켤 때마다 D:\\일정표,주요업무\\backups\\ 에 날짜별 사본이 생깁니다 (최근 7개 보관).
 
 * 창을 닫으면 서버가 꺼집니다. PC 절전은 "안 함"으로 두세요.
-* 백업은 D:\\일정표,주요업무\\ictc.db 파일 하나만 복사하면 됩니다.
+* 수동 백업은 D:\\일정표,주요업무\\ictc.db 파일 하나만 복사하면 됩니다.
 * 자세한 내용: https://github.com/kwonyujin119/test2/blob/main/server/README.md
 """
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -26,7 +28,8 @@ with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
         z.write(os.path.join(ROOT, 'server', name), TOP + name)
     z.writestr(TOP + '설치안내.txt', GUIDE.replace('\n', '\r\n').encode('utf-8-sig'))
     z.write(os.path.join(ROOT, 'index.html'), TOP + 'site/index.html')
-    z.write(os.path.join(ROOT, 'config.js'), TOP + 'site/config.js')
+    # 로컬 서버는 /config.js 를 동적으로 대체하므로, 패키지에는 빈 설정만 넣는다 (Supabase 키 미포함)
+    z.writestr(TOP + 'site/config.js', '// 로컬 서버가 이 파일을 자동으로 대체합니다. 수정하지 마세요.\nwindow.ICTC_CONFIG = { supabaseUrl: "", supabaseAnonKey: "" };\n')
     for sub in ('data', 'checklist', 'assets'):
         for dirpath, _, files in os.walk(os.path.join(ROOT, sub)):
             for f in sorted(files):
