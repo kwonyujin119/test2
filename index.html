@@ -343,6 +343,13 @@
   .dropdown button.add { color: var(--primary-text); font-weight: 600; }
   .dropdown hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
   .dropdown button.danger { color: var(--red); }
+  .dropdown .dd-row { display: flex; align-items: center; gap: 2px; }
+  .dropdown .dd-row > button:first-child { flex: 1; min-width: 0; }
+  .dropdown .dd-row > button:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dropdown .dd-act { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-3); flex: 0 0 auto; }
+  .dropdown .dd-act:hover { color: var(--text); background: var(--card-2); }
+  .dropdown .dd-act.del:hover { color: var(--red); background: var(--red-soft); }
+  .dropdown .dd-hint { font-size: 11px; color: var(--text-3); padding: 4px 12px 6px; }
 
   /* ── 개인업무 로그인 ── */
   .login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; max-width: 420px; margin: 0 auto; }
@@ -779,8 +786,14 @@
     const m = document.getElementById('boardMenu'); if (m.classList.contains('open')) { closeBoardMenu(); return; }
     const r = e.currentTarget.getBoundingClientRect();
     m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.left) + 'px';
-    m.innerHTML = '<div class="dd-label">대시보드</div>' + state.boards.map(b => `<button class="${b.id === state.board ? 'on' : ''}" onclick="switchBoard('${esc(b.id)}')">${esc(b.name)}</button>`).join('') +
-      '<hr><button class="add" onclick="addBoard()">+ 새 대시보드</button>';
+    const pen = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const bin = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+    m.innerHTML = '<div class="dd-label">대시보드</div>' + state.boards.map(b => `<div class="dd-row">
+        <button class="${b.id === state.board ? 'on' : ''}" onclick="switchBoard('${esc(b.id)}')"><span>${esc(b.name)}</span></button>
+        <button class="dd-act" title="이름 변경" aria-label="${esc(b.name)} 이름 변경" onclick="event.stopPropagation();renameBoard('${esc(b.id)}')">${pen}</button>
+        ${b.id === 'main' ? '' : `<button class="dd-act del" title="삭제" aria-label="${esc(b.name)} 삭제" onclick="event.stopPropagation();deleteBoard('${esc(b.id)}')">${bin}</button>`}
+      </div>`).join('') +
+      '<hr><button class="add" onclick="addBoard()">+ 새 대시보드</button>' + (REMOTE ? '<div class="dd-hint">이름 변경·삭제는 편집 PIN이 필요합니다</div>' : '');
     m.classList.add('open');
   }
   function closeBoardMenu() { document.getElementById('boardMenu').classList.remove('open'); }
@@ -804,15 +817,20 @@
     const id = 'b' + uid();
     if (await withPin(pin => api.boardAdd(pin, id, name.trim()))) { await loadBoards(); await switchBoard(id); toast('대시보드를 만들었어요'); }
   }
-  async function renameBoard() {
-    const name = prompt('대시보드 이름', boardName()); if (!name || !name.trim()) return;
-    if (await withPin(pin => api.boardRename(pin, state.board, name.trim()))) { await loadBoards(); toast('이름을 바꿨어요'); }
+  const boardNameOf = id => (state.boards.find(b => b.id === id) || DEFAULT_BOARD).name;
+  async function renameBoard(id) {
+    id = id || state.board; closeBoardMenu();
+    const name = prompt('대시보드 이름', boardNameOf(id)); if (!name || !name.trim() || name.trim() === boardNameOf(id)) return;
+    if (await withPin(pin => api.boardRename(pin, id, name.trim()))) { await loadBoards(); toast('이름을 바꿨어요'); }
   }
-  async function deleteBoard() {
-    if (state.board === 'main') return;
-    if (!confirm(`"${boardName()}" 대시보드와 그 안의 일정·업무를 모두 삭제할까요? 되돌릴 수 없어요.`)) return;
-    const id = state.board;
-    if (await withPin(pin => api.boardDelete(pin, id))) { state.board = 'main'; lsSet(LS.board, 'main'); await loadBoards(); await switchBoardSilent(); toast('삭제했어요'); }
+  async function deleteBoard(id) {
+    id = id || state.board; closeBoardMenu();
+    if (id === 'main') { toast('기본 대시보드는 삭제할 수 없어요'); return; }
+    if (!confirm(`"${boardNameOf(id)}" 대시보드와 그 안의 일정·업무를 모두 삭제할까요? 되돌릴 수 없어요.`)) return;
+    if (!await withPin(pin => api.boardDelete(pin, id))) return;
+    if (state.board === id) { state.board = 'main'; lsSet(LS.board, 'main'); await loadBoards(); await switchBoardSilent(); }
+    else await loadBoards();
+    toast('삭제했어요');
   }
   async function switchBoardSilent() { renderBoardTitle(); updateHash(); await Promise.all([refresh('schedule', true), refresh('tasks', true)]); }
 
