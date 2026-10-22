@@ -9,7 +9,8 @@
 |---|---|---|
 | `index.html` | 보드 전체 (CSS+HTML+JS 단일 파일). 탭 3개: 일정표(목록/달력)·주요업무·개인업무, 대시보드 전환, PIN 잠금, 사용자 관리 | 화면(불빛) |
 | `config.js` | 저장 모드 설정. Supabase URL·anon key(공개 키, 커밋 OK) | 화면 |
-| `assets/` | 심벌(ifa.png, ictc.png), 파비콘 | 화면 |
+| `assets/` | 심벌(ifa.png, ictc.png), 파비콘, 앱 아이콘(icon-192/512) | 화면 |
+| `manifest.webmanifest`, `sw.js` | 홈 화면 추가(PWA) 매니페스트와 최소 서비스 워커(캐시 없음, 네트워크만) | 화면 |
 | `data/*.json` | 미리보기 모드 기본 데이터(예시) | 화면 |
 | `checklist/index.html` | 기존 현장지휘관 체크리스트 (독립 페이지) | 화면 |
 | `server/supabase.sql` | Supabase 스키마·RPC 함수 전체. 멱등(여러 번 실행 안전). PIN 기본값은 최초 설치 때만 적용 | 데이터·서버(불씨) |

@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#0A2F7E">
 <title>지휘역량강화센터 · 일정 · 업무</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ICTC 보드">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -278,6 +283,22 @@
   .lock .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 8px 0 4px; }
   .lock .btn { width: 100%; margin-top: 6px; }
 
+  /* ── 홈 화면 추가 안내 ── */
+  .a2hs { position: fixed; left: 16px; right: 16px; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 45; background: var(--card); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 12px 14px; display: none; align-items: center; gap: 12px; border-top: 3px solid var(--gold, #F5C400); animation: fade .3s ease; }
+  .a2hs.open { display: flex; }
+  .a2hs img { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; }
+  .a2hs .txt { flex: 1; min-width: 0; }
+  .a2hs .txt b { display: block; font-size: 14px; }
+  .a2hs .txt span { font-size: 12px; color: var(--text-3); }
+  .a2hs .btns { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .a2hs .btn { padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+  .a2hs .btn.ghost { padding: 4px 12px; font-size: 12px; }
+  @media (min-width: 640px) { .a2hs { left: auto; right: 24px; bottom: 24px; width: 380px; } .fab.show-pc ~ .a2hs, body.fab-visible .a2hs { bottom: 96px; } }
+  @media (min-width: 1024px) { .a2hs { left: 32px; right: auto; bottom: 28px; } }
+  .a2hs-guide ol { margin: 0 0 0 18px; padding: 0; font-size: 14px; line-height: 1.8; }
+  .a2hs-guide .os { font-size: 12px; font-weight: 700; color: var(--text-3); margin: 14px 0 4px; }
+  .a2hs-guide .os:first-child { margin-top: 0; }
+
   /* ── PC ── */
   .side-actions { display: none; }
   @media (min-width: 1024px) {
@@ -529,6 +550,7 @@
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
   <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
   <button id="menuUsers" onclick="manageUsers()">👥&nbsp; 개인업무 사용자 관리</button>
+  <button id="menuA2hs" onclick="installApp()">📲&nbsp; 홈 화면에 추가</button>
   <button id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
 </div>
 
@@ -633,6 +655,19 @@
     <div class="err" id="lockErr"></div>
     <button type="submit" class="btn primary">들어가기</button>
   </form>
+</div>
+<div class="a2hs" id="a2hs" role="dialog" aria-label="홈 화면에 추가">
+  <img src="assets/icon-192.png" alt="">
+  <div class="txt"><b>홈 화면에 추가</b><span>앱처럼 바로 열 수 있어요</span></div>
+  <div class="btns"><button type="button" class="btn primary" onclick="installApp()">추가하기</button><button type="button" class="btn ghost" onclick="dismissA2hs()">나중에</button></div>
+</div>
+<div class="sheet-bg" id="a2hsModal" role="dialog" aria-modal="true" aria-labelledby="a2hsTitle" onclick="if(event.target===this)closeModal('a2hsModal')">
+  <div class="sheet a2hs-guide">
+    <div class="handle"></div>
+    <h2 id="a2hsTitle">홈 화면에 추가하는 방법</h2>
+    <div id="a2hsGuide"></div>
+    <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('a2hsModal')">닫기</button></div>
+  </div>
 </div>
 <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
 <div class="toast" id="toast"></div>
@@ -1354,6 +1389,38 @@
     else if (e.key === '1') tabClick('schedule'); else if (e.key === '2') tabClick('tasks'); else if (e.key === '3') tabClick('personal');
   });
 
+  /* ── 홈 화면에 추가 (PWA 설치) ── */
+  let deferredInstall = null;
+  const A2HS_KEY = 'ictc.a2hs.dismissed';
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+  window.addEventListener('appinstalled', () => { hideA2hs(); lsSet(A2HS_KEY, Date.now() + 1e12); toast('홈 화면에 추가했어요'); });
+  function showA2hs() {
+    if (isStandalone()) return;
+    const until = lsGet(A2HS_KEY); if (until && Date.now() < until) return;
+    if (document.querySelector('.lock.open')) return;
+    document.getElementById('a2hs').classList.add('open');
+  }
+  function hideA2hs() { document.getElementById('a2hs').classList.remove('open'); }
+  function dismissA2hs() { lsSet(A2HS_KEY, Date.now() + 7 * 864e5); hideA2hs(); }
+  async function installApp() {
+    hideA2hs();
+    if (deferredInstall) {
+      try { deferredInstall.prompt(); const r = await deferredInstall.userChoice; deferredInstall = null; if (r && r.outcome === 'accepted') return; } catch (e) {}
+      lsSet(A2HS_KEY, Date.now() + 7 * 864e5); return;
+    }
+    const g = document.getElementById('a2hsGuide');
+    const ios = `<div class="os">아이폰 · 아이패드 (Safari)</div><ol><li>화면 아래 <b>공유</b> 버튼(네모에 화살표)을 누르세요</li><li><b>홈 화면에 추가</b>를 선택하세요</li><li>오른쪽 위 <b>추가</b>를 누르면 끝</li></ol>`;
+    const and = `<div class="os">안드로이드 (Chrome · 삼성 인터넷)</div><ol><li>오른쪽 위 <b>⋮</b> 메뉴를 누르세요</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 선택하세요</li><li><b>추가</b>를 누르면 끝</li></ol>`;
+    const pc = `<div class="os">PC (Chrome · Edge)</div><ol><li>주소창 오른쪽 끝의 <b>설치</b> 아이콘(모니터에 화살표)을 누르세요</li><li>또는 ⋮ 메뉴 → <b>앱 설치</b></li></ol>`;
+    g.innerHTML = isIOS ? ios + and : isAndroid ? and + ios : pc + and + ios;
+    openModal('a2hsModal');
+  }
+  if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+
   /* ── 시작 ── */
   async function boot() {
     const h = parseHash(); state.board = h.board;
@@ -1361,6 +1428,7 @@
     state.me = lsGet(LS.me);
     showTab(h.tab); if (!(history.state && history.state.app)) initHistory(); else updateHash();
     await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true)]);
+    setTimeout(showA2hs, 2500);
   }
   if (REMOTE) {
     document.getElementById('menuPin').style.display = ''; document.getElementById('menuViewPin').style.display = '';

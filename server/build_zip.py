@@ -30,6 +30,8 @@ with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
     z.write(os.path.join(ROOT, 'index.html'), TOP + 'site/index.html')
     # 로컬 서버는 /config.js 를 동적으로 대체하므로, 패키지에는 빈 설정만 넣는다 (Supabase 키 미포함)
     z.writestr(TOP + 'site/config.js', '// 로컬 서버가 이 파일을 자동으로 대체합니다. 수정하지 마세요.\nwindow.ICTC_CONFIG = { supabaseUrl: "", supabaseAnonKey: "" };\n')
+    for extra in ('manifest.webmanifest', 'sw.js'):
+        z.write(os.path.join(ROOT, extra), TOP + 'site/' + extra)
     for sub in ('data', 'checklist', 'assets'):
         for dirpath, _, files in os.walk(os.path.join(ROOT, sub)):
             for f in sorted(files):
