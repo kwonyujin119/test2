@@ -1028,6 +1028,7 @@
   }
   function fillDatalist(id, values) { document.getElementById(id).innerHTML = [...new Set(values.filter(Boolean))].map(v => `<option value="${esc(v)}">`).join(''); }
   const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const zerosLast = opts => [...opts.filter(o => o.count > 0), ...opts.filter(o => !(o.count > 0))];
 
   /* ── 일정: 목록 / 달력 ── */
   function renderSchedule() {
@@ -1038,7 +1039,7 @@
       <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건</div></div>
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>`;
     const counts = {}; data.items.forEach(i => { const c = catOf(i); counts[c] = (counts[c] || 0) + 1; });
-    renderChips(document.getElementById('scheduleFilters'), CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 })), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
+    renderChips(document.getElementById('scheduleFilters'), zerosLast(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
     document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
     const items = data.items.filter(i => state.scheduleTag === '전체' || catOf(i) === state.scheduleTag).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
@@ -1193,11 +1194,10 @@
       <div><div class="big">${counts['진행중'] || 0}건 진행중</div><div class="label">${overdueCnt ? `<span style="color:var(--red);font-weight:600">기한 지연 ${overdueCnt}건</span>` : '지연된 업무 없음'}</div></div>
       <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
     fillDatalist('ownerList', data.items.map(i => i.owner));
-    const statuses = STATUSES.filter(s => counts[s]);
-    if (state.taskStatus !== '전체' && !statuses.includes(state.taskStatus)) state.taskStatus = '전체';
-    renderChips(document.getElementById('tasksFilters'), statuses.map(s => ({ key: s, count: counts[s] })), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
+    if (state.taskStatus !== '전체' && !counts[state.taskStatus]) state.taskStatus = '전체';
+    renderChips(document.getElementById('tasksFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('tasksCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 })), state.taskCat, c => { state.taskCat = c; renderTasks(); });
+    renderChips(document.getElementById('tasksCatFilters'), zerosLast(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.taskCat, c => { state.taskCat = c; renderTasks(); });
     const ownerCounts = {}; data.items.forEach(i => { const o = (i.owner || '').trim() || '미지정'; ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
     const owners = Object.keys(ownerCounts).sort((a, b) => ownerCounts[b] - ownerCounts[a] || a.localeCompare(b, 'ko'));
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
@@ -1225,11 +1225,10 @@
     document.getElementById('personalSummary').innerHTML = `
       <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div class="me-info"><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div><button type="button" class="logout-btn" onclick="logout()" aria-label="개인업무 로그아웃">로그아웃</button></div>
       <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
-    const statuses = STATUSES.filter(s => counts[s]);
-    if (state.pStatus !== '전체' && !statuses.includes(state.pStatus)) state.pStatus = '전체';
-    renderChips(document.getElementById('personalFilters'), statuses.map(s => ({ key: s, count: counts[s] })), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
+    if (state.pStatus !== '전체' && !counts[state.pStatus]) state.pStatus = '전체';
+    renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('personalCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 })), state.pCat, c => { state.pCat = c; renderPersonal(); });
+    renderChips(document.getElementById('personalCatFilters'), zerosLast(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
     const items = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)));
     list.innerHTML = items.length ? taskCards(items, 'personal') : '<div class="empty" style="grid-column:1/-1"><div class="ico">📝</div>아직 개인업무가 없어요<br>버튼을 눌러 첫 업무를 추가해 보세요</div>';
   }
