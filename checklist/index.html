@@ -11,6 +11,9 @@
   :root {
     --bg: #0a0a0a;
     --accent: #c0392b;
+    --navy: #0A2F7E;
+    --navy-deep: #061F5C;
+    --gold: #F5C400;
     --border-dark: #2a2a2a;
     --muted: #555;
   }
@@ -27,8 +30,8 @@
 
   /* ── HEADER ── */
   header {
-    background: #000;
-    border-bottom: 3px solid var(--accent);
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    border-bottom: 3px solid var(--gold);
     padding: 22px 32px;
     display: flex;
     align-items: center;
@@ -39,7 +42,8 @@
   }
   .header-emblem {
     width: 38px; height: 38px;
-    background: var(--accent);
+    background: var(--gold);
+    border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
@@ -53,17 +57,17 @@
   .header-link {
     margin-left: auto;
     font-size: 12px;
-    color: var(--muted);
+    color: #C9D4F0;
     text-decoration: none;
-    border: 1px solid var(--border-dark);
+    border: 1px solid rgba(255,255,255,.3);
     padding: 6px 12px;
     white-space: nowrap;
     transition: color .2s, border-color .2s;
   }
-  .header-link:hover { color: #f0f0f0; border-color: #555; }
+  .header-link:hover { color: var(--gold); border-color: var(--gold); }
   .header-text p {
     font-size: 10px;
-    color: var(--muted);
+    color: #C9D4F0;
     font-family: 'DM Mono', monospace;
     letter-spacing: 2px;
     margin-top: 3px;

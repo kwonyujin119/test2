@@ -19,7 +19,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   await P.fill('#scheduleForm [name=title]', 'E2E 일정'); await P.click('#catPicker button.cat-회의');
   await P.click('#scheduleForm button[type=submit]'); await P.waitForTimeout(700);
   r.schedSaved = await P.locator('.event-title', { hasText: 'E2E 일정' }).count();
-  await P.locator('.event-time').first().click(); await P.waitForTimeout(250); r.popOpen = await P.locator('#pop.open').count();
+  await P.locator('.event', { hasText: 'E2E 일정' }).locator('.event-time').click(); await P.waitForTimeout(250); r.popOpen = await P.locator('#pop.open').count();
   await P.fill('#pop [name=start]', '15:00'); await P.click('#pop button[type=submit]'); await P.waitForTimeout(600); r.timeChanged = await P.locator('.event-time', { hasText: '15:00' }).count();
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   r.calendar = await P.locator('.cal-grid').count(); r.calEvent = await P.locator('.cal-ev', { hasText: 'E2E 일정' }).count();
