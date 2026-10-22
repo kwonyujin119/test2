@@ -1,7 +1,7 @@
 {
-  "name": "지휘역량강화센터 일정·업무 보드",
-  "short_name": "ICTC 보드",
-  "description": "인천소방학교 지휘역량강화센터 팀 일정표·주요업무·개인업무",
+  "name": "SAIL — 지휘역량강화센터 일정·업무",
+  "short_name": "SAIL",
+  "description": "SAIL: Schedule · Attention · Individual Log. 인천소방학교 지휘역량강화센터 팀 보드",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
