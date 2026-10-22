@@ -7,6 +7,8 @@
 --    edit_pin : 편집 PIN (추가·수정·삭제, 대시보드 관리)
 --    view_pin : 조회 PIN (링크를 여는 직원이 입력). '' 로 두면 누구나 조회 가능.
 -- ============================================================
+-- Supabase 는 pgcrypto 를 extensions 스키마에 두므로 모든 함수의 search_path 에 extensions 를 포함한다.
+-- (로컬 PostgreSQL 처럼 extensions 스키마가 없으면 무시된다)
 create extension if not exists pgcrypto;
 
 -- 공용 항목 (일정·주요업무) + 개인업무
@@ -61,11 +63,11 @@ drop function if exists public.ictc_replace(text, text, jsonb);
 
 -- ---------- PIN 검증 ----------
 create or replace function public.ictc_check_pin(p_pin text)
-returns boolean language sql security definer set search_path = public as $$
+returns boolean language sql security definer set search_path = public, extensions as $$
   select exists (select 1 from public.ictc_settings where key = 'edit_pin' and value = coalesce(p_pin, ''));
 $$;
 create or replace function public.ictc_check_view_pin(p_pin text)
-returns boolean language sql security definer set search_path = public as $$
+returns boolean language sql security definer set search_path = public, extensions as $$
   select coalesce((select value from public.ictc_settings where key = 'view_pin'), '') = ''
       or exists (select 1 from public.ictc_settings where key in ('view_pin', 'edit_pin') and value = coalesce(p_pin, ''));
 $$;
@@ -75,7 +77,7 @@ create or replace function public.ictc_fail_delay()
 returns void language sql security definer as $$ select pg_sleep(0.8); $$;
 
 create or replace function public.ictc_require_view(p_pin text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if coalesce(p_pin, '') = '' and coalesce((select value from public.ictc_settings where key = 'view_pin'), '') <> '' then
     raise exception 'VIEW_PIN_REQUIRED';
@@ -86,7 +88,7 @@ begin
   end if;
 end $$;
 create or replace function public.ictc_require_edit(p_pin text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.ictc_check_pin(p_pin) then
     perform public.ictc_fail_delay();
@@ -96,7 +98,7 @@ end $$;
 
 -- ---------- 공용 항목 ----------
 create or replace function public.ictc_list(p_pin text, p_kind text, p_board text default 'main')
-returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public as $$
+returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
@@ -105,7 +107,7 @@ begin
 end $$;
 
 create or replace function public.ictc_save(p_pin text, p_kind text, p_item jsonb, p_board text default 'main')
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
@@ -116,14 +118,14 @@ begin
 end $$;
 
 create or replace function public.ictc_delete(p_pin text, p_kind text, p_id text, p_board text default 'main')
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
 end $$;
 
 create or replace function public.ictc_replace(p_pin text, p_kind text, p_items jsonb, p_board text default 'main')
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
@@ -135,14 +137,14 @@ end $$;
 
 -- ---------- 대시보드 ----------
 create or replace function public.ictc_boards(p_pin text)
-returns table (id text, name text) language plpgsql security definer set search_path = public as $$
+returns table (id text, name text) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
   return query select b.id, b.name from public.ictc_boards b order by (b.id <> 'main'), b.created_at;
 end $$;
 
 create or replace function public.ictc_board_add(p_pin text, p_id text, p_name text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
@@ -151,7 +153,7 @@ begin
 end $$;
 
 create or replace function public.ictc_board_rename(p_pin text, p_id text, p_name text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
@@ -159,7 +161,7 @@ begin
 end $$;
 
 create or replace function public.ictc_board_delete(p_pin text, p_id text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
   if p_id = 'main' then raise exception 'BOARD_PROTECTED'; end if;
@@ -169,7 +171,7 @@ end $$;
 
 -- ---------- 개인업무 ----------
 create or replace function public.ictc_user_check(p_id text, p_pin text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 declare h text;
 begin
   select pin_hash into h from public.ictc_users where id = p_id;
@@ -182,7 +184,7 @@ end $$;
 
 -- 등록: 팀 조회 PIN을 아는 사람(직원)만 가능
 create or replace function public.ictc_user_register(p_view_pin text, p_id text, p_name text, p_pin text)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_view_pin);
   if length(coalesce(p_id, '')) < 4 then raise exception 'USER_ID_INVALID'; end if;
@@ -194,14 +196,14 @@ begin
 end $$;
 
 create or replace function public.ictc_user_login(p_id text, p_pin text)
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
   return (select name from public.ictc_users where id = p_id);
 end $$;
 
 create or replace function public.ictc_user_set_pin(p_id text, p_old text, p_new text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_old);
   if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
@@ -210,7 +212,7 @@ end $$;
 
 -- 개인업무 이름 정정 (개인업무는 뒤4자리 + 이름으로 로그인하므로 이름이 곧 확인값). 담당자가 편집 PIN으로 실행
 create or replace function public.ictc_user_reset_pin(p_edit_pin text, p_id text, p_new text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
   if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
@@ -219,7 +221,7 @@ begin
 end $$;
 
 create or replace function public.ictc_personal_list(p_id text, p_pin text)
-returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public as $$
+returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
   return query select i.data, i.updated_at from public.ictc_items i
@@ -227,7 +229,7 @@ begin
 end $$;
 
 create or replace function public.ictc_personal_save(p_id text, p_pin text, p_item jsonb)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
   if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
@@ -238,7 +240,7 @@ begin
 end $$;
 
 create or replace function public.ictc_personal_delete(p_id text, p_pin text, p_item_id text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
   delete from public.ictc_items where id = p_item_id and kind = 'personal' and board = p_id;
@@ -246,7 +248,7 @@ end $$;
 
 -- 개인업무 사용자 목록: select * from ictc_users_list('편집PIN');
 create or replace function public.ictc_users_list(p_edit_pin text)
-returns table (id text, name text, created_at timestamptz, item_count bigint) language plpgsql security definer set search_path = public as $$
+returns table (id text, name text, created_at timestamptz, item_count bigint) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
   return query select u.id, u.name, u.created_at,
@@ -256,7 +258,7 @@ end $$;
 
 -- 개인업무 사용자 삭제(개인업무 포함): select ictc_user_delete('편집PIN', '뒤4자리');
 create or replace function public.ictc_user_delete(p_edit_pin text, p_id text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
   delete from public.ictc_items where kind = 'personal' and board = p_id;
@@ -269,14 +271,14 @@ end $$;
 -- 조회 PIN 변경: select ictc_set_view_pin('편집PIN', '새조회PIN');   ('' 이면 누구나 조회)
 -- 개인업무 이름 정정: select ictc_user_reset_pin('편집PIN', '뒤4자리', '바른이름');  (개인업무는 뒤4자리 + 이름으로 로그인)
 create or replace function public.ictc_set_pin(p_old text, p_new text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_old);
   if length(coalesce(p_new, '')) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
   update public.ictc_settings set value = p_new where key = 'edit_pin';
 end $$;
 create or replace function public.ictc_set_view_pin(p_edit_pin text, p_new text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
   insert into public.ictc_settings (key, value) values ('view_pin', coalesce(p_new, ''))

@@ -17,11 +17,15 @@ if [[ " $* " != *" --no-sql "* ]]; then
     PS="psql -h $PGD -p 5499 -U postgres -q"
     $PS -c "create role anon nologin" >/dev/null 2>&1; $PS -c "create role authenticated nologin" >/dev/null 2>&1
     $PS -c "drop database if exists ictc_verify" >/dev/null 2>&1; $PS -c "create database ictc_verify" >/dev/null
+    # Supabase 와 같은 구조: pgcrypto 를 extensions 스키마에 설치 (search_path 누락을 잡기 위함)
+    $PS -d ictc_verify -c "create schema if not exists extensions; create extension if not exists pgcrypto with schema extensions;" >/dev/null
     for i in 1 2; do $PS -d ictc_verify -v ON_ERROR_STOP=1 -f server/supabase.sql > /tmp/verify_sql.log 2>&1 || { echo "  실행 $i 실패:"; grep -v NOTICE /tmp/verify_sql.log | tail -5; ok=0; }; done
     $PS -c "alter role anon login" >/dev/null 2>&1
     denied=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select * from ictc_items" 2>&1 | grep -c "permission denied")
     fn=$($PS -d ictc_verify -At -c "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%'")
     [ "$denied" = "1" ] && echo "  anon 직접 조회 차단 ok" || { echo "  anon 직접 조회가 막히지 않음!"; ok=0; }
+    reg=$($PS -d ictc_verify -At -c "select ictc_user_register('0000','9999','검증','검증')" 2>&1)
+    [ "$reg" = "검증" ] && echo "  개인업무 등록(pgcrypto) ok" || { echo "  개인업무 등록 실패: $reg"; ok=0; }
     echo "  함수 $fn 개, 2회 실행 완료"
     su postgres -c "$PGBIN/pg_ctl -D $PGD/data stop >/dev/null 2>&1"
   else echo "  (PostgreSQL 없음, 건너뜀)"; fi

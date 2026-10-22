@@ -54,3 +54,4 @@
 - Pretendard 글꼴 CDN 도 차단돼 테스트 스크린샷은 대체 글꼴로 찍힌다. 실제 배포는 정상.
 - Playwright `fill` 은 `maxlength`/`pattern` 을 우회하지 못한다. 입력 제한은 JS 로 정규화한다.
 - 사용자 리전은 Supabase ap-southeast-1(싱가포르). 예시 주소에 서울 리전을 쓰지 않는다.
+- Supabase 는 pgcrypto(`crypt`, `gen_salt`)를 `extensions` 스키마에 둔다. 모든 함수는 `set search_path = public, extensions` 여야 한다(public 만 두면 실서버에서 `gen_salt(unknown) does not exist`). verify.sh 가 같은 구조로 재현한다.
