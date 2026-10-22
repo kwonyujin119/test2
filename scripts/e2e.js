@@ -14,7 +14,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.title = await P.locator('#boardName').innerText();
   r.logos = await P.locator('.logos img').evaluateAll(els => els.every(e => e.naturalWidth > 0));
   r.tabs = (await P.locator('.segment button').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
-  P.on('dialog', d => { const m = d.message(); if (m.includes('편집 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else d.accept(); });
+  P.on('dialog', d => { const m = d.message(); if (m.includes('관리자 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else d.accept(); });
   r.noPinPromptOnSave = true;
   await P.keyboard.press('n'); await P.waitForTimeout(300);
   await P.fill('#scheduleForm [name=title]', 'E2E 일정'); await P.click('#catPicker button.cat-회의');
