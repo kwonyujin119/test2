@@ -283,6 +283,16 @@
   .lock .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 8px 0 4px; }
   .lock .btn { width: 100%; margin-top: 6px; }
 
+  /* ── 필터 고정 (모바일·태블릿) ── */
+  @media (max-width: 1023px) {
+    .side { display: contents; }   /* 칩이 섹션 전체(목록 포함)를 기준으로 붙도록 */
+    .filters { position: sticky; top: var(--appbar-h, 112px); z-index: 30; background: var(--bg); margin: 0 -20px 4px; padding: 6px 20px 0; box-shadow: 0 8px 10px -10px rgba(0,0,0,.25); }
+    .filters .filter-label { margin: 0 4px 4px; }
+    .filters .chips { padding-bottom: 8px; }
+    .filters .chips + .filter-label { margin-top: 0; }
+  }
+  @media (max-width: 640px) { .filters { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; } }
+
   /* ── 홈 화면 추가 안내 ── */
   .a2hs { position: fixed; left: 16px; right: 16px; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 45; background: var(--card); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 12px 14px; display: none; align-items: center; gap: 12px; border-top: 3px solid var(--gold, #F5C400); animation: fade .3s ease; }
   .a2hs.open { display: flex; }
@@ -477,7 +487,7 @@
   <section id="schedule" class="active">
     <aside class="side">
       <div class="summary" id="scheduleSummary"></div>
-      <div class="chips" id="scheduleFilters"></div>
+      <div class="filters"><div class="chips" id="scheduleFilters"></div></div>
       <div class="side-actions">
         <button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button>
         <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
@@ -492,12 +502,14 @@
   <section id="tasks">
     <aside class="side">
       <div class="summary" id="tasksSummary"></div>
-      <div class="filter-label">상태</div>
-      <div class="chips" id="tasksFilters"></div>
-      <div class="filter-label">분류</div>
-      <div class="chips" id="tasksCatFilters"></div>
-      <div class="filter-label">담당자</div>
-      <div class="chips" id="tasksOwnerFilters"></div>
+      <div class="filters">
+        <div class="filter-label">상태</div>
+        <div class="chips" id="tasksFilters"></div>
+        <div class="filter-label">분류</div>
+        <div class="chips" id="tasksCatFilters"></div>
+        <div class="filter-label">담당자</div>
+        <div class="chips" id="tasksOwnerFilters"></div>
+      </div>
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button>
         <button class="btn ghost" onclick="exportJSON('tasks')">JSON 내보내기</button>
@@ -523,10 +535,12 @@
     </div>
     <aside class="side" id="personalSide" style="display:none">
       <div class="summary" id="personalSummary"></div>
-      <div class="filter-label">상태</div>
-      <div class="chips" id="personalFilters"></div>
-      <div class="filter-label">분류</div>
-      <div class="chips" id="personalCatFilters"></div>
+      <div class="filters">
+        <div class="filter-label">상태</div>
+        <div class="chips" id="personalFilters"></div>
+        <div class="filter-label">분류</div>
+        <div class="chips" id="personalCatFilters"></div>
+      </div>
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
         <button class="btn ghost" onclick="exportJSON('personal')">JSON 내보내기</button>
@@ -1420,6 +1434,10 @@
     openModal('a2hsModal');
   }
   if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+
+  /* ── 상단 바 높이(필터 고정 기준) ── */
+  const setAppbarH = () => { const h = document.querySelector('.appbar').offsetHeight; document.documentElement.style.setProperty('--appbar-h', h + 'px'); };
+  window.addEventListener('resize', setAppbarH); window.addEventListener('load', setAppbarH); setAppbarH();
 
   /* ── 시작 ── */
   async function boot() {
