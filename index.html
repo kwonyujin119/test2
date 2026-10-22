@@ -325,11 +325,12 @@
   .cal-head .nav:hover { background: var(--card-2); }
   .cal-head .today-btn { border: none; background: var(--gold-soft); box-shadow: var(--shadow); border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--gold-text); padding: 7px 12px; }
   .cal { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
   .cal-dow div { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--text-3); padding: 10px 0; }
   .cal-dow div:first-child { color: var(--sun); } .cal-dow div:last-child { color: var(--sat); }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-  .cal-cell { min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px; cursor: pointer; transition: background .15s; display: flex; flex-direction: column; gap: 3px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(104px, auto); }
+  .cal-cell { min-width: 0; min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px; cursor: pointer; transition: background .15s; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .cal-cell > * { min-width: 0; max-width: 100%; }
   .cal-cell:nth-child(7n) { border-right: none; }
   .cal-cell:hover { background: var(--card-2); }
   .cal-cell.other { opacity: .4; }
@@ -337,15 +338,33 @@
   .cal-cell.sun .n { color: var(--sun); } .cal-cell.sat .n { color: var(--sat); }
   .cal-cell.today { background: color-mix(in srgb, var(--gold-soft) 55%, var(--card)); }
   .cal-cell.today .n { background: var(--primary); color: #fff; box-shadow: 0 0 0 2px var(--gold); }
-  .cal-ev { font-size: 11.5px; font-weight: 600; padding: 2px 6px; border-radius: 6px; background: var(--cat-soft); color: var(--cat); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--cat); }
+  .cal-ev { display: block; width: 100%; box-sizing: border-box; font-size: 11.5px; font-weight: 600; line-height: 1.35; padding: 2px 6px; border-radius: 6px; background: var(--cat-soft); color: var(--cat); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--cat); }
+  .cal-ev.multi { border-left-style: double; border-left-width: 4px; }
   .cal-ev:hover { filter: brightness(.95); }
   .cal-ev small { font-weight: 500; opacity: .8; margin-right: 3px; }
   .cal-more { font-size: 11px; color: var(--text-3); font-weight: 600; padding-left: 6px; }
   @media (max-width: 640px) {
-    .cal-cell { min-height: 72px; padding: 4px 3px; }
-    .cal-ev { font-size: 10px; padding: 1px 4px; border-left-width: 2px; }
+    .cal-grid { grid-auto-rows: minmax(76px, auto); }
+    .cal-cell { min-height: 76px; padding: 4px 2px 3px; gap: 2px; }
+    .cal-ev { font-size: 10px; padding: 1px 3px 1px 4px; border-left-width: 2px; border-radius: 4px; }
     .cal-ev small { display: none; }
-    .cal-cell .n { width: 22px; height: 22px; font-size: 12px; }
+    .cal-cell .n { width: 22px; height: 22px; font-size: 12px; margin-bottom: 1px; }
+    .cal-more { font-size: 10px; padding-left: 3px; }
+    .cal-head h3 { font-size: 16px; }
+  }
+  .cal-cell.selected { background: var(--primary-soft); box-shadow: inset 0 0 0 2px var(--primary); }
+  .cal-agenda { margin-top: 12px; }
+  .cal-agenda .agenda-head { display: flex; align-items: baseline; gap: 8px; margin: 0 4px 8px; }
+  .cal-agenda .agenda-head b { font-size: 15px; font-weight: 800; }
+  .cal-agenda .agenda-head span { font-size: 12px; color: var(--text-3); }
+  .cal-agenda .agenda-head .add { margin-left: auto; border: none; background: var(--primary-soft); color: var(--primary-text); font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; }
+  .cal-agenda .empty { padding: 20px; font-size: 13px; }
+  @media (max-width: 640px) {
+    .cal-grid { grid-auto-rows: minmax(62px, auto); }
+    .cal-cell { min-height: 62px; }
+    .cal-ev { font-size: 0; padding: 0; height: 6px; border-left: 0; background: var(--cat); border-radius: 3px; margin-top: 1px; }
+    .cal-ev.multi { opacity: .75; }
+    .cal-more { font-size: 10px; }
   }
 
   .past-toggle { display: block; width: 100%; border: 1.5px dashed var(--line); background: transparent; color: var(--text-3); font-size: 13px; font-weight: 600; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 14px; transition: .15s; }
@@ -1014,20 +1033,48 @@
       <button class="nav" onclick="calMove(1)" aria-label="다음 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="cal"><div class="cal-dow">${DOW.map(d => `<div>${d}</div>`).join('')}</div><div class="cal-grid">`;
     const cells = startDow + daysIn, rows = Math.ceil(cells / 7) * 7;
+    const mobile = window.innerWidth <= 640;
+    if (mobile) {
+      const inMonth = d => d && d.slice(0, 7) === state.calMonth;
+      if (!inMonth(state.calSelected)) state.calSelected = inMonth(TODAY) ? TODAY : (Object.keys(byDate).filter(inMonth).sort()[0] || null);
+    }
     for (let i = 0; i < rows; i++) {
       const dayNum = i - startDow + 1; const dd = new Date(y, m - 1, dayNum); const date = ymd(dd); const other = dayNum < 1 || dayNum > daysIn;
       const dow = dd.getDay(); const evs = byDate[date] || [];
-      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${dow===0?'sun':dow===6?'sat':''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
-      const max = window.innerWidth <= 640 ? 2 : 3;
-      evs.slice(0, max).forEach(ev => { html += `<div class="cal-ev cat-${catOf(ev)}" title="${esc(ev.title)}" onclick="event.stopPropagation();openScheduleForm('${esc(ev.id)}','detail')">${ev.start ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
+      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${mobile && date === state.calSelected ? 'selected' : ''} ${dow===0?'sun':dow===6?'sat':''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
+      const max = mobile ? 4 : 3;
+      evs.slice(0, max).forEach(ev => { const multi = endOf(ev) !== ev.date; html += `<div class="cal-ev cat-${catOf(ev)} ${multi ? 'multi' : ''}" title="${esc(ev.title)}${multi ? ` (${md(ev.date)}~${md(endOf(ev))})` : ''}" onclick="${mobile ? '' : 'event.stopPropagation();openScheduleForm(\'' + esc(ev.id) + '\',\'detail\')'}">${ev.start && !multi ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
       if (evs.length > max) html += `<div class="cal-more">+${evs.length - max}개 더</div>`;
       html += `</div>`;
     }
-    list.innerHTML = html + `</div></div>`;
+    html += `</div></div>`;
+    if (mobile) {
+      const sel = state.calSelected; const evs = sel ? (byDate[sel] || []) : [];
+      const sd = sel ? new Date(sel + 'T00:00:00') : null;
+      html += `<div class="cal-agenda"><div class="agenda-head"><b>${sd ? `${sd.getMonth()+1}월 ${sd.getDate()}일 ${DOW[sd.getDay()]}요일` : '날짜를 선택하세요'}</b><span>${sel ? evs.length + '건' : ''}</span>${sel ? `<button type="button" class="add" onclick="openScheduleForm(null,null,'${sel}')">+ 이날 일정</button>` : ''}</div>`;
+      if (!evs.length) html += `<div class="empty">이날은 일정이 없어요</div>`;
+      else {
+        html += `<div class="card">`;
+        evs.forEach(ev => {
+          const cat = catOf(ev); const multi = endOf(ev) !== ev.date;
+          const time = ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일';
+          const sub = [multi ? `<span class="range">📅 ${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? '📍 ' + esc(ev.place) : '', ev.owner ? esc(ev.owner) : ''].filter(Boolean).join('');
+          html += `<div class="event cat-${cat}"><div class="event-bar"></div>
+            <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title">${esc(ev.title)}<span class="pill">${esc(cat)}</span></div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
+            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    list.innerHTML = html;
+    if (mobile && state.calScrollAgenda) { state.calScrollAgenda = false; const a = list.querySelector('.cal-agenda'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }
   function calMove(n) { const [y, m] = state.calMonth.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); state.calMonth = ymd(d).slice(0, 7); renderSchedule(); }
   function calToday() { state.calMonth = TODAY.slice(0, 7); renderSchedule(); }
   function calCellClick(e, date) {
+    if (window.innerWidth <= 640) { state.calSelected = date; state.calScrollAgenda = true; renderSchedule(); return; }
     if (e.target.closest('.cal-ev')) return;
     const has = state.schedule.items.some(i => i.date <= date && endOf(i) >= date && (state.scheduleTag === '전체' || catOf(i) === state.scheduleTag));
     if (!has) { openScheduleForm(null, null, date); return; }
