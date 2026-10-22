@@ -789,19 +789,55 @@
     document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === name));
     document.getElementById('fabLabel').textContent = { schedule: '일정 추가', tasks: '업무 추가', personal: '개인업무 추가' }[name];
     document.getElementById('fab').style.display = (name === 'personal' && !state.me) ? 'none' : '';
-    updateHash();
   }
   function tabClick(name) {
     if (name === 'schedule' && currentTab() === 'schedule') { toggleView(); return; }
     if (name === 'schedule') { state.view = 'list'; renderSchedule(); }
-    showTab(name); window.scrollTo({ top: 0, behavior: 'smooth' });
+    showTab(name); pushNav({ tab: name, view: state.view }); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function toggleView() {
     state.view = state.view === 'list' ? 'calendar' : 'list';
     if (state.view === 'calendar' && !state.calMonth) state.calMonth = TODAY.slice(0, 7);
-    renderSchedule(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderSchedule(); pushNav({ view: state.view }); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  function updateHash() { try { history.replaceState(null, '', '#' + currentTab() + (state.board !== 'main' ? '/' + state.board : '')); } catch (e) {} }
+
+  /* ── 뒤로가기(History API): 탭·달력·대시보드·창 열기가 각각 한 단계 ── */
+  const navNow = () => ({ tab: currentTab(), view: state.view, board: state.board, overlay: null });
+  const hashFor = n => '#' + n.tab + (n.board !== 'main' ? '/' + n.board : '');
+  function pushNav(partial) {
+    const n = { ...navNow(), ...partial, app: true };
+    try { history.pushState(n, '', hashFor(n)); } catch (e) {}
+  }
+  function updateHash() { try { const cur = history.state && history.state.app ? history.state : navNow(); history.replaceState({ ...cur, board: state.board, tab: currentTab(), view: state.view, app: true }, '', hashFor({ tab: currentTab(), board: state.board })); } catch (e) {} }
+  let exitTimer = null;
+  function closeOverlaysDirect() {
+    document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open'));
+    document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open');
+    closeBoardMenu(); document.getElementById('menu').classList.remove('open');
+  }
+  async function applyNav(n) {
+    closeOverlaysDirect();
+    if (n.board && n.board !== state.board && state.boards.find(b => b.id === n.board)) { await switchBoard(n.board, true); }
+    if (n.view && n.view !== state.view) { state.view = n.view; if (state.view === 'calendar' && !state.calMonth) state.calMonth = TODAY.slice(0, 7); renderSchedule(); }
+    if (n.tab && n.tab !== currentTab()) showTab(n.tab);
+  }
+  window.addEventListener('popstate', e => {
+    const n = e.state;
+    if (!n || n.root) {
+      closeOverlaysDirect();
+      if (exitTimer) return;                       // 안내 중 한 번 더 누름 → 브라우저가 페이지를 벗어남
+      toast('한 번 더 누르면 보드를 나갑니다');
+      exitTimer = setTimeout(() => { exitTimer = null; try { history.pushState({ ...navNow(), app: true }, '', hashFor(navNow())); } catch (err) {} }, 2500);
+      return;
+    }
+    if (n.app) applyNav(n);
+  });
+  function initHistory() {
+    try {
+      history.replaceState({ root: true }, '', location.pathname + location.search);
+      history.pushState({ ...navNow(), app: true }, '', hashFor(navNow()));
+    } catch (e) {}
+  }
   function parseHash() { const m = location.hash.replace('#', '').split('/'); return { tab: TABS.includes(m[0]) ? m[0] : 'schedule', board: m[1] || lsGet(LS.board) || 'main' }; }
   function fabClick() { const t = currentTab(); t === 'schedule' ? openScheduleForm() : openTaskForm(null, t === 'personal' ? 'personal' : 'tasks'); }
 
@@ -840,9 +876,9 @@
     if (!state.boards.find(b => b.id === state.board)) state.board = 'main';
     renderBoardTitle();
   }
-  async function switchBoard(id) {
+  async function switchBoard(id, fromHistory) {
     closeBoardMenu(); if (id === state.board) return;
-    state.board = id; lsSet(LS.board, id); renderBoardTitle(); updateHash();
+    state.board = id; lsSet(LS.board, id); renderBoardTitle(); if (fromHistory) updateHash(); else pushNav({ board: id });
     state.scheduleTag = '전체'; state.taskStatus = state.taskCat = state.taskOwner = '전체'; state.showPast = false;
     await Promise.all([refresh('schedule', true), refresh('tasks', true)]);
     window.scrollTo({ top: 0 });
@@ -1004,7 +1040,7 @@
     const pop = document.getElementById('pop'); pop.reset();
     pop.elements.id.value = id; pop.elements.date.value = ev.date || TODAY; pop.elements.endDate.value = endOf(ev) !== ev.date ? endOf(ev) : ''; pop.elements.start.value = ev.start || ''; pop.elements.end.value = ev.end || '';
     document.getElementById('popTitle').textContent = ev.title.length > 14 ? ev.title.slice(0, 14) + '…' : ev.title;
-    document.getElementById('popBg').classList.add('open'); pop.classList.add('open');
+    document.getElementById('popBg').classList.add('open'); pop.classList.add('open'); pushNav({ overlay: 'pop' });
     const r = anchor.getBoundingClientRect(); const W = 300, H = pop.offsetHeight || 230;
     let left = r.left + window.scrollX, top = r.bottom + 6 + window.scrollY;
     if (r.left + W > window.innerWidth - 12) left = window.innerWidth - W - 12 + window.scrollX;
@@ -1012,7 +1048,11 @@
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
     setTimeout(() => pop.elements.date.focus(), 50);
   }
-  function closePop() { document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open'); }
+  function closePop() {
+    const pop = document.getElementById('pop'); if (!pop.classList.contains('open')) return;
+    if (history.state && history.state.overlay === 'pop') { history.back(); return; }
+    document.getElementById('popBg').classList.remove('open'); pop.classList.remove('open');
+  }
   function shiftDate(days) { const f = document.getElementById('pop').elements; f.date.value = addDays(f.date.value || TODAY, days); if (f.endDate.value) f.endDate.value = addDays(f.endDate.value, days); }
   function clearTime() { const f = document.getElementById('pop').elements; f.start.value = ''; f.end.value = ''; }
   async function saveWhen(e) {
@@ -1157,8 +1197,12 @@
   }
 
   /* ── 시트 ── */
-  function openModal(id) { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function openModal(id) { document.getElementById(id).classList.add('open'); pushNav({ overlay: id }); }
+  function closeModal(id) {
+    const el = document.getElementById(id); if (!el.classList.contains('open')) return;
+    if (history.state && history.state.overlay === id) { history.back(); return; }   // popstate 가 닫는다
+    el.classList.remove('open');
+  }
   function fillForm(form, obj) { [...form.elements].forEach(el => { if (el.name && el.type !== 'hidden' || el.name === 'id') el.value = obj[el.name] ?? ''; }); }
   function readForm(form) { const o = {}; [...form.elements].forEach(el => { if (el.name) o[el.name] = el.value.trim(); }); return o; }
   function setBusy(form, busy) { const b = form.querySelector('button[type=submit]'); b.disabled = busy; b.textContent = busy ? '저장 중…' : '저장'; }
@@ -1253,7 +1297,7 @@
   }
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open')); closePop(); closeBoardMenu(); return; }
+    if (e.key === 'Escape') { if (history.state && history.state.overlay) { history.back(); } else { closeOverlaysDirect(); } return; }
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
@@ -1266,7 +1310,7 @@
     const h = parseHash(); state.board = h.board;
     try { await loadBoards(); } catch (e) { if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; } }
     state.me = lsGet(LS.me);
-    showTab(h.tab);
+    showTab(h.tab); if (!(history.state && history.state.app)) initHistory(); else updateHash();
     await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true)]);
   }
   if (REMOTE) {
