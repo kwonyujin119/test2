@@ -152,15 +152,15 @@ class DB:
     def user_register(self, id_, name, pin):
         if len(id_ or '') < 4: raise ApiError('USER_ID_INVALID')
         if not (name or '').strip(): raise ApiError('NAME_REQUIRED')
-        if len(pin or '') < 4: raise ApiError('PIN_TOO_SHORT')
+        if len((pin or '').strip()) < 2: raise ApiError('PIN_TOO_SHORT')
         def fn(c):
             if c.execute('select 1 from users where id=?', (id_,)).fetchone(): raise ApiError('USER_EXISTS')
             c.execute('insert into users(id, name, pin_hash, created_at) values(?,?,?,?)', (id_, name.strip(), hash_pin(pin), self.now()))
         self._run(fn); return name.strip()
 
     def user_set_pin(self, id_, new):
-        if len(new or '') < 4: raise ApiError('PIN_TOO_SHORT')
-        self._run(lambda c: c.execute('update users set pin_hash=? where id=?', (hash_pin(new), id_)))
+        if len((new or '').strip()) < 2: raise ApiError('PIN_TOO_SHORT')
+        self._run(lambda c: c.execute('update users set pin_hash=?, name=? where id=?', (hash_pin(new), new.strip(), id_)))
 
     def personal_list(self, id_):
         return self.list('personal', id_)

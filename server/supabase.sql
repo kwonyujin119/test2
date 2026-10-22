@@ -29,7 +29,7 @@ create table if not exists public.ictc_boards (
 );
 insert into public.ictc_boards (id, name) values ('main', '지휘역량강화센터') on conflict (id) do nothing;
 
--- 개인업무 사용자 (행정전화번호 = id)
+-- 개인업무 사용자 (행정전화번호 뒤 4자리 = id, 이름 = 확인값)
 create table if not exists public.ictc_users (
   id          text primary key,
   name        text not null,
@@ -171,7 +171,7 @@ begin
   perform public.ictc_require_view(p_view_pin);
   if length(coalesce(p_id, '')) < 4 then raise exception 'USER_ID_INVALID'; end if;
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
-  if length(coalesce(p_pin, '')) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
+  if length(trim(coalesce(p_pin, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
   if exists (select 1 from public.ictc_users where id = p_id) then raise exception 'USER_EXISTS'; end if;
   insert into public.ictc_users (id, name, pin_hash) values (p_id, trim(p_name), crypt(p_pin, gen_salt('bf')));
   return trim(p_name);
@@ -188,7 +188,7 @@ create or replace function public.ictc_user_set_pin(p_id text, p_old text, p_new
 returns void language plpgsql security definer set search_path = public as $$
 begin
   perform public.ictc_user_check(p_id, p_old);
-  if length(coalesce(p_new, '')) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
+  if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
   update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')) where id = p_id;
 end $$;
 
@@ -197,8 +197,8 @@ create or replace function public.ictc_user_reset_pin(p_edit_pin text, p_id text
 returns void language plpgsql security definer set search_path = public as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
-  if length(coalesce(p_new, '')) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
-  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')) where id = p_id;
+  if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
+  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')), name = p_new where id = p_id;
   if not found then raise exception 'USER_NOT_FOUND'; end if;
 end $$;
 
@@ -231,7 +231,7 @@ end $$;
 -- ---------- 관리 ----------
 -- 편집 PIN 변경: select ictc_set_pin('기존편집PIN', '새편집PIN');
 -- 조회 PIN 변경: select ictc_set_view_pin('편집PIN', '새조회PIN');   ('' 이면 누구나 조회)
--- 개인 비밀번호 재설정: select ictc_user_reset_pin('편집PIN', '행정전화번호', '새비밀번호');
+-- 개인업무 이름 정정: select ictc_user_reset_pin('편집PIN', '뒤4자리', '바른이름');  (개인업무는 뒤4자리 + 이름으로 로그인)
 create or replace function public.ictc_set_pin(p_old text, p_new text)
 returns void language plpgsql security definer set search_path = public as $$
 begin

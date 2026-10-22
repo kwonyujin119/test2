@@ -424,14 +424,14 @@
   <section id="personal">
     <div class="personal-login" id="personalLogin">
       <form class="login-card" id="loginForm" onsubmit="submitLogin(event)">
-        <h2 id="loginTitle">개인업무 로그인</h2>
-        <p id="loginDesc">행정전화번호와 본인 비밀번호로 로그인하면 폰·PC 어디서나 내 업무를 볼 수 있어요.</p>
-        <div class="field"><label>행정전화번호 (아이디)</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 032-870-1234" required></div>
-        <div class="field" id="loginNameField" style="display:none"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동"></div>
-        <div class="field"><label>비밀번호 (4자리 이상)</label><input name="upin" type="password" inputmode="numeric" autocomplete="current-password" minlength="4" required></div>
+        <h2 id="loginTitle">개인업무</h2>
+        <p id="loginDesc">행정전화번호 뒤 4자리와 이름만 입력하면 됩니다. 처음이면 자동으로 등록되고, 폰·PC 어디서나 같은 정보로 내 업무를 볼 수 있어요.</p>
+        <div class="row">
+          <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234 (전체 번호를 넣어도 됨)" required></div>
+          <div class="field"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동" required></div>
+        </div>
         <div class="err" id="loginErr"></div>
-        <button type="submit" class="btn primary" id="loginSubmit" style="width:100%">로그인</button>
-        <div class="switch" id="loginSwitch"></div>
+        <button type="submit" class="btn primary" id="loginSubmit" style="width:100%">들어가기</button>
       </form>
     </div>
     <aside class="side" id="personalSide" style="display:none">
@@ -461,7 +461,6 @@
   <hr>
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
-  <button id="menuUserPin" style="display:none" onclick="changeUserPin()">🔒&nbsp; 개인 비밀번호 변경</button>
   <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
   <button id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
 </div>
@@ -571,7 +570,7 @@
   const DEFAULT_BOARD = { id: 'main', name: '지휘역량강화센터' };
   const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, me: null,
     view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체',
-    source: {}, lastSync: null, loginMode: 'login' };
+    source: {}, lastSync: null };
 
   const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -582,7 +581,7 @@
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]}) ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
-  const normId = s => (s || '').replace(/\D/g, '');
+  const normId = s => (s || '').replace(/\D/g, '').slice(-4);
   const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
 
   let toastTimer;
@@ -593,8 +592,8 @@
 
   /* ── 오류 코드 → 메시지 ── */
   const ERR = { VIEW_PIN_REQUIRED: '조회 PIN이 필요합니다', VIEW_PIN_INVALID: '조회 PIN이 올바르지 않습니다', PIN_INVALID: '편집 PIN이 올바르지 않습니다',
-    USER_NOT_FOUND: '등록되지 않은 번호입니다. 처음이면 등록하세요', USER_PIN_INVALID: '비밀번호가 올바르지 않습니다', USER_EXISTS: '이미 등록된 번호입니다. 로그인하세요',
-    USER_ID_INVALID: '전화번호를 확인하세요', PIN_TOO_SHORT: '비밀번호는 4자리 이상', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
+    USER_NOT_FOUND: '등록되지 않은 번호입니다', USER_PIN_INVALID: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요', USER_EXISTS: '이미 등록된 번호입니다',
+    USER_ID_INVALID: '뒤 4자리를 확인하세요', PIN_TOO_SHORT: '이름은 2자 이상', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류' };
   class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
   async function throwApi(res) {
@@ -734,7 +733,6 @@
     const m = document.getElementById('menu'); const r = e.currentTarget.getBoundingClientRect();
     m.style.top = (r.bottom + 6) + 'px'; m.style.right = (window.innerWidth - r.right) + 'px';
     document.getElementById('menuBoardDelete').style.display = state.board === 'main' ? 'none' : '';
-    document.getElementById('menuUserPin').style.display = state.me ? '' : 'none';
     document.getElementById('menuLogout').style.display = state.me ? '' : 'none';
     document.getElementById('menuImport').style.display = currentTab() === 'personal' ? 'none' : '';
     m.classList.toggle('open');
@@ -974,7 +972,7 @@
     document.getElementById('personalSide').style.display = loggedIn ? '' : 'none';
     document.getElementById('personalList').style.display = loggedIn ? '' : 'none';
     document.getElementById('fab').style.display = (currentTab() === 'personal' && !loggedIn) ? 'none' : '';
-    if (!loggedIn) { renderLoginForm(); return; }
+    if (!loggedIn) return;
     const data = state.personal || { items: [] }, list = document.getElementById('personalList');
     const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
@@ -989,38 +987,24 @@
     const items = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)));
     list.innerHTML = items.length ? taskCards(items, 'personal') : '<div class="empty" style="grid-column:1/-1"><div class="ico">📝</div>아직 개인업무가 없어요<br>버튼을 눌러 첫 업무를 추가해 보세요</div>';
   }
-  function renderLoginForm() {
-    const reg = state.loginMode === 'register';
-    document.getElementById('loginTitle').textContent = reg ? '개인업무 처음 등록' : '개인업무 로그인';
-    document.getElementById('loginDesc').textContent = reg ? '행정전화번호를 아이디로, 본인만 아는 비밀번호를 정하세요. 이후 어떤 기기에서도 같은 정보로 로그인할 수 있어요.' : '행정전화번호와 본인 비밀번호로 로그인하면 폰·PC 어디서나 내 업무를 볼 수 있어요.';
-    document.getElementById('loginNameField').style.display = reg ? '' : 'none';
-    document.getElementById('loginForm').elements.uname.required = reg;
-    document.getElementById('loginSubmit').textContent = reg ? '등록하고 시작' : '로그인';
-    document.getElementById('loginSwitch').innerHTML = reg ? '이미 등록했나요? <button type="button" onclick="setLoginMode(\'login\')">로그인</button>' : '처음이세요? <button type="button" onclick="setLoginMode(\'register\')">등록하기</button>';
-  }
-  function setLoginMode(m) { state.loginMode = m; document.getElementById('loginErr').textContent = ''; renderLoginForm(); }
+  function renderLoginForm() {}
   async function submitLogin(e) {
     e.preventDefault();
-    const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), upin = f.elements.upin.value.trim(), name = (f.elements.uname.value || '').trim();
+    const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), name = (f.elements.uname.value || '').trim();
     const err = document.getElementById('loginErr'); err.textContent = '';
-    if (id.length < 4) { err.textContent = '전화번호를 확인하세요'; return; }
+    if (id.length !== 4) { err.textContent = '뒤 4자리 숫자를 입력하세요'; return; }
+    if (name.length < 2) { err.textContent = '이름을 2자 이상 입력하세요'; return; }
     const btn = document.getElementById('loginSubmit'); btn.disabled = true;
     try {
-      const nm = state.loginMode === 'register' ? await api.userRegister(id, name, upin) : await api.userLogin(id, upin);
-      state.me = { id, pin: upin, name: nm }; lsSet(LS.me, state.me); f.reset(); state.loginMode = 'login';
-      await refresh('personal'); toast(`${nm}님, 환영합니다`); showTab('personal');
+      let nm, isNew = false;
+      try { nm = await api.userLogin(id, name); }
+      catch (ex) { if (ex.code === 'USER_NOT_FOUND') { nm = await api.userRegister(id, name, name); isNew = true; } else throw ex; }
+      state.me = { id, pin: name, name: nm }; lsSet(LS.me, state.me); f.reset();
+      await refresh('personal'); toast(isNew ? `${nm}님, 등록했어요` : `${nm}님, 환영합니다`); showTab('personal');
     } catch (ex) { err.textContent = ex.message; }
     btn.disabled = false;
   }
-  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); state.loginMode = 'login'; document.getElementById('loginErr').textContent = ''; renderPersonal(); if (!silent) toast('로그아웃했어요'); }
-  async function changeUserPin() {
-    if (!state.me) return;
-    const old = prompt('현재 비밀번호'); if (old == null) return;
-    const nw = prompt('새 비밀번호 (4자리 이상)'); if (nw == null) return;
-    try { await api.userSetPin(state.me.id, old.trim(), nw.trim()); state.me.pin = nw.trim(); lsSet(LS.me, state.me); toast('비밀번호를 바꿨어요'); }
-    catch (e) { toast(e.message); }
-  }
-
+  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); document.getElementById('loginErr').textContent = ''; renderPersonal(); if (!silent) toast('로그아웃했어요'); }
   /* ── 저장 계층 ── */
   async function saveItem(kind, item) {
     try {
