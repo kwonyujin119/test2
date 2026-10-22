@@ -7,7 +7,7 @@ SIGS={}
 for m in re.finditer(r'create or replace function public\.(ictc_\w+)\((.*?)\)\s*returns', sql, re.S):
     params=[p.strip().split()[0] for p in m.group(2).split(',') if p.strip()]
     SIGS[m.group(1)]=params
-EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}
+EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}; TRASH=[]
 def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00','Z')
 class H(BaseHTTPRequestHandler):
     def log_message(self,*a): pass
@@ -36,12 +36,20 @@ class H(BaseHTTPRequestHandler):
         try:
             if fn=='ictc_list':
                 view(g('p_pin') or ''); board=g('p_board') or 'main'
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
                 rows=[{'data':v['data'],'updated_at':v['u']} for v in ITEMS.values() if v['kind']==g('p_kind') and v['board']==board]
                 return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
             if fn=='ictc_boards': view(g('p_pin') or ''); return self._send(200,json.dumps(BOARDS).encode())
             if fn=='ictc_save':
-                view(g('p_pin') or ''); it=g('p_item'); ITEMS[it['id']]={'kind':g('p_kind'),'board':g('p_board') or 'main','data':it,'u':now()}; return self._send(204)
-            if fn=='ictc_delete': view(g('p_pin') or ''); ITEMS.pop(g('p_id'),None); return self._send(204)
+                view(g('p_pin') or ''); it=g('p_item')
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
+                if not it.get('id'): raise ValueError('ID_REQUIRED')
+                ITEMS[it['id']]={'kind':g('p_kind'),'board':g('p_board') or 'main','data':it,'u':now()}; return self._send(204)
+            if fn=='ictc_delete':
+                view(g('p_pin') or '')
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
+                if g('p_id') in ITEMS: TRASH.append({'seq':len(TRASH)+1,'reason':'delete','deleted_at':now(),**ITEMS.pop(g('p_id'))})
+                return self._send(204)
             if fn=='ictc_replace':
                 edit(g('p_pin')); board=g('p_board') or 'main'
                 for k in [k for k,v in ITEMS.items() if v['kind']==g('p_kind') and v['board']==board]: ITEMS.pop(k)
@@ -73,6 +81,13 @@ class H(BaseHTTPRequestHandler):
             if fn=='ictc_users_list':
                 edit(g('p_edit_pin')); rows=[{'id':i,'name':u['name'],'created_at':now(),'item_count':sum(1 for v in ITEMS.values() if v['kind']=='personal' and v['board']==i)} for i,u in USERS.items()]
                 return self._send(200,json.dumps(rows).encode())
+            if fn=='ictc_deleted_list':
+                edit(g('p_edit_pin')); rows=[{'seq':t['seq'],'id':t['data']['id'],'kind':t['kind'],'board':t['board'],'data':t['data'],'updated_at':t['u'],'deleted_at':t['deleted_at'],'reason':t['reason']} for t in reversed(TRASH) if (not g('p_kind') or t['kind']==g('p_kind')) and (not g('p_board') or t['board']==g('p_board'))]
+                return self._send(200,json.dumps(rows).encode())
+            if fn=='ictc_restore':
+                edit(g('p_edit_pin')); t=next((t for t in TRASH if t['seq']==g('p_seq')),None)
+                if not t: raise ValueError('DELETED_NOT_FOUND')
+                TRASH.remove(t); ITEMS[t['data']['id']]={'kind':t['kind'],'board':t['board'],'data':t['data'],'u':now()}; return self._send(204)
             if fn=='ictc_user_delete':
                 edit(g('p_edit_pin'))
                 if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')

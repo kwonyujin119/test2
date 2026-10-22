@@ -1,5 +1,5 @@
 -- ============================================================
--- 지휘역량강화센터 일정·업무 보드 - Supabase 설정 (v2)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v3: 삭제 항목 보관 추가)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -24,6 +24,21 @@ alter table public.ictc_items add constraint ictc_items_kind_check check (kind i
 drop index if exists public.ictc_items_kind_board_idx;
 create index if not exists ictc_items_kind_board_updated_idx on public.ictc_items (kind, board, updated_at desc);
 
+
+-- 삭제 항목 보관(휴지통). 조회 PIN 으로 누구나 삭제할 수 있으므로 지운 항목의 사본을 30일 보관한다.
+-- 삭제·JSON 가져오기(replace)·대시보드 삭제·개인업무 삭제 때 자동으로 쌓이고, 삭제가 일어날 때마다 30일 지난 행을 정리한다(cron 불필요).
+-- 복구: select * from ictc_deleted_list('편집PIN');  →  select ictc_restore('편집PIN', seq);
+create table if not exists public.ictc_items_deleted (
+  seq         bigserial primary key,
+  id          text not null,
+  kind        text not null,
+  board       text not null,
+  data        jsonb not null,
+  updated_at  timestamptz not null,
+  deleted_at  timestamptz not null default now(),
+  reason      text not null default 'delete'
+);
+create index if not exists ictc_items_deleted_deleted_at_idx on public.ictc_items_deleted (deleted_at);
 
 -- 대시보드 목록
 create table if not exists public.ictc_boards (
@@ -53,6 +68,7 @@ alter table public.ictc_items    enable row level security;
 alter table public.ictc_settings enable row level security;
 alter table public.ictc_boards   enable row level security;
 alter table public.ictc_users    enable row level security;
+alter table public.ictc_items_deleted enable row level security;
 drop policy if exists "ictc public read" on public.ictc_items;
 
 -- 이전 버전 함수 정리 (시그니처 변경)
@@ -96,6 +112,17 @@ begin
   end if;
 end $$;
 
+-- ---------- 삭제 전 사본 보관 (내부 전용) ----------
+-- p_id 가 null 이면 kind·board 전체. 30일 지난 보관 행은 이때 함께 정리한다.
+create or replace function public.ictc_trash(p_kind text, p_board text, p_id text, p_reason text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  insert into public.ictc_items_deleted (id, kind, board, data, updated_at, reason)
+  select i.id, i.kind, i.board, i.data, i.updated_at, coalesce(p_reason, 'delete') from public.ictc_items i
+   where i.kind = p_kind and i.board = p_board and (p_id is null or i.id = p_id);
+  delete from public.ictc_items_deleted where deleted_at < now() - interval '30 days';
+end $$;
+
 -- ---------- 공용 항목 ----------
 create or replace function public.ictc_list(p_pin text, p_kind text, p_board text default 'main')
 returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
@@ -115,13 +142,16 @@ begin
   if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', p_kind, coalesce(p_board, 'main'), p_item, now())
-  on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now();
+  on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now()
+  where public.ictc_items.kind in ('schedule', 'tasks');   -- 같은 id 의 개인업무 행은 덮어쓰지 않음
 end $$;
 
 create or replace function public.ictc_delete(p_pin text, p_kind text, p_id text, p_board text default 'main')
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
+  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), p_id, 'delete');
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
 end $$;
 
@@ -130,6 +160,7 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), null, 'replace');
   delete from public.ictc_items where kind = p_kind and board = coalesce(p_board, 'main');
   insert into public.ictc_items (id, kind, board, data, updated_at)
   select coalesce(x->>'id', gen_random_uuid()::text), p_kind, coalesce(p_board, 'main'), x, now()
@@ -166,6 +197,8 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_pin);
   if p_id = 'main' then raise exception 'BOARD_PROTECTED'; end if;
+  perform public.ictc_trash('schedule', p_id, null, 'board_delete');
+  perform public.ictc_trash('tasks', p_id, null, 'board_delete');
   delete from public.ictc_items where board = p_id and kind in ('schedule', 'tasks');
   delete from public.ictc_boards where id = p_id;
 end $$;
@@ -208,7 +241,8 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_user_check(p_id, p_old);
   if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
-  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')) where id = p_id;
+  -- 개인업무는 이름이 곧 확인값이므로 이름도 함께 바꾼다 (로컬 서버 user_set_pin 과 동일)
+  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')), name = trim(p_new) where id = p_id;
 end $$;
 
 -- 개인업무 이름 정정 (개인업무는 뒤4자리 + 이름으로 로그인하므로 이름이 곧 확인값). 담당자가 편집 PIN으로 실행
@@ -244,6 +278,7 @@ create or replace function public.ictc_personal_delete(p_id text, p_pin text, p_
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
+  perform public.ictc_trash('personal', p_id, p_item_id, 'personal_delete');
   delete from public.ictc_items where id = p_item_id and kind = 'personal' and board = p_id;
 end $$;
 
@@ -262,9 +297,38 @@ create or replace function public.ictc_user_delete(p_edit_pin text, p_id text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
+  perform public.ictc_trash('personal', p_id, null, 'user_delete');
   delete from public.ictc_items where kind = 'personal' and board = p_id;
   delete from public.ictc_users where id = p_id;
   if not found then raise exception 'USER_NOT_FOUND'; end if;
+end $$;
+
+-- ---------- 휴지통 (편집 PIN) ----------
+-- 최근 삭제 항목 보기: select seq, kind, board, deleted_at, reason, data->>'title' from ictc_deleted_list('편집PIN');
+--                    select * from ictc_deleted_list('편집PIN', 'schedule', 'main');   (종류·대시보드로 좁히기)
+-- 복구:              select ictc_restore('편집PIN', 123);   (seq 값. 같은 id 가 다시 있으면 보관본으로 되돌림)
+create or replace function public.ictc_deleted_list(p_edit_pin text, p_kind text default null, p_board text default null)
+returns table (seq bigint, id text, kind text, board text, data jsonb, updated_at timestamptz, deleted_at timestamptz, reason text)
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  return query select d.seq, d.id, d.kind, d.board, d.data, d.updated_at, d.deleted_at, d.reason from public.ictc_items_deleted d
+    where (p_kind is null or d.kind = p_kind) and (p_board is null or d.board = p_board)
+    order by d.deleted_at desc, d.seq desc limit 500;
+end $$;
+
+create or replace function public.ictc_restore(p_edit_pin text, p_seq bigint)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare d record;
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  select * into d from public.ictc_items_deleted where seq = p_seq;
+  if not found then raise exception 'DELETED_NOT_FOUND'; end if;
+  if d.kind = 'personal' and not exists (select 1 from public.ictc_users where id = d.board) then raise exception 'USER_NOT_FOUND'; end if;
+  insert into public.ictc_items (id, kind, board, data, updated_at)
+  values (d.id, d.kind, d.board, d.data, now())
+  on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now();
+  delete from public.ictc_items_deleted where seq = p_seq;
 end $$;
 
 -- ---------- 관리 ----------
@@ -293,7 +357,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

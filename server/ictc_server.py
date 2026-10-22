@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 r"""
-지휘역량강화센터 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 사용)
+SAIL:41 (지휘역량강화센터 일정·업무 보드) 로컬 서버 (Python 3.8+ 표준 라이브러리만 사용)
 
 프로그램 폴더 (압축 푼 위치, 어디든 상관없음):
   ictc_server.py   이 파일
@@ -9,6 +9,7 @@ r"""
 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
   ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
+                   삭제한 항목은 DB 안의 items_deleted 표에 30일 보관 (/api/deleted_list, /api/restore, 편집 PIN)
   backups\         기동할 때마다 날짜별 사본 자동 생성 (최근 7개 보관)
   pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
   view_pin.txt     조회 PIN (처음 실행 시 0000 으로 생성). 내용을 비우면 누구나 조회 가능
@@ -25,8 +26,9 @@ from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')
-VERSION = '2.1'
+VERSION = '3.0'
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
+TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
 
 
@@ -120,6 +122,9 @@ class DB:
         con.execute('create table if not exists boards (id text primary key, name text not null, created_at text not null)')
         con.execute("insert or ignore into boards(id, name, created_at) values('main', '지휘역량강화센터', ?)", (self.now(),))
         con.execute('create table if not exists users (id text primary key, name text not null, pin_hash text not null, created_at text not null)')
+        con.execute('''create table if not exists items_deleted (seq integer primary key autoincrement, id text not null, kind text not null,
+            board text not null, data text not null, updated_at text not null, deleted_at text not null, reason text not null default 'delete')''')
+        con.execute('create index if not exists items_deleted_deleted_at on items_deleted(deleted_at)')
         con.commit(); con.close()
 
     def _con(self):
@@ -144,15 +149,28 @@ class DB:
 
     def save(self, kind, board, item):
         self._run(lambda c: c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
-            on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at''',
-                                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now())))
+            on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at
+            where items.kind in ('schedule','tasks')''',
+                                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now())))   # 같은 id 의 개인업무 행은 덮어쓰지 않음
 
-    def delete(self, kind, board, id_):
-        self._run(lambda c: c.execute('delete from items where id=? and kind=? and board=?', (id_, kind, board)))
+    def _trash(self, c, kind, board, id_, reason):
+        """삭제 전 사본을 items_deleted 에 남기고 TRASH_DAYS 지난 보관 행을 정리 (supabase.sql ictc_trash 와 동일). id_ 가 None 이면 kind·board 전체"""
+        now = self.now()
+        c.execute('''insert into items_deleted(id, kind, board, data, updated_at, deleted_at, reason)
+            select id, kind, board, data, updated_at, ?, ? from items where kind=? and board=? and (? is null or id=?)''', (now, reason, kind, board, id_, id_))
+        cutoff = datetime.fromtimestamp(time.time() - TRASH_DAYS * 86400, timezone.utc).isoformat().replace('+00:00', 'Z')
+        c.execute('delete from items_deleted where deleted_at < ?', (cutoff,))
+
+    def delete(self, kind, board, id_, reason='delete'):
+        def fn(c):
+            self._trash(c, kind, board, id_, reason)
+            c.execute('delete from items where id=? and kind=? and board=?', (id_, kind, board))
+        self._run(fn)
 
     def replace(self, kind, board, items):
         now = self.now()
         def fn(c):
+            self._trash(c, kind, board, None, 'replace')
             c.execute('delete from items where kind=? and board=?', (kind, board))
             for x in items:
                 x.setdefault('id', f'{int(time.time()*1000):x}{os.urandom(3).hex()}')
@@ -178,6 +196,7 @@ class DB:
     def board_delete(self, id_):
         if id_ == 'main': raise ApiError('BOARD_PROTECTED')
         def fn(c):
+            for k in KINDS: self._trash(c, k, id_, None, 'board_delete')
             c.execute("delete from items where board=? and kind in ('schedule','tasks')", (id_,))
             c.execute('delete from boards where id=?', (id_,))
         self._run(fn)
@@ -194,6 +213,7 @@ class DB:
 
     def user_delete(self, id_):
         def fn(c):
+            self._trash(c, 'personal', id_, None, 'user_delete')
             c.execute("delete from items where kind='personal' and board=?", (id_,))
             if c.execute('delete from users where id=?', (id_,)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
         self._run(fn)
@@ -224,7 +244,24 @@ class DB:
         self.save('personal', id_, item)
 
     def personal_delete(self, id_, item_id):
-        self.delete('personal', id_, item_id)
+        self.delete('personal', id_, item_id, 'personal_delete')
+
+    # ----- 휴지통 (편집 PIN) -----
+    def deleted_list(self, kind=None, board=None):
+        rows = self._run(lambda c: c.execute('''select seq, id, kind, board, data, updated_at, deleted_at, reason from items_deleted
+            where (? is null or kind=?) and (? is null or board=?) order by deleted_at desc, seq desc limit 500''', (kind, kind, board, board)).fetchall())
+        return [{'seq': s, 'id': i, 'kind': k, 'board': b, 'data': json.loads(d), 'updated_at': u, 'deleted_at': dl, 'reason': r} for s, i, k, b, d, u, dl, r in rows]
+
+    def restore(self, seq):
+        def fn(c):
+            row = c.execute('select id, kind, board, data from items_deleted where seq=?', (seq,)).fetchone()
+            if not row: raise ApiError('DELETED_NOT_FOUND', 404)
+            id_, kind, board, data = row
+            if kind == 'personal' and not c.execute('select 1 from users where id=?', (board,)).fetchone(): raise ApiError('USER_NOT_FOUND', 404)
+            c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
+                on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at''', (id_, kind, board, data, self.now()))
+            c.execute('delete from items_deleted where seq=?', (seq,))
+        self._run(fn)
 
 
 def make_handler(db, static_dir, pin_path, poll):
@@ -345,6 +382,13 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.require_edit(b.get('pin')); return self._json(200, db.users_list())
                 if fn == 'user_delete':
                     self.require_edit(b.get('pin')); db.user_delete(str(b.get('id', ''))); return self._json(204)
+                if fn == 'deleted_list':
+                    self.require_edit(b.get('pin')); return self._json(200, db.deleted_list(b.get('kind') or None, b.get('board') or None))
+                if fn == 'restore':
+                    self.require_edit(b.get('pin'))
+                    try: seq = int(b.get('seq'))
+                    except (TypeError, ValueError): raise ApiError('DELETED_NOT_FOUND', 404)
+                    db.restore(seq); return self._json(204)
                 if fn in ('personal_list', 'personal_save', 'personal_delete'):
                     uid = str(b.get('id', '')); self.user_check(uid, str(b.get('user_pin', '')))
                     if fn == 'personal_list': return self._json(200, db.personal_list(uid))
@@ -381,7 +425,7 @@ def lan_ips():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='일정·업무 보드 로컬 서버')
+    ap = argparse.ArgumentParser(description='SAIL:41 일정·업무 보드 로컬 서버')
     ap.add_argument('--port', type=int, default=8080)
     ap.add_argument('--db', default=os.path.join(HERE, 'ictc.db'))
     ap.add_argument('--pin-file', default=os.path.join(HERE, 'pin.txt'))
@@ -403,7 +447,7 @@ def main():
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
     print('=' * 56)
-    print(f' 지휘역량강화센터 일정·업무 보드 서버 v{VERSION} 실행 중')
+    print(f' SAIL:41 (지휘역량강화센터 일정·업무 보드) 서버 v{VERSION} 실행 중')
     print(f'   화면 폴더 : {static}')
     print(f'   DB 파일   : {a.db}')
     print(f'   편집 PIN  : {a.pin_file}')

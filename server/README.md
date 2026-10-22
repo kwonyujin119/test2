@@ -1,4 +1,4 @@
-# 지휘역량강화센터 보드 로컬 서버 (D드라이브 운영용, 대안 모드)
+# SAIL:41 로컬 서버 (D드라이브 운영용, 대안 모드)
 
 데이터를 외부 클라우드 없이 **본인 PC의 `D:\일정표,주요업무\` 폴더(SQLite 파일)** 에 저장하고,
 같은 사무실 네트워크의 팀원이 브라우저로 접속해 보는 방식입니다.
@@ -37,7 +37,7 @@
 
 - PC를 켜고 `start.bat` 실행 → 검은 창을 그대로 둡니다. 창을 닫으면 서버가 꺼집니다.
 - 본인: http://localhost:8080 / 팀원: 공유받은 주소
-- 직원은 처음 접속 시 조회 PIN을 한 번 입력(기기에 저장). 추가·수정·삭제는 편집 PIN 입력 후 가능. 개인업무는 뒤 4자리 + 이름. 화면은 15초마다 자동 갱신.
+- 직원은 처음 접속 시 조회 PIN을 한 번 입력(기기에 저장). 조회 PIN 으로 일정·주요업무 추가·수정·삭제까지 가능. 편집 PIN 은 대시보드·사용자 관리·JSON 가져오기 등 관리 작업에만 필요. 개인업무는 뒤 4자리 + 이름. 화면은 15초마다 자동 갱신.
 - 사내 서버로 완전히 옮길 때는 GitHub 의 `config.js` 두 값을 비워 Pages 화면을 미리보기 모드로 돌리고, 그 화면 상단 "사내 서버 주소 연결"에 팀원 접속 주소를 넣어 두면 버튼 한 번으로 서버 화면으로 이동합니다. 이전 데이터는 Supabase 화면에서 ⋮ → JSON 내보내기 후 서버 화면에서 JSON 가져오기로 옮깁니다(대시보드별로 일정·업무 각각).
 
 ### 부팅 시 자동 실행 (선택)
@@ -48,7 +48,23 @@
 ## 백업
 
 `D:\일정표,주요업무\ictc.db` 파일 하나가 전체 데이터(일정·업무·대시보드·개인업무 사용자)입니다. 주기적으로 복사해 두면 됩니다.
+서버를 켤 때마다 `D:\일정표,주요업무\backups\ictc-YYYYMMDD.db` 사본이 자동으로 생기고 최근 7개를 보관합니다.
 웹앱 ⋮ 메뉴의 **JSON 내보내기** 로도 백업할 수 있습니다.
+
+### 휴지통 (잘못 지운 항목 복구)
+
+조회 PIN 을 아는 직원 누구나 일정·주요업무를 지울 수 있으므로, 지운 항목은 DB 안의 `items_deleted` 표에 **30일** 보관됩니다
+(삭제 · JSON 가져오기로 덮어쓴 항목 · 대시보드 삭제 · 개인업무 삭제 모두 포함. 30일이 지나면 다음 삭제 때 자동 정리).
+아직 화면 메뉴는 없고, 서버 PC 에서 API 로 복구합니다. PowerShell 에서(편집 PIN 1234 예시):
+
+```powershell
+# 최근 삭제 목록 (seq, kind, board, data.title, deleted_at)
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/deleted_list -ContentType 'application/json' -Body '{"pin":"1234"}' | Select-Object seq,kind,board,deleted_at,reason,@{n='title';e={$_.data.title}}
+# seq 번호로 복구
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/restore -ContentType 'application/json' -Body '{"pin":"1234","seq":12}'
+```
+
+Supabase 모드에서는 SQL Editor 에서 `select * from ictc_deleted_list('편집PIN');` → `select ictc_restore('편집PIN', seq);` 로 같은 일을 합니다.
 
 ## 한계
 

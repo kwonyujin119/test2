@@ -54,6 +54,9 @@ jobs:
           echo "  2) could not translate host name / Network is unreachable → Direct connection 주소를 씀. Connect → Session pooler 주소로 교체"
           echo "  3) Tenant or user not found → 주소의 postgres.<ref> 부분이 다른 프로젝트. Connect 창에서 다시 복사"
           echo "  4) syntax error → server/supabase.sql 문법 오류. 데이터·서버 에이전트에 보고"
+          echo "  5) cannot change return type / name of input parameter → 함수 시그니처가 바뀌었는데 drop function if exists 가 없음. 데이터·서버 에이전트에 보고"
+          echo "  6) timeout expired / Connection timed out → Supabase 프로젝트가 일시 중지(Paused)됐거나 네트워크 지연. 대시보드에서 Restore 후 Actions → Run workflow 로 재실행"
+          echo "실패해도 이전 함수는 그대로 남아 있어 보드는 계속 동작합니다. 원인을 고친 뒤 Actions → Apply Supabase SQL → Run workflow 로 다시 적용하세요."
 
       - name: 적용 결과 확인
         env:
@@ -61,3 +64,5 @@ jobs:
         run: |
           psql "$PGURL" -At -c "select 'functions: ' || count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%';"
           psql "$PGURL" -At -c "select 'boards: ' || count(*) from public.ictc_boards;"
+          psql "$PGURL" -At -c "select 'items: ' || count(*) || '  deleted(trash, 30d): ' || (select count(*) from public.ictc_items_deleted) from public.ictc_items;"
+          psql "$PGURL" -At -c "select 'rls on all ictc tables: ' || bool_and(c.relrowsecurity) || ', policies(must be 0): ' || (select count(*) from pg_policies where schemaname='public' and tablename like 'ictc%') from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname like 'ictc%' and c.relkind='r';"

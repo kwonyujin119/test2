@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title 지휘역량강화센터 일정·업무 보드 서버
+title SAIL:41 일정·업무 보드 서버
 set "DATA_DIR=D:\일정표,주요업무"
 set "PY="
 python --version >nul 2>nul && set "PY=python"
