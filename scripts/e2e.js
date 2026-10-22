@@ -21,6 +21,13 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.schedSaved = await P.locator('.event-title', { hasText: 'E2E 일정' }).count();
   await P.locator('.event', { hasText: 'E2E 일정' }).locator('.event-time').click(); await P.waitForTimeout(250); r.popOpen = await P.locator('#pop.open').count();
   await P.fill('#pop [name=start]', '15:00'); await P.click('#pop button[type=submit]'); await P.waitForTimeout(600); r.timeChanged = await P.locator('.event-time', { hasText: '15:00' }).count();
+  // 다일 일정: 시작만 입력하면 종료가 자동으로 같아지는지, 종료를 +2일로 하면 3일에 걸쳐 표시되는지
+  await P.keyboard.press('n'); await P.waitForTimeout(300);
+  await P.fill('#scheduleForm [name=title]', 'E2E 출장'); await P.click('#catPicker button.cat-출장');
+  await P.fill('#scheduleForm [name=date]', '2026-12-07'); await P.locator('#scheduleForm [name=date]').dispatchEvent('change');
+  r.endAuto = await P.locator('#scheduleForm [name=endDate]').inputValue();
+  await P.fill('#scheduleForm [name=endDate]', '2026-12-09'); await P.click('#scheduleForm button[type=submit]'); await P.waitForTimeout(700);
+  r.multiDays = await P.locator('.event', { hasText: 'E2E 출장' }).count(); r.dayIdx = await P.locator('.event', { hasText: 'E2E 출장' }).locator('.dayidx').allInnerTexts();
   await P.click('.segment [data-tab=schedule]'); await P.waitForTimeout(300);
   r.calendar = await P.locator('.cal-grid').count(); r.calEvent = await P.locator('.cal-ev', { hasText: 'E2E 일정' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-calendar.png` });
@@ -33,6 +40,10 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   await P.keyboard.press('n'); await P.waitForTimeout(300); await P.fill('#taskForm [name=title]', 'E2E 업무'); await P.click('#taskCatPicker button.tcat-예산'); await P.fill('#taskForm [name=owner]', '홍길동');
   await P.click('#taskForm button[type=submit]'); await P.waitForTimeout(700);
   r.taskSaved = await P.locator('#taskList .task.tcat-예산 .task-title', { hasText: 'E2E 업무' }).count();
+  await P.locator('#taskList .task', { hasText: 'E2E 업무' }).locator('.done-btn').click(); await P.waitForTimeout(600);
+  r.doneOneClick = await P.locator('#taskList .task.done', { hasText: 'E2E 업무' }).count();
+  await P.locator('#taskList .task', { hasText: 'E2E 업무' }).locator('.status').click(); await P.waitForTimeout(300);
+  r.badgeOpensForm = await P.locator('#taskModal.open').count(); await P.keyboard.press('Escape'); await P.waitForTimeout(200);
   r.ownerChip = await P.locator('#tasksOwnerFilters .chip', { hasText: '홍길동' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-tasks.png` });
   await P.click('.segment [data-tab=personal]'); await P.waitForTimeout(300);
@@ -56,7 +67,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1 };
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1 };
   if (shared) Object.assign(expect, { lock: 1, otherDeviceSees: 1, wrongName: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));

@@ -133,6 +133,13 @@
   .event-time { width: 78px; flex-shrink: 0; padding: 14px 8px 14px 12px; font-size: 13px; font-weight: 600; color: var(--text-2); line-height: 1.45; font-variant-numeric: tabular-nums; border: none; background: transparent; text-align: left; border-radius: 10px; margin: 4px 0 4px 2px; transition: background .15s; }
   .event-time:hover { background: var(--card-2); color: var(--primary-text); }
   .event-time small { display: block; color: var(--text-3); font-weight: 500; }
+  .event-time .dayidx { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; color: var(--gold-text, #8A6A00); background: var(--gold-soft, #FFF6D1); border-radius: 999px; padding: 1px 6px; }
+  .event-sub .range { font-weight: 600; color: var(--text-2); }
+  .done-btn { margin-left: auto; border: 1.5px solid var(--green); background: transparent; color: var(--green); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; transition: .15s; }
+  .done-btn:hover { background: var(--green); color: #fff; }
+  .done-btn.undo { border-color: var(--line); color: var(--text-3); }
+  .done-btn.undo:hover { background: var(--card-2); color: var(--text); }
+  .status { cursor: pointer; }
   .event-time.allday { color: var(--text-3); }
   .event-main { flex: 1; min-width: 0; padding: 14px 14px 14px 6px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; border-radius: 10px; margin: 4px 4px 4px 0; transition: background .15s; }
   .event-main:hover { background: var(--card-2); }
@@ -517,10 +524,13 @@
     <button type="button" onclick="shiftDate(7)">일주일 뒤</button>
     <button type="button" onclick="clearTime()">종일</button>
   </div>
-  <div class="field"><input name="date" type="date" required></div>
   <div class="row">
-    <div class="field"><input name="start" type="time" aria-label="시작"></div>
-    <div class="field"><input name="end" type="time" aria-label="종료"></div>
+    <div class="field"><input name="date" type="date" required aria-label="시작 날짜" onchange="syncEndDate(this.form)"></div>
+    <div class="field"><input name="endDate" type="date" aria-label="종료 날짜"></div>
+  </div>
+  <div class="row">
+    <div class="field"><input name="start" type="time" aria-label="시작 시간"></div>
+    <div class="field"><input name="end" type="time" aria-label="종료 시간"></div>
   </div>
   <div class="pop-foot">
     <button type="button" class="btn ghost" onclick="closePop()">취소</button>
@@ -538,10 +548,13 @@
     <div class="field"><label>구분</label><div class="picker" id="catPicker"></div></div>
     <div class="when-summary"><span id="whenText"></span><button type="button" onclick="expandWhen()">일시 변경</button></div>
     <div class="when-fields">
-      <div class="field"><label>날짜</label><input name="date" type="date" required></div>
       <div class="row">
-        <div class="field"><label>시작</label><input name="start" type="time"></div>
-        <div class="field"><label>종료</label><input name="end" type="time"></div>
+        <div class="field"><label>시작 날짜</label><input name="date" type="date" required onchange="syncEndDate(this.form)"></div>
+        <div class="field"><label>종료 날짜 <small style="font-weight:500;color:var(--text-3)">(비우면 시작과 같음)</small></label><input name="endDate" type="date"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>시작 시간</label><input name="start" type="time"></div>
+        <div class="field"><label>종료 시간</label><input name="end" type="time"></div>
       </div>
     </div>
     <div class="row">
@@ -630,7 +643,14 @@
   const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : '기타';
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
-  const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]}) ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
+  const endOf = ev => (ev.endDate && ev.endDate > ev.date) ? ev.endDate : ev.date;
+  const addDays = (date, n) => { const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+  const daysOf = ev => { const out = []; let d = ev.date; const e = endOf(ev); while (d && d <= e && out.length < 62) { out.push(d); d = addDays(d, 1); } return out; };
+  const md = date => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; };
+  const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); const multi = endOf(ev) !== ev.date;
+    return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})${multi ? ' ~ ' + md(endOf(ev)) : ''} ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
+  const expand = items => { const occ = []; items.forEach(ev => { const ds = daysOf(ev); ds.forEach((day, i) => occ.push({ ev, day, idx: i, total: ds.length })); }); return occ.sort((a, b) => (a.day + (a.ev.start || '')).localeCompare(b.day + (b.ev.start || ''))); };
+  function syncEndDate(form) { const s = form.elements.date.value, e = form.elements.endDate; if (s && (!e.value || e.value < s)) e.value = s; }
   const normId = s => (s || '').replace(/\D/g, '').slice(-4);
   const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
 
@@ -903,7 +923,7 @@
   /* ── 일정: 목록 / 달력 ── */
   function renderSchedule() {
     const data = state.schedule, list = document.getElementById('scheduleList'); if (!data) return;
-    const upcoming = data.items.filter(i => i.date >= TODAY).length, todayCnt = data.items.filter(i => i.date === TODAY).length;
+    const upcoming = data.items.filter(i => endOf(i) >= TODAY).length, todayCnt = data.items.filter(i => i.date <= TODAY && endOf(i) >= TODAY).length;
     const d = new Date();
     document.getElementById('scheduleSummary').innerHTML = `
       <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건</div></div>
@@ -919,7 +939,7 @@
         : '<div class="empty"><div class="ico">📅</div>표시할 일정이 없어요<br>버튼을 눌러 일정을 추가해 보세요</div>';
       return;
     }
-    const byDate = {}; items.forEach(i => (byDate[i.date] = byDate[i.date] || []).push(i));
+    const byDate = {}; expand(items).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
     const dates = Object.keys(byDate).sort();
     const pastDates = dates.filter(d => d < TODAY), pastCnt = pastDates.reduce((n, d) => n + byDate[d].length, 0);
     const showPast = state.showPast || !dates.some(d => d >= TODAY);
@@ -932,10 +952,10 @@
       if (month !== lastMonth) { html += `<div class="month">${dd.getFullYear()}년 ${dd.getMonth()+1}월</div>`; lastMonth = month; }
       const dow = dd.getDay(); const cls = date === TODAY ? 'today' : (date < TODAY ? 'past' : '');
       html += `<div class="day ${cls}" data-date="${date}"><div class="day-col"><div class="day-num">${dd.getDate()}</div><div class="day-dow ${dow===0?'sun':dow===6?'sat':''}">${DOW[dow]}</div></div><div class="card">`;
-      byDate[date].forEach(ev => {
-        const cat = catOf(ev);
-        const time = ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일';
-        const sub = [ev.place ? '📍 ' + esc(ev.place) : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
+      byDate[date].forEach(o => {
+        const ev = o.ev, cat = catOf(ev);
+        const time = (ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일') + (o.total > 1 ? `<span class="dayidx">${o.idx + 1}/${o.total}일차</span>` : '');
+        const sub = [o.total > 1 ? `<span class="range">📅 ${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? '📍 ' + esc(ev.place) : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
         html += `<div class="event cat-${cat}"><div class="event-bar"></div>
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
@@ -952,9 +972,9 @@
     const list = document.getElementById('scheduleList');
     const [y, m] = state.calMonth.split('-').map(Number);
     const first = new Date(y, m - 1, 1), startDow = first.getDay(), daysIn = new Date(y, m, 0).getDate();
-    const byDate = {}; items.forEach(i => (byDate[i.date] = byDate[i.date] || []).push(i));
+    const byDate = {}; expand(items).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o.ev));
     let html = `<div class="cal-head"><button class="nav" onclick="calMove(-1)" aria-label="이전 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h3>${y}년 ${m}월 <small class="cal-cnt">${items.filter(i => i.date && i.date.slice(0, 7) === state.calMonth).length}건</small></h3><button class="today-btn" onclick="calToday()">오늘</button>
+      <h3>${y}년 ${m}월 <small class="cal-cnt">${items.filter(i => i.date && i.date.slice(0, 7) <= state.calMonth && endOf(i).slice(0, 7) >= state.calMonth).length}건</small></h3><button class="today-btn" onclick="calToday()">오늘</button>
       <button class="nav" onclick="calMove(1)" aria-label="다음 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="cal"><div class="cal-dow">${DOW.map(d => `<div>${d}</div>`).join('')}</div><div class="cal-grid">`;
     const cells = startDow + daysIn, rows = Math.ceil(cells / 7) * 7;
@@ -973,7 +993,7 @@
   function calToday() { state.calMonth = TODAY.slice(0, 7); renderSchedule(); }
   function calCellClick(e, date) {
     if (e.target.closest('.cal-ev')) return;
-    const has = state.schedule.items.some(i => i.date === date && (state.scheduleTag === '전체' || catOf(i) === state.scheduleTag));
+    const has = state.schedule.items.some(i => i.date <= date && endOf(i) >= date && (state.scheduleTag === '전체' || catOf(i) === state.scheduleTag));
     if (!has) { openScheduleForm(null, null, date); return; }
     state.view = 'list'; state.focusDate = date; if (date < TODAY) state.showPast = true; renderSchedule();
   }
@@ -982,7 +1002,7 @@
   function openPop(id, anchor) {
     const ev = state.schedule.items.find(i => i.id === id); if (!ev) return;
     const pop = document.getElementById('pop'); pop.reset();
-    pop.elements.id.value = id; pop.elements.date.value = ev.date || TODAY; pop.elements.start.value = ev.start || ''; pop.elements.end.value = ev.end || '';
+    pop.elements.id.value = id; pop.elements.date.value = ev.date || TODAY; pop.elements.endDate.value = endOf(ev) !== ev.date ? endOf(ev) : ''; pop.elements.start.value = ev.start || ''; pop.elements.end.value = ev.end || '';
     document.getElementById('popTitle').textContent = ev.title.length > 14 ? ev.title.slice(0, 14) + '…' : ev.title;
     document.getElementById('popBg').classList.add('open'); pop.classList.add('open');
     const r = anchor.getBoundingClientRect(); const W = 300, H = pop.offsetHeight || 230;
@@ -993,14 +1013,15 @@
     setTimeout(() => pop.elements.date.focus(), 50);
   }
   function closePop() { document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open'); }
-  function shiftDate(days) { const f = document.getElementById('pop').elements.date; const d = new Date((f.value || TODAY) + 'T00:00:00'); d.setDate(d.getDate() + days); f.value = ymd(d); }
+  function shiftDate(days) { const f = document.getElementById('pop').elements; f.date.value = addDays(f.date.value || TODAY, days); if (f.endDate.value) f.endDate.value = addDays(f.endDate.value, days); }
   function clearTime() { const f = document.getElementById('pop').elements; f.start.value = ''; f.end.value = ''; }
   async function saveWhen(e) {
     e.preventDefault();
     const f = document.getElementById('pop'); const v = readForm(f);
     const ev = state.schedule.items.find(i => i.id === v.id); if (!ev) return closePop();
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
-    setBusy(f, true); const ok = await saveItem('schedule', { ...ev, date: v.date, start: v.start, end: v.end }); setBusy(f, false);
+    if (v.endDate && v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
+    setBusy(f, true); const ok = await saveItem('schedule', { ...ev, date: v.date, endDate: v.endDate || v.date, start: v.start, end: v.end }); setBusy(f, false);
     if (ok) { closePop(); toast('일시를 변경했어요'); }
   }
 
@@ -1010,12 +1031,14 @@
       const overdue = t.due && t.due < TODAY && t.status !== '완료'; const tc = tcatOf(t);
       return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
-          <button class="status s-${esc(t.status)}" title="클릭하면 다음 상태로" onclick="event.stopPropagation();cycleStatus('${esc(t.id)}','${scope}')">${esc(t.status)}</button></div>
+          <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${esc(t.status)}</button></div>
         <div class="task-title">${esc(t.title)}</div>
         ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
         <div class="task-foot">
           ${t.due ? `<span class="${overdue ? 'overdue' : ''}">📆 ${esc(t.due)}${overdue ? ' 지연' : ''}</span>` : '<span>📆 기한 미정</span>'}
           ${t.owner && scope === 'tasks' ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
+          ${t.status === '완료' ? `<button type="button" class="done-btn undo" title="진행중으로 되돌리기" onclick="event.stopPropagation();setDone('${esc(t.id)}','${scope}',false)">되돌리기</button>`
+            : `<button type="button" class="done-btn" title="완료 처리" onclick="event.stopPropagation();setDone('${esc(t.id)}','${scope}',true)">✓ 완료</button>`}
         </div></div>`;
     }).join('');
   }
@@ -1127,10 +1150,10 @@
     if (!await withPin(pin => api.replace(kind, items, state.board, pin))) return false;
     await refresh(kind, true); return true;
   }
-  async function cycleStatus(id, scope) {
+  async function setDone(id, scope, done) {
     const t = state[scope].items.find(i => i.id === id); if (!t) return;
-    const next = { ...t, status: STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length] };
-    if (await saveItem(scope, next)) toast('상태 → ' + next.status);
+    const next = { ...t, status: done ? '완료' : '진행중' };
+    if (await saveItem(scope, next)) toast(done ? '완료 처리했어요' : '진행중으로 되돌렸어요');
   }
 
   /* ── 시트 ── */
@@ -1159,6 +1182,8 @@
     e.preventDefault();
     const form = document.getElementById('scheduleForm'); const v = readForm(form);
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
+    if (!v.endDate) v.endDate = v.date;
+    if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
     if (!v.id) v.id = uid();
     setBusy(form, true); const ok = await saveItem('schedule', v); setBusy(form, false);
     if (ok) { closeModal('scheduleModal'); toast('저장했어요'); }
