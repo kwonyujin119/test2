@@ -1,15 +1,21 @@
-# test2
+# 지휘역량강화센터 일정 · 업무 보드
 
-인천소방학교 현장지휘관 체크리스트 및 ICTC 일정·업무 보드 (GitHub Pages)
+인천소방학교 지휘역량강화센터 팀 보드와 현장지휘관 체크리스트 (GitHub Pages)
 
 | 페이지 | 주소 | 파일 |
 |---|---|---|
-| ICTC 일정 · 주요업무 (메인) | https://kwonyujin119.github.io/test2/ | `index.html` |
+| 지휘역량강화센터 일정 · 업무 보드 (메인) | https://kwonyujin119.github.io/test2/ | `index.html` |
 | 현장지휘관 체크리스트 | https://kwonyujin119.github.io/test2/checklist/ | `checklist/index.html` |
 
-## ICTC 일정 · 주요업무 (웹앱 초안)
+## 보드 기능
 
 팀원이 브라우저에서 일정과 업무를 직접 추가·수정·삭제할 수 있는 보드입니다.
+
+- 헤더: 인천소방학교 심벌(클릭 → sachil47.com 새 창), 지휘역량강화센터 심벌(클릭 → 보드 홈)
+- 대시보드: 제목 옆 ▾ 로 전환, + 로 새 대시보드 추가(편집 PIN). 대시보드마다 일정·주요업무가 따로 저장됨. ⋮ 메뉴에서 이름 변경·삭제
+- 탭 3개: 일정표 · 주요업무 · 개인업무
+- 일정표 탭을 한 번 더 클릭하면 월 달력 보기 ↔ 목록 보기 전환 (단축키 `C`)
+- 개인업무: 행정전화번호(아이디) + 본인 비밀번호로 로그인. 어떤 기기에서도 같은 정보로 내 업무 조회·기록
 
 - 일정표: 날짜별 그룹, 오늘 강조, 구분(교육/회의 …) 필터
 - 주요업무: 상태(예정/진행중/완료/보류) 필터, 기한 지연 표시, 상태 배지 클릭으로 상태 순환
@@ -35,6 +41,7 @@ GitHub Pages(HTTPS)는 사내 PC 서버(HTTP)의 데이터를 직접 읽을 수 
 1. https://supabase.com 가입(GitHub 계정 로그인 가능) → **New project**. Region은 Northeast Asia (Seoul).
 2. 좌측 **SQL Editor** → **New query** → 저장소의 `server/supabase.sql` 내용을 전부 붙여넣기.
    파일 상단의 `'1234'`(편집 PIN)와 `'0000'`(조회 PIN)을 팀 PIN으로 바꾼 뒤 **Run**.
+   **보드가 업데이트되면 이 SQL을 다시 Run** 해야 새 기능(대시보드·개인업무)이 동작합니다. 여러 번 실행해도 기존 데이터와 PIN은 유지됩니다.
 3. **Project Settings → API** 에서 **Project URL** 과 **anon public** 키를 복사.
 4. `config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
 5. https://kwonyujin119.github.io/test2/ 를 열면 조회 PIN 잠금 화면이 뜨고, 통과하면 "팀 공유 모드"가 됩니다.
@@ -47,9 +54,11 @@ anon 키는 브라우저에 노출되도록 설계된 공개 키입니다. 조�
 | PIN | 용도 | 기본값 | 변경 |
 |---|---|---|---|
 | 조회 PIN | 링크를 여는 직원이 처음 한 번 입력. 기기에 저장됨 | `0000` | Supabase: `select ictc_set_view_pin('편집PIN', '새PIN');` / 로컬 서버: `view_pin.txt` |
-| 편집 PIN | 추가·수정·삭제 시 처음 한 번 입력 | `1234` | Supabase: `select ictc_set_pin('기존PIN', '새PIN');` / 로컬 서버: `pin.txt` |
+| 편집 PIN | 추가·수정·삭제, 대시보드 관리 시 처음 한 번 입력 | `1234` | Supabase: `select ictc_set_pin('기존PIN', '새PIN');` / 로컬 서버: `pin.txt` |
+| 개인 비밀번호 | 개인업무 로그인. 직원이 등록 시 직접 정함 (4자리 이상, 서버에 해시 저장) | 없음 | 본인: ⋮ 메뉴 → 개인 비밀번호 변경 / 분실 시 담당자: `select ictc_user_reset_pin('편집PIN', '전화번호숫자만', '새비밀번호');` |
 
 조회 PIN을 빈 문자열로 두면 링크를 아는 누구나 조회할 수 있습니다. 편집 PIN은 조회 PIN을 겸합니다.
+개인업무 등록은 조회 PIN을 통과한 사람(직원)만 할 수 있고, 아이디는 전화번호의 숫자만 저장됩니다(예: 032-870-1234 → 0328701234).
 PIN을 바꾸면 직원 기기에 잠금 화면이 다시 뜨므로 새 PIN을 공지해야 합니다.
 
 ### 구분(카테고리)와 필터

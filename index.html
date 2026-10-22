@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f2f4f6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101217" media="(prefers-color-scheme: dark)">
-<title>ICTC 일정 · 업무</title>
+<title>지휘역량강화센터 · 일정 · 업무</title>
+<link rel="icon" href="assets/ictc.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root {
@@ -58,9 +59,17 @@
   .appbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); }
   .appbar-inner { max-width: 880px; margin: 0 auto; padding: 14px 20px 10px; }
   .appbar-row { display: flex; align-items: center; gap: 12px; }
-  .back { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); margin-left: -8px; }
-  .back:hover { background: var(--card-2); }
-  .appbar h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+  .logos { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .logos a { display: flex; border-radius: 50%; transition: transform .15s; }
+  .logos a:hover { transform: scale(1.06); }
+  .logos img { height: 40px; width: auto; display: block; }
+  .board-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .board-btn { border: none; background: transparent; display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 2px; border-radius: 10px; min-width: 0; }
+  .board-btn:hover { background: var(--card-2); }
+  .appbar h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48vw; }
+  .board-btn svg { color: var(--text-3); flex-shrink: 0; }
+  .board-add { width: 30px; height: 30px; border-radius: 50%; border: 1.5px dashed var(--text-3); background: transparent; color: var(--text-3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
+  .board-add:hover { border-style: solid; border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
   .appbar .sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
   .appbar-right { margin-left: auto; display: flex; gap: 6px; }
   .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: var(--text-2); display: flex; align-items: center; justify-content: center; }
@@ -68,8 +77,11 @@
   .segment { margin-top: 12px; display: flex; background: var(--line); border-radius: 12px; padding: 3px; position: relative; }
   .segment button { flex: 1; border: none; background: transparent; padding: 9px 0; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--text-3); transition: color .2s; position: relative; z-index: 1; }
   .segment button.active { color: var(--text); }
-  .segment .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); background: var(--card); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); transition: transform .25s cubic-bezier(.4,0,.2,1); }
-  .segment.right .thumb { transform: translateX(100%); }
+  .segment .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(33.333% - 2px); background: var(--card); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); transition: transform .25s cubic-bezier(.4,0,.2,1); }
+  .segment[data-pos="1"] .thumb { transform: translateX(100%); }
+  .segment[data-pos="2"] .thumb { transform: translateX(200%); }
+  .segment button .vbadge { display: none; font-size: 10px; font-weight: 700; color: var(--primary-text); background: var(--primary-soft); border-radius: 999px; padding: 1px 6px; margin-left: 5px; vertical-align: 1px; }
+  .segment button.active.cal .vbadge { display: inline-block; }
 
   main { max-width: 880px; margin: 0 auto; padding: 8px 20px 0; }
   section { display: none; }
@@ -248,7 +260,9 @@
     .appbar-inner, main { max-width: 1240px; padding-left: 32px; padding-right: 32px; }
     .appbar-inner { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; padding-top: 12px; padding-bottom: 12px; }
     .appbar-row { grid-column: 1; } .appbar-right { grid-column: 3; justify-self: end; }
-    .segment { grid-column: 2; grid-row: 1; margin-top: 0; width: 360px; }
+    .segment { grid-column: 2; grid-row: 1; margin-top: 0; width: 420px; }
+    .logos img { height: 46px; }
+    .appbar h1 { max-width: 320px; }
     main { padding-top: 24px; }
     section.active { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; align-items: start; }
     .side { position: sticky; top: 92px; display: flex; flex-direction: column; gap: 14px; }
@@ -273,9 +287,71 @@
   @media (min-width: 1400px) { .appbar-inner, main { max-width: 1400px; } .task-list { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 640px) {
     .appbar-inner, main { padding-left: 16px; padding-right: 16px; }
+    .logos img { height: 34px; }
+    .appbar h1 { font-size: 17px; }
+    .appbar .sub { display: none; }
     .task-list { grid-template-columns: 1fr; }
     .summary .stats { gap: 10px; }
     .event-time { width: 66px; padding-left: 8px; font-size: 12.5px; }
+  }
+
+  /* ── 달력 ── */
+  .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .cal-head h3 { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; flex: 1; }
+  .cal-head .nav { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--card); box-shadow: var(--shadow); color: var(--text-2); display: flex; align-items: center; justify-content: center; }
+  .cal-head .nav:hover { background: var(--card-2); }
+  .cal-head .today-btn { border: none; background: var(--card); box-shadow: var(--shadow); border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--text-2); padding: 7px 12px; }
+  .cal { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
+  .cal-dow div { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--text-3); padding: 10px 0; }
+  .cal-dow div:first-child { color: var(--sun); } .cal-dow div:last-child { color: var(--sat); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .cal-cell { min-height: 104px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px; cursor: pointer; transition: background .15s; display: flex; flex-direction: column; gap: 3px; }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-cell:hover { background: var(--card-2); }
+  .cal-cell.other { opacity: .4; }
+  .cal-cell .n { font-size: 13px; font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+  .cal-cell.sun .n { color: var(--sun); } .cal-cell.sat .n { color: var(--sat); }
+  .cal-cell.today .n { background: var(--primary); color: #fff; }
+  .cal-ev { font-size: 11.5px; font-weight: 600; padding: 2px 6px; border-radius: 6px; background: var(--cat-soft); color: var(--cat); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--cat); }
+  .cal-ev:hover { filter: brightness(.95); }
+  .cal-ev small { font-weight: 500; opacity: .8; margin-right: 3px; }
+  .cal-more { font-size: 11px; color: var(--text-3); font-weight: 600; padding-left: 6px; }
+  @media (max-width: 640px) {
+    .cal-cell { min-height: 72px; padding: 4px 3px; }
+    .cal-ev { font-size: 10px; padding: 1px 4px; border-left-width: 2px; }
+    .cal-ev small { display: none; }
+    .cal-cell .n { width: 22px; height: 22px; font-size: 12px; }
+  }
+
+  /* ── 보드 드롭다운 ── */
+  .dropdown { position: fixed; z-index: 60; background: var(--card); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 240px; max-width: 320px; display: none; }
+  .dropdown.open { display: block; animation: fade .15s ease; }
+  .dropdown .dd-label { font-size: 11px; font-weight: 700; color: var(--text-3); padding: 8px 12px 4px; letter-spacing: .3px; }
+  .dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: transparent; text-align: left; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 500; }
+  .dropdown button:hover { background: var(--card-2); }
+  .dropdown button.on { font-weight: 700; color: var(--primary-text); }
+  .dropdown button.on::before { content: '✓'; font-size: 12px; }
+  .dropdown button.add { color: var(--primary-text); font-weight: 600; }
+  .dropdown hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
+  .dropdown button.danger { color: var(--red); }
+
+  /* ── 개인업무 로그인 ── */
+  .login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; max-width: 420px; margin: 0 auto; }
+  .login-card h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 4px; }
+  .login-card p { font-size: 13px; color: var(--text-3); margin-bottom: 18px; line-height: 1.5; }
+  .login-card .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 4px 0 8px; }
+  .login-card .switch { text-align: center; margin-top: 14px; font-size: 13px; color: var(--text-3); }
+  .login-card .switch button { border: none; background: none; color: var(--primary-text); font-weight: 700; font-size: 13px; }
+  .me-card { display: flex; align-items: center; gap: 12px; }
+  .me-card .avatar { width: 40px; height: 40px; font-size: 16px; margin: 0; }
+  .me-card .name { font-size: 17px; font-weight: 800; }
+  .me-card .id { font-size: 12px; color: var(--text-3); }
+  section.personal-login.active { display: block; }
+  .stat span { white-space: nowrap; }
+  #personalSummary { flex-wrap: wrap; }
+  @media (max-width: 640px) {
+    #personalSummary .stats { width: 100%; margin-left: 0; justify-content: space-around; border-top: 1px solid var(--line); padding-top: 10px; }
   }
 </style>
 </head>
@@ -284,16 +360,26 @@
 <div class="appbar">
   <div class="appbar-inner">
     <div class="appbar-row">
-      <a class="back" href="checklist/" aria-label="현장지휘관 체크리스트" title="현장지휘관 체크리스트"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></a>
-      <div><h1>ICTC 일정 · 업무</h1><div class="sub">인천소방학교 · 팀 공유 보드</div></div>
+      <div class="logos">
+        <a href="https://sachil47.com" target="_blank" rel="noopener" title="인천소방학교 (새 창)"><img src="assets/ifa.png" alt="인천소방학교"></a>
+        <a href="./" title="지휘역량강화센터 일정·업무 홈"><img src="assets/ictc.png" alt="지휘역량강화센터"></a>
+      </div>
+      <div class="board-title">
+        <button class="board-btn" id="boardBtn" onclick="toggleBoardMenu(event)" title="대시보드 선택">
+          <div><h1 id="boardName">지휘역량강화센터</h1><div class="sub">인천소방학교 · 팀 공유 보드</div></div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <button class="board-add" onclick="addBoard()" title="새 대시보드 추가"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
       <div class="appbar-right">
         <button class="icon-btn" id="menuBtn" aria-label="더보기" onclick="toggleMenu(event)"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
       </div>
     </div>
-    <div class="segment" id="segment">
+    <div class="segment" id="segment" data-pos="0">
       <div class="thumb"></div>
-      <button class="active" data-tab="schedule" onclick="showTab('schedule')">일정표</button>
-      <button data-tab="tasks" onclick="showTab('tasks')">주요업무</button>
+      <button class="active" data-tab="schedule" onclick="tabClick('schedule')">일정표<span class="vbadge">달력</span></button>
+      <button data-tab="tasks" onclick="tabClick('tasks')">주요업무</button>
+      <button data-tab="personal" onclick="tabClick('personal')">개인업무</button>
     </div>
   </div>
 </div>
@@ -307,9 +393,10 @@
       <div class="chips" id="scheduleFilters"></div>
       <div class="side-actions">
         <button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button>
+        <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
         <button class="btn ghost" onclick="exportJSON('schedule')">JSON 내보내기</button>
         <button class="btn ghost" onclick="importJSON('schedule')">JSON 가져오기</button>
-        <div class="hint"><kbd>N</kbd> 새 항목 · <kbd>1</kbd>/<kbd>2</kbd> 탭 전환</div>
+        <div class="hint"><kbd>N</kbd> 새 항목 · <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 탭 · <kbd>C</kbd> 달력</div>
       </div>
     </aside>
     <div class="content" id="scheduleList"></div>
@@ -328,10 +415,38 @@
         <button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button>
         <button class="btn ghost" onclick="exportJSON('tasks')">JSON 내보내기</button>
         <button class="btn ghost" onclick="importJSON('tasks')">JSON 가져오기</button>
-        <div class="hint"><kbd>N</kbd> 새 항목 · <kbd>1</kbd>/<kbd>2</kbd> 탭 전환</div>
+        <div class="hint"><kbd>N</kbd> 새 항목 · <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> 탭 전환</div>
       </div>
     </aside>
     <div class="content task-list" id="taskList"></div>
+  </section>
+
+  <section id="personal">
+    <div class="personal-login" id="personalLogin">
+      <form class="login-card" id="loginForm" onsubmit="submitLogin(event)">
+        <h2 id="loginTitle">개인업무 로그인</h2>
+        <p id="loginDesc">행정전화번호와 본인 비밀번호로 로그인하면 폰·PC 어디서나 내 업무를 볼 수 있어요.</p>
+        <div class="field"><label>행정전화번호 (아이디)</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 032-870-1234" required></div>
+        <div class="field" id="loginNameField" style="display:none"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동"></div>
+        <div class="field"><label>비밀번호 (4자리 이상)</label><input name="upin" type="password" inputmode="numeric" autocomplete="current-password" minlength="4" required></div>
+        <div class="err" id="loginErr"></div>
+        <button type="submit" class="btn primary" id="loginSubmit" style="width:100%">로그인</button>
+        <div class="switch" id="loginSwitch"></div>
+      </form>
+    </div>
+    <aside class="side" id="personalSide" style="display:none">
+      <div class="summary" id="personalSummary"></div>
+      <div class="filter-label">상태</div>
+      <div class="chips" id="personalFilters"></div>
+      <div class="filter-label">분류</div>
+      <div class="chips" id="personalCatFilters"></div>
+      <div class="side-actions">
+        <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
+        <button class="btn ghost" onclick="exportJSON('personal')">JSON 내보내기</button>
+        <button class="btn ghost" onclick="logout()">로그아웃</button>
+      </div>
+    </aside>
+    <div class="content task-list" id="personalList" style="display:none"></div>
   </section>
 </main>
 
@@ -339,12 +454,19 @@
 
 <div class="menu" id="menu">
   <button onclick="exportJSON(currentTab())">⬇️&nbsp; JSON 내보내기</button>
-  <button onclick="importJSON(currentTab())">⬆️&nbsp; JSON 가져오기</button>
+  <button onclick="importJSON(currentTab())" id="menuImport">⬆️&nbsp; JSON 가져오기</button>
+  <hr>
+  <button id="menuBoardRename" onclick="renameBoard()">✏️&nbsp; 대시보드 이름 변경</button>
+  <button id="menuBoardDelete" class="danger" onclick="deleteBoard()">🗑️&nbsp; 이 대시보드 삭제</button>
   <hr>
   <button id="menuPin" style="display:none" onclick="changePin()">🔑&nbsp; 편집 PIN 입력/변경</button>
   <button id="menuViewPin" style="display:none" onclick="changeViewPin()">👁️&nbsp; 조회 PIN 다시 입력</button>
-  <button class="danger" id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
+  <button id="menuUserPin" style="display:none" onclick="changeUserPin()">🔒&nbsp; 개인 비밀번호 변경</button>
+  <button id="menuLogout" style="display:none" onclick="logout()">🚪&nbsp; 개인업무 로그아웃</button>
+  <button id="menuReset" onclick="resetToDefault(currentTab())">↺&nbsp; 기본값으로 복원</button>
 </div>
+
+<div class="dropdown" id="boardMenu"></div>
 
 <!-- 시간 변경 팝오버 -->
 <div class="pop-bg" id="popBg" onclick="closePop()"></div>
@@ -397,17 +519,17 @@
   </form>
 </div>
 
-<!-- 업무 시트 -->
+<!-- 업무 시트 (팀/개인 공용) -->
 <div class="sheet-bg" id="taskModal" onclick="if(event.target===this)closeModal('taskModal')">
   <form class="sheet" id="taskForm" onsubmit="saveTask(event)">
     <div class="handle"></div>
     <h2 id="taskFormTitle">업무 추가</h2>
-    <input type="hidden" name="id"><input type="hidden" name="status" value="예정"><input type="hidden" name="category" value="기타">
+    <input type="hidden" name="id"><input type="hidden" name="status" value="예정"><input type="hidden" name="category" value="기타"><input type="hidden" name="scope" value="tasks">
     <div class="field"><label>업무명</label><input name="title" required maxlength="100" placeholder="예) 2027년 교육계획 수립"></div>
     <div class="field"><label>분류</label><div class="picker" id="taskCatPicker"></div></div>
     <div class="field"><label>상태</label><div class="picker" id="statusPicker"></div></div>
     <div class="row">
-      <div class="field"><label>담당</label><input name="owner" list="ownerList" maxlength="30"><datalist id="ownerList"></datalist></div>
+      <div class="field" id="taskOwnerField"><label>담당</label><input name="owner" list="ownerList" maxlength="30"><datalist id="ownerList"></datalist></div>
       <div class="field"><label>기한</label><input name="due" type="date"></div>
     </div>
     <div class="field"><label>상세</label><textarea name="detail" maxlength="1000"></textarea></div>
@@ -422,7 +544,7 @@
 <div class="lock" id="lock">
   <form class="lock-card" onsubmit="submitViewPin(event)">
     <div class="lock-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-    <h2>ICTC 일정 · 업무</h2>
+    <h2>지휘역량강화센터</h2>
     <p>팀 조회 PIN을 입력하세요.<br>이 기기에 한 번만 저장됩니다.</p>
     <input id="viewPinInput" inputmode="numeric" autocomplete="off" placeholder="조회 PIN" required>
     <div class="err" id="lockErr"></div>
@@ -440,13 +562,16 @@
   const TASK_CATEGORIES = ['교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
   const STATUSES = ['예정', '진행중', '완료', '보류'];
   const STATUS_ORDER = { '진행중': 0, '예정': 1, '보류': 2, '완료': 3 };
-  const LS_KEY = { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1', pin: 'ictc.pin', viewPin: 'ictc.viewPin', server: 'ictc.serverUrl' };
+  const LS = { items: 'ictc.items.v2', boards: 'ictc.boards.v1', users: 'ictc.users.v1', pin: 'ictc.pin', viewPin: 'ictc.viewPin', server: 'ictc.serverUrl', me: 'ictc.me', board: 'ictc.board', legacy: { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1' } };
   const FILE = { schedule: 'data/schedule.json', tasks: 'data/tasks.json' };
   const CFG = window.ICTC_CONFIG || {};
   const SUPABASE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
-  const LOCALSRV = typeof CFG.apiUrl === 'string';   // 로컬(D드라이브) 서버 모드
-  const REMOTE = SUPABASE || LOCALSRV;               // 팀 공유 모드 여부
-  const state = { schedule: null, tasks: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', source: {}, lastSync: null };
+  const LOCALSRV = typeof CFG.apiUrl === 'string';
+  const REMOTE = SUPABASE || LOCALSRV;
+  const DEFAULT_BOARD = { id: 'main', name: '지휘역량강화센터' };
+  const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, me: null,
+    view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체',
+    source: {}, lastSync: null, loginMode: 'login' };
 
   const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -454,195 +579,252 @@
   const initial = s => (s || '').trim().charAt(0) || '?';
   const catOf = ev => CATEGORIES.includes(ev.tag) ? ev.tag : (LEGACY_CAT[ev.tag] || '기타');
   const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : '기타';
+  const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]}) ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
+  const normId = s => (s || '').replace(/\D/g, '');
+  const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
 
   let toastTimer;
   function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200); }
-  function currentTab() { return document.querySelector('section.active').id; }
-  function showTab(name) {
-    document.querySelectorAll('.segment button').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.getElementById('segment').classList.toggle('right', name === 'tasks');
-    document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === name));
-    document.getElementById('fabLabel').textContent = name === 'schedule' ? '일정 추가' : '업무 추가';
-    try { history.replaceState(null, '', '#' + name); } catch (e) {}
-  }
-  function fabClick() { currentTab() === 'schedule' ? openScheduleForm() : openTaskForm(); }
-  function toggleMenu(e) {
-    e.stopPropagation();
-    const m = document.getElementById('menu'); const r = e.currentTarget.getBoundingClientRect();
-    m.style.top = (r.bottom + 6) + 'px'; m.style.right = (window.innerWidth - r.right) + 'px';
-    m.classList.toggle('open');
-  }
-  document.addEventListener('click', () => document.getElementById('menu').classList.remove('open'));
-
-  /* ── 로컬 저장 ── */
   function lsGet(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
   function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; } }
   function lsDel(key) { try { localStorage.removeItem(key); } catch (e) {} }
-  function normalize(data) {
-    if (!data || !Array.isArray(data.items)) throw new Error('items 배열이 없습니다');
-    data.items.forEach(i => { if (!i.id) i.id = uid(); }); return data;
+
+  /* ── 오류 코드 → 메시지 ── */
+  const ERR = { VIEW_PIN_REQUIRED: '조회 PIN이 필요합니다', VIEW_PIN_INVALID: '조회 PIN이 올바르지 않습니다', PIN_INVALID: '편집 PIN이 올바르지 않습니다',
+    USER_NOT_FOUND: '등록되지 않은 번호입니다. 처음이면 등록하세요', USER_PIN_INVALID: '비밀번호가 올바르지 않습니다', USER_EXISTS: '이미 등록된 번호입니다. 로그인하세요',
+    USER_ID_INVALID: '전화번호를 확인하세요', PIN_TOO_SHORT: '비밀번호는 4자리 이상', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
+    BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류' };
+  class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
+  async function throwApi(res) {
+    let code = '';
+    try { const j = await res.json(); code = (j.message || j.hint || '').trim(); } catch (e) {}
+    const known = Object.keys(ERR).filter(k => code === k || new RegExp('(^|[^A-Z_])' + k + '($|[^A-Z_])').test(code)).sort((a, b) => b.length - a.length)[0]; code = known || code;
+    if (code === 'PIN_INVALID') lsDel(LS.pin);
+    if (code === 'VIEW_PIN_INVALID') lsDel(LS.viewPin);
+    throw new ApiError(code, res.status);
   }
-  async function loadDefault(kind) {
-    const res = await fetch(FILE[kind], { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status); return normalize(await res.json());
+  const viewPin = () => lsGet(LS.viewPin) || lsGet(LS.pin) || '';
+  const rows2 = rows => ({ updated: rows[0]?.updated_at || null, items: rows.map(r => r.data) });
+
+  /* ── API 어댑터 ── */
+  let api;
+  if (SUPABASE) {
+    const H = () => ({ apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' });
+    const rpc = async (fn, body) => { const res = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST', headers: H(), cache: 'no-store', body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
+    api = {
+      list: async (kind, board) => rows2(await rpc('ictc_list', { p_pin: viewPin(), p_kind: kind, p_board: board })),
+      save: (kind, item, board, pin) => rpc('ictc_save', { p_pin: pin, p_kind: kind, p_item: item, p_board: board }),
+      remove: (kind, id, board, pin) => rpc('ictc_delete', { p_pin: pin, p_kind: kind, p_id: id, p_board: board }),
+      replace: (kind, items, board, pin) => rpc('ictc_replace', { p_pin: pin, p_kind: kind, p_items: items, p_board: board }),
+      boards: () => rpc('ictc_boards', { p_pin: viewPin() }),
+      boardAdd: (pin, id, name) => rpc('ictc_board_add', { p_pin: pin, p_id: id, p_name: name }),
+      boardRename: (pin, id, name) => rpc('ictc_board_rename', { p_pin: pin, p_id: id, p_name: name }),
+      boardDelete: (pin, id) => rpc('ictc_board_delete', { p_pin: pin, p_id: id }),
+      userRegister: (id, name, upin) => rpc('ictc_user_register', { p_view_pin: viewPin(), p_id: id, p_name: name, p_pin: upin }),
+      userLogin: (id, upin) => rpc('ictc_user_login', { p_id: id, p_pin: upin }),
+      userSetPin: (id, old, nw) => rpc('ictc_user_set_pin', { p_id: id, p_old: old, p_new: nw }),
+      personalList: async (id, upin) => rows2(await rpc('ictc_personal_list', { p_id: id, p_pin: upin })),
+      personalSave: (id, upin, item) => rpc('ictc_personal_save', { p_id: id, p_pin: upin, p_item: item }),
+      personalDelete: (id, upin, itemId) => rpc('ictc_personal_delete', { p_id: id, p_pin: upin, p_item_id: itemId }),
+    };
+  } else if (LOCALSRV) {
+    const get = async (path) => { const res = await fetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
+    const post = async (path, body) => { const res = await fetch(`${CFG.apiUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
+    api = {
+      list: async (kind, board) => rows2(await get(`/api/items?kind=${kind}&board=${encodeURIComponent(board)}`)),
+      save: (kind, item, board, pin) => post('/api/save', { pin, kind, board, item }),
+      remove: (kind, id, board, pin) => post('/api/delete', { pin, kind, board, id }),
+      replace: (kind, items, board, pin) => post('/api/replace', { pin, kind, board, items }),
+      boards: () => get('/api/boards'),
+      boardAdd: (pin, id, name) => post('/api/board_add', { pin, id, name }),
+      boardRename: (pin, id, name) => post('/api/board_rename', { pin, id, name }),
+      boardDelete: (pin, id) => post('/api/board_delete', { pin, id }),
+      userRegister: async (id, name, upin) => (await post('/api/user_register', { view_pin: viewPin(), id, name, user_pin: upin })).name,
+      userLogin: async (id, upin) => (await post('/api/user_login', { id, user_pin: upin })).name,
+      userSetPin: (id, old, nw) => post('/api/user_set_pin', { id, user_pin: old, new_pin: nw }),
+      personalList: async (id, upin) => rows2(await post('/api/personal_list', { id, user_pin: upin })),
+      personalSave: (id, upin, item) => post('/api/personal_save', { id, user_pin: upin, item }),
+      personalDelete: (id, upin, itemId) => post('/api/personal_delete', { id, user_pin: upin, item_id: itemId }),
+    };
+  } else {
+    /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
+    const store = () => lsGet(LS.items) || {};
+    const key = (kind, board) => kind + ':' + board;
+    const getItems = (kind, board) => (store()[key(kind, board)] || []);
+    const setItems = (kind, board, items) => { const s = store(); s[key(kind, board)] = items; lsSet(LS.items, s); };
+    const users = () => lsGet(LS.users) || {};
+    const seeded = {};
+    async function seed(kind) {
+      if (seeded[kind] || store()[key(kind, 'main')]) return;
+      seeded[kind] = true;
+      const legacy = lsGet(LS.legacy[kind]);
+      if (legacy && Array.isArray(legacy.items)) { setItems(kind, 'main', legacy.items); return; }
+      try { const res = await fetch(FILE[kind], { cache: 'no-store' }); if (res.ok) { const d = await res.json(); setItems(kind, 'main', d.items || []); } } catch (e) {}
+    }
+    api = {
+      list: async (kind, board) => { await seed(kind); return { updated: null, items: getItems(kind, board) }; },
+      save: async (kind, item, board) => { const items = getItems(kind, board); const i = items.findIndex(x => x.id === item.id); i >= 0 ? items[i] = item : items.push(item); setItems(kind, board, items); },
+      remove: async (kind, id, board) => setItems(kind, board, getItems(kind, board).filter(x => x.id !== id)),
+      replace: async (kind, items, board) => setItems(kind, board, items),
+      boards: async () => lsGet(LS.boards) || [DEFAULT_BOARD],
+      boardAdd: async (pin, id, name) => { const b = lsGet(LS.boards) || [DEFAULT_BOARD]; b.push({ id, name }); lsSet(LS.boards, b); },
+      boardRename: async (pin, id, name) => { const b = (lsGet(LS.boards) || [DEFAULT_BOARD]).map(x => x.id === id ? { ...x, name } : x); lsSet(LS.boards, b); },
+      boardDelete: async (pin, id) => { if (id === 'main') throw new ApiError('BOARD_PROTECTED'); lsSet(LS.boards, (lsGet(LS.boards) || [DEFAULT_BOARD]).filter(x => x.id !== id)); const s = store(); delete s[key('schedule', id)]; delete s[key('tasks', id)]; lsSet(LS.items, s); },
+      userRegister: async (id, name, upin) => { const u = users(); if (u[id]) throw new ApiError('USER_EXISTS'); if (upin.length < 4) throw new ApiError('PIN_TOO_SHORT'); u[id] = { name, pin: upin }; lsSet(LS.users, u); return name; },
+      userLogin: async (id, upin) => { const u = users()[id]; if (!u) throw new ApiError('USER_NOT_FOUND'); if (u.pin !== upin) throw new ApiError('USER_PIN_INVALID'); return u.name; },
+      userSetPin: async (id, old, nw) => { const u = users(); if (!u[id] || u[id].pin !== old) throw new ApiError('USER_PIN_INVALID'); u[id].pin = nw; lsSet(LS.users, u); },
+      personalList: async (id) => ({ updated: null, items: getItems('personal', id) }),
+      personalSave: async (id, upin, item) => api.save('personal', item, id),
+      personalDelete: async (id, upin, itemId) => api.remove('personal', itemId, id),
+    };
   }
 
-  /* ── 공유 저장소 어댑터 (로컬 서버 / Supabase) ── */
-  async function readError(res) {
-    let msg = '서버 오류 ' + res.status;
-    try { const j = await res.json(); msg = j.message || j.hint || msg; } catch (e) {}
-    if (/PIN_INVALID/.test(msg)) { lsDel(LS_KEY.pin); return new Error('PIN이 올바르지 않습니다'); }
-    return new Error(msg);
-  }
-  const rowsToState = rows => ({ updated: rows[0]?.updated_at || null, items: rows.map(r => r.data) });
-  const viewPin = () => lsGet(LS_KEY.viewPin) || lsGet(LS_KEY.pin) || '';
-  class ViewPinError extends Error { constructor(required) { super(required ? '조회 PIN이 필요합니다' : '조회 PIN이 올바르지 않습니다'); this.viewPin = true; } }
-  async function readListError(res) {
-    let msg = '';
-    try { const j = await res.json(); msg = j.message || j.hint || ''; } catch (e) {}
-    if (/VIEW_PIN_REQUIRED/.test(msg)) return new ViewPinError(true);
-    if (/VIEW_PIN_INVALID/.test(msg)) { lsDel(LS_KEY.viewPin); return new ViewPinError(false); }
-    return new Error(msg || '서버 응답 ' + res.status);
-  }
-  const api = LOCALSRV ? {
-    async fetchAll(kind) {
-      const res = await fetch(`${CFG.apiUrl}/api/items?kind=${kind}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } });
-      if (!res.ok) throw await readListError(res);
-      return rowsToState(await res.json());
-    },
-    async call(fn, pin, kind, payload) {
-      const res = await fetch(`${CFG.apiUrl}/api/${fn}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, kind, ...payload }) });
-      if (!res.ok) throw await readError(res);
-    }
-  } : {
-    headers: () => ({ apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' }),
-    async fetchAll(kind) {
-      const res = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/ictc_list`, { method: 'POST', headers: this.headers(), cache: 'no-store', body: JSON.stringify({ p_pin: viewPin(), p_kind: kind }) });
-      if (!res.ok) throw await readListError(res);
-      return rowsToState(await res.json());
-    },
-    async call(fn, pin, kind, payload) {
-      const map = { save: ['ictc_save', { p_item: payload.item }], delete: ['ictc_delete', { p_id: payload.id }], replace: ['ictc_replace', { p_items: payload.items }] };
-      const [rpc, extra] = map[fn];
-      const res = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${rpc}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ p_pin: pin, p_kind: kind, ...extra }) });
-      if (!res.ok) throw await readError(res);
-    }
-  };
+  /* ── PIN ── */
   function getPin(force) {
-    let pin = force ? null : (lsGet(LS_KEY.pin) || null);
-    if (!pin) {
-      pin = prompt('편집 PIN을 입력하세요 (팀 담당자에게 문의)');
-      if (!pin) return null;
-      pin = pin.trim(); lsSet(LS_KEY.pin, pin);
-    }
+    if (!REMOTE) return 'local';
+    let pin = force ? null : (lsGet(LS.pin) || null);
+    if (!pin) { pin = prompt('편집 PIN을 입력하세요 (팀 담당자에게 문의)'); if (!pin) return null; pin = pin.trim(); lsSet(LS.pin, pin); }
     return pin;
   }
   function changePin() { if (getPin(true)) { toast('PIN을 저장했어요'); renderNotice(); } }
-  /* ── 조회 PIN 잠금 화면 ── */
-  function showLock(msg) {
-    const l = document.getElementById('lock'); l.classList.add('open');
-    document.getElementById('lockErr').textContent = msg || '';
-    const i = document.getElementById('viewPinInput'); i.value = ''; setTimeout(() => i.focus(), 50);
+  async function withPin(fn) {
+    const pin = getPin(); if (!pin) { toast('편집 PIN이 필요해요'); return false; }
+    try { await fn(pin); return true; } catch (e) { toast(e.message); return false; }
   }
+  function showLock(msg) { document.getElementById('lock').classList.add('open'); document.getElementById('lockErr').textContent = msg || ''; const i = document.getElementById('viewPinInput'); i.value = ''; setTimeout(() => i.focus(), 50); }
   function hideLock() { document.getElementById('lock').classList.remove('open'); }
   async function submitViewPin(e) {
     e.preventDefault();
     const v = document.getElementById('viewPinInput').value.trim(); if (!v) return;
-    lsSet(LS_KEY.viewPin, v);
-    try { await api.fetchAll('schedule'); hideLock(); await init('schedule'); await init('tasks'); }
-    catch (err) { lsDel(LS_KEY.viewPin); showLock(err.viewPin ? '조회 PIN이 올바르지 않습니다' : '연결 실패: ' + err.message); }
+    lsSet(LS.viewPin, v);
+    try { await api.boards(); hideLock(); await boot(); }
+    catch (err) { lsDel(LS.viewPin); showLock(err.code && err.code.startsWith('VIEW_PIN') ? '조회 PIN이 올바르지 않습니다' : '연결 실패: ' + err.message); }
   }
-  function changeViewPin() { lsDel(LS_KEY.viewPin); showLock(); }
-  function setServer() {
-    const cur = lsGet(LS_KEY.server) || 'http://192.168.0.10:8080';
-    let v = prompt('사내 서버 주소를 입력하세요 (start.bat 창의 "팀원 접속" 주소)', cur);
-    if (v == null) return;
-    v = v.trim().replace(/\/+$/, '');
-    if (!v) { lsDel(LS_KEY.server); renderNotice(); return; }
-    if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
-    lsSet(LS_KEY.server, v); renderNotice(); toast('서버 주소를 저장했어요');
-  }
-  function goServer() { const v = lsGet(LS_KEY.server); if (v) location.href = v + (location.hash || ''); }
+  function changeViewPin() { lsDel(LS.viewPin); showLock(); }
 
-  /* ── 공통 저장 계층 ── */
-  async function withPin(fn) {
-    const pin = getPin(); if (!pin) { toast('PIN이 필요해요'); return false; }
-    try { await fn(pin); return true; } catch (e) { toast(e.message); return false; }
+  /* ── 탭 / 라우팅 ── */
+  const TABS = ['schedule', 'tasks', 'personal'];
+  function currentTab() { return document.querySelector('section.active').id; }
+  function showTab(name) {
+    document.querySelectorAll('.segment button').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.getElementById('segment').dataset.pos = TABS.indexOf(name);
+    document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === name));
+    document.getElementById('fabLabel').textContent = { schedule: '일정 추가', tasks: '업무 추가', personal: '개인업무 추가' }[name];
+    document.getElementById('fab').style.display = (name === 'personal' && !state.me) ? 'none' : '';
+    updateHash();
   }
-  async function saveItem(kind, item) {
-    if (REMOTE) {
-      if (!await withPin(pin => api.call('save', pin, kind, { item }))) return false;
-      await refresh(kind, true); return true;
-    }
-    const items = state[kind].items, idx = items.findIndex(i => i.id === item.id);
-    idx >= 0 ? items[idx] = item : items.push(item);
-    persistLocal(kind); return true;
+  function tabClick(name) {
+    if (name === 'schedule' && currentTab() === 'schedule') { toggleView(); return; }
+    if (name === 'schedule') { state.view = 'list'; renderSchedule(); }
+    showTab(name); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  async function removeItem(kind, id) {
-    if (REMOTE) {
-      if (!await withPin(pin => api.call('delete', pin, kind, { id }))) return false;
-      await refresh(kind, true); return true;
-    }
-    state[kind].items = state[kind].items.filter(i => i.id !== id); persistLocal(kind); return true;
+  function toggleView() {
+    state.view = state.view === 'list' ? 'calendar' : 'list';
+    if (state.view === 'calendar' && !state.calMonth) state.calMonth = TODAY.slice(0, 7);
+    renderSchedule(); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  async function replaceAll(kind, items) {
-    if (REMOTE) {
-      if (!await withPin(pin => api.call('replace', pin, kind, { items }))) return false;
-      await refresh(kind, true); return true;
-    }
-    state[kind] = { updated: TODAY, items }; persistLocal(kind); return true;
+  function updateHash() { try { history.replaceState(null, '', '#' + currentTab() + (state.board !== 'main' ? '/' + state.board : '')); } catch (e) {} }
+  function parseHash() { const m = location.hash.replace('#', '').split('/'); return { tab: TABS.includes(m[0]) ? m[0] : 'schedule', board: m[1] || lsGet(LS.board) || 'main' }; }
+  function fabClick() { const t = currentTab(); t === 'schedule' ? openScheduleForm() : openTaskForm(null, t === 'personal' ? 'personal' : 'tasks'); }
+
+  function toggleMenu(e) {
+    e.stopPropagation(); closeBoardMenu();
+    const m = document.getElementById('menu'); const r = e.currentTarget.getBoundingClientRect();
+    m.style.top = (r.bottom + 6) + 'px'; m.style.right = (window.innerWidth - r.right) + 'px';
+    document.getElementById('menuBoardDelete').style.display = state.board === 'main' ? 'none' : '';
+    document.getElementById('menuUserPin').style.display = state.me ? '' : 'none';
+    document.getElementById('menuLogout').style.display = state.me ? '' : 'none';
+    document.getElementById('menuImport').style.display = currentTab() === 'personal' ? 'none' : '';
+    m.classList.toggle('open');
   }
-  function persistLocal(kind) {
-    state[kind].updated = TODAY;
-    if (!lsSet(LS_KEY[kind], state[kind])) toast('브라우저 저장 실패');
-    state.source[kind] = 'local'; render(kind);
+  document.addEventListener('click', () => { document.getElementById('menu').classList.remove('open'); closeBoardMenu(); });
+
+  /* ── 대시보드 ── */
+  function renderBoardTitle() { document.getElementById('boardName').textContent = boardName(); document.title = boardName() + ' · 일정 · 업무'; }
+  function toggleBoardMenu(e) {
+    e.stopPropagation(); document.getElementById('menu').classList.remove('open');
+    const m = document.getElementById('boardMenu'); if (m.classList.contains('open')) { closeBoardMenu(); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.left) + 'px';
+    m.innerHTML = '<div class="dd-label">대시보드</div>' + state.boards.map(b => `<button class="${b.id === state.board ? 'on' : ''}" onclick="switchBoard('${esc(b.id)}')">${esc(b.name)}</button>`).join('') +
+      '<hr><button class="add" onclick="addBoard()">+ 새 대시보드</button>';
+    m.classList.add('open');
   }
+  function closeBoardMenu() { document.getElementById('boardMenu').classList.remove('open'); }
+  async function loadBoards() {
+    try { const list = await api.boards(); if (Array.isArray(list) && list.length) state.boards = list; }
+    catch (e) { if (e.code && e.code.startsWith('VIEW_PIN')) throw e; }
+    if (!state.boards.find(b => b.id === state.board)) state.board = 'main';
+    renderBoardTitle();
+  }
+  async function switchBoard(id) {
+    closeBoardMenu(); if (id === state.board) return;
+    state.board = id; lsSet(LS.board, id); renderBoardTitle(); updateHash();
+    state.scheduleTag = '전체'; state.taskStatus = state.taskCat = state.taskOwner = '전체';
+    await Promise.all([refresh('schedule', true), refresh('tasks', true)]);
+    toast(boardName() + ' 대시보드');
+  }
+  async function addBoard() {
+    closeBoardMenu();
+    const name = prompt('새 대시보드 이름 (예: 교육운영팀, 2027 계획)'); if (!name || !name.trim()) return;
+    const id = 'b' + uid();
+    if (await withPin(pin => api.boardAdd(pin, id, name.trim()))) { await loadBoards(); await switchBoard(id); toast('대시보드를 만들었어요'); }
+  }
+  async function renameBoard() {
+    const name = prompt('대시보드 이름', boardName()); if (!name || !name.trim()) return;
+    if (await withPin(pin => api.boardRename(pin, state.board, name.trim()))) { await loadBoards(); toast('이름을 바꿨어요'); }
+  }
+  async function deleteBoard() {
+    if (state.board === 'main') return;
+    if (!confirm(`"${boardName()}" 대시보드와 그 안의 일정·업무를 모두 삭제할까요? 되돌릴 수 없어요.`)) return;
+    const id = state.board;
+    if (await withPin(pin => api.boardDelete(pin, id))) { state.board = 'main'; lsSet(LS.board, 'main'); await loadBoards(); await switchBoardSilent(); toast('삭제했어요'); }
+  }
+  async function switchBoardSilent() { renderBoardTitle(); updateHash(); await Promise.all([refresh('schedule', true), refresh('tasks', true)]); }
+
+  /* ── 데이터 로드 ── */
+  function normalize(data) { if (!data || !Array.isArray(data.items)) throw new Error('items 배열이 없습니다'); data.items.forEach(i => { if (!i.id) i.id = uid(); }); return data; }
   async function refresh(kind, silent) {
     try {
-      state[kind] = normalize(await api.fetchAll(kind)); state.source[kind] = 'remote'; state.lastSync = new Date(); render(kind);
+      const data = kind === 'personal' ? (state.me ? await api.personalList(state.me.id, state.me.pin) : { items: [] }) : await api.list(kind, state.board);
+      state[kind] = normalize(data); state.source[kind] = REMOTE ? 'remote' : 'local'; state.lastSync = new Date(); render(kind);
     } catch (e) {
-      if (e.viewPin) { showLock(lsGet(LS_KEY.viewPin) === null && silent ? '' : e.message === '조회 PIN이 필요합니다' ? '' : e.message); return; }
+      if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; }
+      if (kind === 'personal' && e.code && e.code.startsWith('USER_')) { logout(true); return; }
       if (!state[kind]) { state[kind] = { updated: null, items: [] }; state.source[kind] = 'error'; render(kind); }
       if (!silent) toast('불러오기 실패: ' + e.message);
       setSyncStatus('연결 안 됨 · ' + e.message, true);
     }
   }
-  async function init(kind) {
-    if (REMOTE) { await refresh(kind); return; }
-    const local = lsGet(LS_KEY[kind]);
-    if (local) { state[kind] = normalize(local); state.source[kind] = 'local'; }
-    else {
-      try { state[kind] = await loadDefault(kind); state.source[kind] = 'file'; }
-      catch (e) { state[kind] = { updated: TODAY, items: [] }; state.source[kind] = 'empty'; }
-    }
-    render(kind);
-  }
-  function render(kind) { kind === 'schedule' ? renderSchedule() : renderTasks(); renderNotice(); }
+  function render(kind) { ({ schedule: renderSchedule, tasks: renderTasks, personal: renderPersonal })[kind](); renderNotice(); }
   function setSyncStatus(text, isError) { const el = document.getElementById('syncStatus'); if (el) { el.textContent = text; el.classList.toggle('err', !!isError); } }
   function renderNotice() {
     const ico = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
     const n = document.getElementById('notice');
     if (REMOTE) {
-      const hasPin = !!lsGet(LS_KEY.pin);
-      n.innerHTML = ico + `<span><b>팀 공유 모드${LOCALSRV ? ' (사내 서버)' : ''}</b> · 여기서 저장한 내용은 모든 팀원에게 바로 보입니다. ${hasPin ? '편집 PIN 저장됨.' : '편집하려면 PIN이 필요합니다.'} <span id="syncStatus" class="sync">${state.lastSync ? '마지막 동기화 ' + fmtTime(state.lastSync) : '동기화 중…'}</span></span>`;
+      const hasPin = !!lsGet(LS.pin);
+      n.innerHTML = ico + `<span><b>팀 공유 모드${LOCALSRV ? ' (사내 서버)' : ''}</b> · 저장한 내용은 모든 팀원에게 바로 보입니다. ${hasPin ? '편집 PIN 저장됨.' : '편집하려면 PIN이 필요합니다.'} <span id="syncStatus" class="sync">${state.lastSync ? '마지막 동기화 ' + fmtTime(state.lastSync) : '동기화 중…'}</span></span>`;
       return;
     }
-    const anyLocal = Object.values(state.source).includes('local');
-    const srv = lsGet(LS_KEY.server);
-    const bridge = srv
-      ? `<button class="link-btn" onclick="goServer()">사내 서버로 이동 →</button><button class="link-btn sub" onclick="setServer()">주소 변경</button>`
-      : `<button class="link-btn" onclick="setServer()">사내 서버 주소 연결</button>`;
-    n.innerHTML = ico + (anyLocal
-      ? `<span>이 브라우저에 저장된 수정본입니다(개인용). 팀 공유 데이터는 사내 서버에서 보세요. ${bridge}</span>`
-      : `<span>미리보기 모드입니다. 여기서 수정한 내용은 <b>이 브라우저에만</b> 저장됩니다. 팀 공유 데이터는 사내 서버에서 보세요. ${bridge}</span>`);
+    const srv = lsGet(LS.server);
+    const bridge = srv ? `<button class="link-btn" onclick="goServer()">사내 서버로 이동 →</button><button class="link-btn sub" onclick="setServer()">주소 변경</button>` : `<button class="link-btn" onclick="setServer()">사내 서버 주소 연결</button>`;
+    n.innerHTML = ico + `<span>미리보기 모드입니다. 여기서 저장한 내용은 <b>이 브라우저에만</b> 남습니다. ${bridge}</span>`;
   }
+  function setServer() {
+    const cur = lsGet(LS.server) || 'http://192.168.0.10:8080';
+    let v = prompt('사내 서버 주소를 입력하세요 (start.bat 창의 "팀원 접속" 주소)', cur); if (v == null) return;
+    v = v.trim().replace(/\/+$/, ''); if (!v) { lsDel(LS.server); renderNotice(); return; }
+    if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
+    lsSet(LS.server, v); renderNotice(); toast('서버 주소를 저장했어요');
+  }
+  function goServer() { const v = lsGet(LS.server); if (v) location.href = v + (location.hash || ''); }
+
   function renderChips(container, options, current, onPick) {
     container.innerHTML = '';
     [{ key: '전체' }, ...options].forEach(o => {
-      const b = document.createElement('button');
-      b.className = 'chip' + (o.key === current ? ' active' : '');
+      const b = document.createElement('button'); b.className = 'chip' + (o.key === current ? ' active' : '');
       if (o.color) b.style.setProperty('--dot', o.color);
       b.innerHTML = (o.avatar ? `<span class="avatar">${esc(initial(o.key))}</span>` : (o.color ? '<span class="dot"></span>' : '')) + esc(o.key) + (o.count != null ? ` <span class="cnt">${o.count}</span>` : '');
       b.onclick = () => onPick(o.key); container.appendChild(b);
@@ -650,26 +832,23 @@
   }
   function fillDatalist(id, values) { document.getElementById(id).innerHTML = [...new Set(values.filter(Boolean))].map(v => `<option value="${esc(v)}">`).join(''); }
   const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const catColor = c => cssVar('--c-' + c);
-  const tcatColor = c => cssVar('--t-' + c);
 
-  /* ── 일정 ── */
+  /* ── 일정: 목록 / 달력 ── */
   function renderSchedule() {
-    const data = state.schedule, list = document.getElementById('scheduleList');
-    const upcoming = data.items.filter(i => i.date >= TODAY).length;
-    const todayCnt = data.items.filter(i => i.date === TODAY).length;
+    const data = state.schedule, list = document.getElementById('scheduleList'); if (!data) return;
+    const upcoming = data.items.filter(i => i.date >= TODAY).length, todayCnt = data.items.filter(i => i.date === TODAY).length;
     const d = new Date();
     document.getElementById('scheduleSummary').innerHTML = `
       <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건</div></div>
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>`;
     const counts = {}; data.items.forEach(i => { const c = catOf(i); counts[c] = (counts[c] || 0) + 1; });
-    renderChips(document.getElementById('scheduleFilters'), CATEGORIES.map(c => ({ key: c, color: catColor(c), count: counts[c] || 0 })), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
-
-    const items = data.items.filter(i => state.scheduleTag === '전체' || catOf(i) === state.scheduleTag)
-      .slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+    renderChips(document.getElementById('scheduleFilters'), CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 })), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
+    document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
+    document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
+    const items = data.items.filter(i => state.scheduleTag === '전체' || catOf(i) === state.scheduleTag).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+    if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
-      list.innerHTML = state.source.schedule === 'error'
-        ? '<div class="empty"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br>서버가 켜져 있는지, 같은 네트워크인지 확인해 주세요</div>'
+      list.innerHTML = state.source.schedule === 'error' ? '<div class="empty"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br>잠시 후 다시 시도해 주세요</div>'
         : '<div class="empty"><div class="ico">📅</div>표시할 일정이 없어요<br>버튼을 눌러 일정을 추가해 보세요</div>';
       return;
     }
@@ -684,19 +863,40 @@
         const cat = catOf(ev);
         const time = ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일';
         const sub = [ev.place ? '📍 ' + esc(ev.place) : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
-        html += `<div class="event cat-${cat}">
-          <div class="event-bar"></div>
+        html += `<div class="event cat-${cat}"><div class="event-bar"></div>
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
             <div class="event-body"><div class="event-title">${esc(ev.title)}<span class="pill">${esc(cat)}</span></div>
               ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub">${esc(ev.note)}</div>` : ''}</div>
-            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
-          </div></div>`;
+            <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
       html += `</div></div>`;
     });
     list.innerHTML = html;
   }
+  function renderCalendar(items) {
+    const list = document.getElementById('scheduleList');
+    const [y, m] = state.calMonth.split('-').map(Number);
+    const first = new Date(y, m - 1, 1), startDow = first.getDay(), daysIn = new Date(y, m, 0).getDate();
+    const byDate = {}; items.forEach(i => (byDate[i.date] = byDate[i.date] || []).push(i));
+    let html = `<div class="cal-head"><button class="nav" onclick="calMove(-1)" aria-label="이전 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h3>${y}년 ${m}월</h3><button class="today-btn" onclick="calToday()">오늘</button>
+      <button class="nav" onclick="calMove(1)" aria-label="다음 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="cal"><div class="cal-dow">${DOW.map(d => `<div>${d}</div>`).join('')}</div><div class="cal-grid">`;
+    const cells = startDow + daysIn, rows = Math.ceil(cells / 7) * 7;
+    for (let i = 0; i < rows; i++) {
+      const dayNum = i - startDow + 1; const dd = new Date(y, m - 1, dayNum); const date = ymd(dd); const other = dayNum < 1 || dayNum > daysIn;
+      const dow = dd.getDay(); const evs = byDate[date] || [];
+      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${dow===0?'sun':dow===6?'sat':''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
+      evs.slice(0, 3).forEach(ev => { html += `<div class="cal-ev cat-${catOf(ev)}" title="${esc(ev.title)}" onclick="event.stopPropagation();openScheduleForm('${esc(ev.id)}','detail')">${ev.start ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
+      if (evs.length > 3) html += `<div class="cal-more">+${evs.length - 3}개 더</div>`;
+      html += `</div>`;
+    }
+    list.innerHTML = html + `</div></div>`;
+  }
+  function calMove(n) { const [y, m] = state.calMonth.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); state.calMonth = ymd(d).slice(0, 7); renderSchedule(); }
+  function calToday() { state.calMonth = TODAY.slice(0, 7); renderSchedule(); }
+  function calCellClick(e, date) { if (e.target.closest('.cal-ev')) return; openScheduleForm(null, null, date); }
 
   /* ── 시간 팝오버 ── */
   function openPop(id, anchor) {
@@ -713,25 +913,36 @@
     setTimeout(() => pop.elements.date.focus(), 50);
   }
   function closePop() { document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open'); }
-  function shiftDate(days) {
-    const f = document.getElementById('pop').elements.date; const d = new Date((f.value || TODAY) + 'T00:00:00'); d.setDate(d.getDate() + days);
-    f.value = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
-  }
+  function shiftDate(days) { const f = document.getElementById('pop').elements.date; const d = new Date((f.value || TODAY) + 'T00:00:00'); d.setDate(d.getDate() + days); f.value = ymd(d); }
   function clearTime() { const f = document.getElementById('pop').elements; f.start.value = ''; f.end.value = ''; }
   async function saveWhen(e) {
     e.preventDefault();
     const f = document.getElementById('pop'); const v = readForm(f);
     const ev = state.schedule.items.find(i => i.id === v.id); if (!ev) return closePop();
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
-    setBusy(f, true);
-    const ok = await saveItem('schedule', { ...ev, date: v.date, start: v.start, end: v.end });
-    setBusy(f, false);
+    setBusy(f, true); const ok = await saveItem('schedule', { ...ev, date: v.date, start: v.start, end: v.end }); setBusy(f, false);
     if (ok) { closePop(); toast('일시를 변경했어요'); }
   }
 
-  /* ── 업무 ── */
+  /* ── 업무 카드 렌더 (팀/개인 공용) ── */
+  function taskCards(items, scope) {
+    return items.map(t => {
+      const overdue = t.due && t.due < TODAY && t.status !== '완료'; const tc = tcatOf(t);
+      return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
+        <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
+          <button class="status s-${esc(t.status)}" title="클릭하면 다음 상태로" onclick="event.stopPropagation();cycleStatus('${esc(t.id)}','${scope}')">${esc(t.status)}</button></div>
+        <div class="task-title">${esc(t.title)}</div>
+        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
+        <div class="task-foot">
+          ${t.due ? `<span class="${overdue ? 'overdue' : ''}">📆 ${esc(t.due)}${overdue ? ' 지연' : ''}</span>` : '<span>📆 기한 미정</span>'}
+          ${t.owner && scope === 'tasks' ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
+        </div></div>`;
+    }).join('');
+  }
+  function sortTasks(items) { return items.slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || (a.due || '9999').localeCompare(b.due || '9999')); }
+
   function renderTasks() {
-    const data = state.tasks, list = document.getElementById('taskList');
+    const data = state.tasks, list = document.getElementById('taskList'); if (!data) return;
     const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('tasksSummary').innerHTML = `
@@ -742,62 +953,118 @@
     if (state.taskStatus !== '전체' && !statuses.includes(state.taskStatus)) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), statuses.map(s => ({ key: s, count: counts[s] })), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('tasksCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: tcatColor(c), count: catCounts[c] || 0 })), state.taskCat, c => { state.taskCat = c; renderTasks(); });
+    renderChips(document.getElementById('tasksCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 })), state.taskCat, c => { state.taskCat = c; renderTasks(); });
     const ownerCounts = {}; data.items.forEach(i => { const o = (i.owner || '').trim() || '미지정'; ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
     const owners = Object.keys(ownerCounts).sort((a, b) => ownerCounts[b] - ownerCounts[a] || a.localeCompare(b, 'ko'));
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
     renderChips(document.getElementById('tasksOwnerFilters'), owners.map(o => ({ key: o, avatar: true, count: ownerCounts[o] })), state.taskOwner, o => { state.taskOwner = o; renderTasks(); });
-
-    const items = data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus)
-        && (state.taskCat === '전체' || tcatOf(i) === state.taskCat)
-        && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner)).slice()
-      .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || (a.due || '9999').localeCompare(b.due || '9999'));
+    const items = sortTasks(data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus) && (state.taskCat === '전체' || tcatOf(i) === state.taskCat) && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner)));
     if (!items.length) {
-      list.innerHTML = state.source.tasks === 'error'
-        ? '<div class="empty" style="grid-column:1/-1"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br>서버가 켜져 있는지, 같은 네트워크인지 확인해 주세요</div>'
+      list.innerHTML = state.source.tasks === 'error' ? '<div class="empty" style="grid-column:1/-1"><div class="ico">⚠️</div>서버에 연결하지 못했어요<br>잠시 후 다시 시도해 주세요</div>'
         : '<div class="empty" style="grid-column:1/-1"><div class="ico">✅</div>표시할 업무가 없어요<br>필터를 바꾸거나 버튼을 눌러 업무를 추가해 보세요</div>';
       return;
     }
-    list.innerHTML = items.map(t => {
-      const overdue = t.due && t.due < TODAY && t.status !== '완료';
-      const tc = tcatOf(t);
-      return `<div class="task tcat-${tc} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}')">
-        <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
-          <button class="status s-${esc(t.status)}" title="클릭하면 다음 상태로" onclick="event.stopPropagation();cycleStatus('${esc(t.id)}')">${esc(t.status)}</button></div>
-        <div class="task-title">${esc(t.title)}</div>
-        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
-        <div class="task-foot">
-          ${t.due ? `<span class="${overdue ? 'overdue' : ''}">📆 ${esc(t.due)}${overdue ? ' 지연' : ''}</span>` : '<span>📆 기한 미정</span>'}
-          ${t.owner ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
-        </div></div>`;
-    }).join('');
+    list.innerHTML = taskCards(items, 'tasks');
   }
-  async function cycleStatus(id) {
-    const t = state.tasks.items.find(i => i.id === id); if (!t) return;
+
+  /* ── 개인업무 ── */
+  function renderPersonal() {
+    const loggedIn = !!state.me;
+    document.getElementById('personalLogin').style.display = loggedIn ? 'none' : '';
+    document.getElementById('personalSide').style.display = loggedIn ? '' : 'none';
+    document.getElementById('personalList').style.display = loggedIn ? '' : 'none';
+    document.getElementById('fab').style.display = (currentTab() === 'personal' && !loggedIn) ? 'none' : '';
+    if (!loggedIn) { renderLoginForm(); return; }
+    const data = state.personal || { items: [] }, list = document.getElementById('personalList');
+    const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
+    const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
+    document.getElementById('personalSummary').innerHTML = `
+      <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div></div>
+      <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
+    const statuses = STATUSES.filter(s => counts[s]);
+    if (state.pStatus !== '전체' && !statuses.includes(state.pStatus)) state.pStatus = '전체';
+    renderChips(document.getElementById('personalFilters'), statuses.map(s => ({ key: s, count: counts[s] })), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
+    const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
+    renderChips(document.getElementById('personalCatFilters'), TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 })), state.pCat, c => { state.pCat = c; renderPersonal(); });
+    const items = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)));
+    list.innerHTML = items.length ? taskCards(items, 'personal') : '<div class="empty" style="grid-column:1/-1"><div class="ico">📝</div>아직 개인업무가 없어요<br>버튼을 눌러 첫 업무를 추가해 보세요</div>';
+  }
+  function renderLoginForm() {
+    const reg = state.loginMode === 'register';
+    document.getElementById('loginTitle').textContent = reg ? '개인업무 처음 등록' : '개인업무 로그인';
+    document.getElementById('loginDesc').textContent = reg ? '행정전화번호를 아이디로, 본인만 아는 비밀번호를 정하세요. 이후 어떤 기기에서도 같은 정보로 로그인할 수 있어요.' : '행정전화번호와 본인 비밀번호로 로그인하면 폰·PC 어디서나 내 업무를 볼 수 있어요.';
+    document.getElementById('loginNameField').style.display = reg ? '' : 'none';
+    document.getElementById('loginForm').elements.uname.required = reg;
+    document.getElementById('loginSubmit').textContent = reg ? '등록하고 시작' : '로그인';
+    document.getElementById('loginSwitch').innerHTML = reg ? '이미 등록했나요? <button type="button" onclick="setLoginMode(\'login\')">로그인</button>' : '처음이세요? <button type="button" onclick="setLoginMode(\'register\')">등록하기</button>';
+  }
+  function setLoginMode(m) { state.loginMode = m; document.getElementById('loginErr').textContent = ''; renderLoginForm(); }
+  async function submitLogin(e) {
+    e.preventDefault();
+    const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), upin = f.elements.upin.value.trim(), name = (f.elements.uname.value || '').trim();
+    const err = document.getElementById('loginErr'); err.textContent = '';
+    if (id.length < 4) { err.textContent = '전화번호를 확인하세요'; return; }
+    const btn = document.getElementById('loginSubmit'); btn.disabled = true;
+    try {
+      const nm = state.loginMode === 'register' ? await api.userRegister(id, name, upin) : await api.userLogin(id, upin);
+      state.me = { id, pin: upin, name: nm }; lsSet(LS.me, state.me); f.reset(); state.loginMode = 'login';
+      await refresh('personal'); toast(`${nm}님, 환영합니다`); showTab('personal');
+    } catch (ex) { err.textContent = ex.message; }
+    btn.disabled = false;
+  }
+  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); state.loginMode = 'login'; document.getElementById('loginErr').textContent = ''; renderPersonal(); if (!silent) toast('로그아웃했어요'); }
+  async function changeUserPin() {
+    if (!state.me) return;
+    const old = prompt('현재 비밀번호'); if (old == null) return;
+    const nw = prompt('새 비밀번호 (4자리 이상)'); if (nw == null) return;
+    try { await api.userSetPin(state.me.id, old.trim(), nw.trim()); state.me.pin = nw.trim(); lsSet(LS.me, state.me); toast('비밀번호를 바꿨어요'); }
+    catch (e) { toast(e.message); }
+  }
+
+  /* ── 저장 계층 ── */
+  async function saveItem(kind, item) {
+    try {
+      if (kind === 'personal') { if (!state.me) return false; await api.personalSave(state.me.id, state.me.pin, item); }
+      else if (!await withPin(pin => api.save(kind, item, state.board, pin))) return false;
+    } catch (e) { toast(e.message); return false; }
+    await refresh(kind, true); return true;
+  }
+  async function removeItem(kind, id) {
+    try {
+      if (kind === 'personal') { if (!state.me) return false; await api.personalDelete(state.me.id, state.me.pin, id); }
+      else if (!await withPin(pin => api.remove(kind, id, state.board, pin))) return false;
+    } catch (e) { toast(e.message); return false; }
+    await refresh(kind, true); return true;
+  }
+  async function replaceAll(kind, items) {
+    if (!await withPin(pin => api.replace(kind, items, state.board, pin))) return false;
+    await refresh(kind, true); return true;
+  }
+  async function cycleStatus(id, scope) {
+    const t = state[scope].items.find(i => i.id === id); if (!t) return;
     const next = { ...t, status: STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length] };
-    if (await saveItem('tasks', next)) toast('상태 → ' + next.status);
+    if (await saveItem(scope, next)) toast('상태 → ' + next.status);
   }
 
   /* ── 시트 ── */
   function openModal(id) { document.getElementById(id).classList.add('open'); }
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-  function fillForm(form, obj) { [...form.elements].forEach(el => { if (el.name) el.value = obj[el.name] ?? ''; }); }
+  function fillForm(form, obj) { [...form.elements].forEach(el => { if (el.name && el.type !== 'hidden' || el.name === 'id') el.value = obj[el.name] ?? ''; }); }
   function readForm(form) { const o = {}; [...form.elements].forEach(el => { if (el.name) o[el.name] = el.value.trim(); }); return o; }
   function setBusy(form, busy) { const b = form.querySelector('button[type=submit]'); b.disabled = busy; b.textContent = busy ? '저장 중…' : '저장'; }
 
   function renderCatPicker(current) {
-    document.getElementById('catPicker').innerHTML = CATEGORIES.map(c =>
-      `<button type="button" class="cat-${c} ${c === current ? 'on' : ''}" onclick="pickCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
+    document.getElementById('catPicker').innerHTML = CATEGORIES.map(c => `<button type="button" class="cat-${c} ${c === current ? 'on' : ''}" onclick="pickCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
     document.getElementById('scheduleForm').elements.tag.value = current;
   }
   function pickCat(c) { renderCatPicker(c); }
   function expandWhen() { document.getElementById('scheduleForm').classList.remove('compact'); }
-  function openScheduleForm(id, mode) {
+  function openScheduleForm(id, mode, presetDate) {
     const form = document.getElementById('scheduleForm'); form.reset(); form.classList.remove('compact');
     const item = id ? state.schedule.items.find(i => i.id === id) : null;
     document.getElementById('scheduleFormTitle').textContent = item ? '일정 수정' : '새 일정';
     document.getElementById('scheduleDelete').style.display = item ? '' : 'none';
-    fillForm(form, item || { date: TODAY }); renderCatPicker(item ? catOf(item) : '교육');
+    fillForm(form, item || { date: presetDate || TODAY }); renderCatPicker(item ? catOf(item) : '교육');
     if (item && mode === 'detail') { form.classList.add('compact'); document.getElementById('whenText').textContent = fmtWhen(item); }
     openModal('scheduleModal'); setTimeout(() => form.title.focus(), 300);
   }
@@ -810,54 +1077,56 @@
     if (ok) { closeModal('scheduleModal'); toast('저장했어요'); }
   }
   function renderStatusPicker(current) {
-    document.getElementById('statusPicker').innerHTML = STATUSES.map(s =>
-      `<button type="button" class="s-${s} ${s === current ? 'on' : ''}" onclick="pickStatus('${s}')">${s}</button>`).join('');
+    document.getElementById('statusPicker').innerHTML = STATUSES.map(s => `<button type="button" class="s-${s} ${s === current ? 'on' : ''}" onclick="pickStatus('${s}')">${s}</button>`).join('');
     document.getElementById('taskForm').elements.status.value = current;
   }
   function pickStatus(s) { renderStatusPicker(s); }
   function renderTaskCatPicker(current) {
-    document.getElementById('taskCatPicker').innerHTML = TASK_CATEGORIES.map(c =>
-      `<button type="button" class="tcat-${c} ${c === current ? 'on' : ''}" onclick="pickTaskCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
+    document.getElementById('taskCatPicker').innerHTML = TASK_CATEGORIES.map(c => `<button type="button" class="tcat-${c} ${c === current ? 'on' : ''}" onclick="pickTaskCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
     document.getElementById('taskForm').elements.category.value = current;
   }
   function pickTaskCat(c) { renderTaskCatPicker(c); }
-  function openTaskForm(id) {
-    const form = document.getElementById('taskForm'); form.reset();
-    const item = id ? state.tasks.items.find(i => i.id === id) : null;
-    document.getElementById('taskFormTitle').textContent = item ? '업무 수정' : '새 업무';
+  function openTaskForm(id, scope) {
+    scope = scope || 'tasks';
+    if (scope === 'personal' && !state.me) { showTab('personal'); return; }
+    const form = document.getElementById('taskForm'); form.reset(); form.elements.scope.value = scope;
+    const item = id ? state[scope].items.find(i => i.id === id) : null;
+    document.getElementById('taskFormTitle').textContent = (scope === 'personal' ? '개인업무' : '업무') + (item ? ' 수정' : ' 추가');
     document.getElementById('taskDelete').style.display = item ? '' : 'none';
+    document.getElementById('taskOwnerField').style.display = scope === 'personal' ? 'none' : '';
     fillForm(form, item || {}); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(item ? tcatOf(item) : '교육운영');
     openModal('taskModal'); if (!item) setTimeout(() => form.title.focus(), 300);
   }
   async function saveTask(e) {
     e.preventDefault();
-    const form = document.getElementById('taskForm'); const v = readForm(form);
+    const form = document.getElementById('taskForm'); const v = readForm(form); const scope = v.scope; delete v.scope;
     if (!v.id) v.id = uid();
-    setBusy(form, true); const ok = await saveItem('tasks', v); setBusy(form, false);
+    setBusy(form, true); const ok = await saveItem(scope, v); setBusy(form, false);
     if (ok) { closeModal('taskModal'); toast('저장했어요'); }
   }
   async function deleteItem(kind) {
     const form = document.getElementById(kind === 'schedule' ? 'scheduleForm' : 'taskForm');
-    const id = form.elements.id.value;
+    const id = form.elements.id.value; if (kind !== 'schedule') kind = form.elements.scope.value;
     if (!confirm('삭제할까요? 되돌릴 수 없어요.')) return;
     if (await removeItem(kind, id)) { closeModal(kind === 'schedule' ? 'scheduleModal' : 'taskModal'); toast('삭제했어요'); }
   }
 
   /* ── 내보내기 / 가져오기 / 복원 ── */
   function exportJSON(kind) {
-    const blob = new Blob([JSON.stringify({ updated: TODAY, items: state[kind].items }, null, 2)], { type: 'application/json' });
+    const data = state[kind]; if (!data) return;
+    const blob = new Blob([JSON.stringify({ updated: TODAY, board: state.board, items: data.items }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = kind + '.json';
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href); toast(kind + '.json 내보냈어요');
   }
   function importJSON(kind) {
+    if (kind === 'personal') return;
     const input = document.getElementById('fileInput'); input.value = '';
     input.onchange = () => {
-      const f = input.files[0]; if (!f) return;
-      const r = new FileReader();
+      const f = input.files[0]; if (!f) return; const r = new FileReader();
       r.onload = async () => {
         try {
           const data = normalize(JSON.parse(r.result));
-          if (!confirm(`현재 ${state[kind].items.length}건을 파일의 ${data.items.length}건으로 교체할까요?${REMOTE ? '\n(팀 전체 데이터가 바뀝니다)' : ''}`)) return;
+          if (!confirm(`"${boardName()}" 대시보드의 현재 ${state[kind].items.length}건을 파일의 ${data.items.length}건으로 교체할까요?${REMOTE ? '\n(팀 전체 데이터가 바뀝니다)' : ''}`)) return;
           if (await replaceAll(kind, data.items)) toast('가져왔어요');
         } catch (e) { toast('JSON 형식 오류: ' + e.message); }
       };
@@ -867,33 +1136,38 @@
   }
   async function resetToDefault(kind) {
     if (REMOTE) { await refresh(kind); toast('서버에서 다시 불러왔어요'); return; }
-    if (!confirm('이 브라우저의 수정 내용을 지우고 저장소 기본 데이터로 되돌릴까요?')) return;
-    lsDel(LS_KEY[kind]);
-    try { state[kind] = await loadDefault(kind); state.source[kind] = 'file'; }
-    catch (e) { state[kind] = { updated: TODAY, items: [] }; state.source[kind] = 'empty'; }
-    render(kind); toast('기본값으로 복원했어요');
+    if (!confirm('이 브라우저의 모든 수정 내용을 지우고 기본 데이터로 되돌릴까요?')) return;
+    [LS.items, LS.boards, LS.legacy.schedule, LS.legacy.tasks].forEach(lsDel); location.reload();
   }
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open')); closePop(); return; }
-    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open');
+    if (e.key === 'Escape') { document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open')); closePop(); closeBoardMenu(); return; }
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
-    else if (e.key === '1') showTab('schedule');
-    else if (e.key === '2') showTab('tasks');
+    else if (e.key === 'c' || e.key === 'C') { if (currentTab() !== 'schedule') showTab('schedule'); toggleView(); }
+    else if (e.key === '1') tabClick('schedule'); else if (e.key === '2') tabClick('tasks'); else if (e.key === '3') tabClick('personal');
   });
 
+  /* ── 시작 ── */
+  async function boot() {
+    const h = parseHash(); state.board = h.board;
+    try { await loadBoards(); } catch (e) { if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; } }
+    state.me = lsGet(LS.me);
+    showTab(h.tab);
+    await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true)]);
+  }
   if (REMOTE) {
-    document.getElementById('menuPin').style.display = '';
-    document.getElementById('menuViewPin').style.display = '';
+    document.getElementById('menuPin').style.display = ''; document.getElementById('menuViewPin').style.display = '';
     document.getElementById('menuReset').textContent = '🔄  서버에서 새로고침';
     const every = Math.max(10, Number(CFG.pollSeconds) || 30) * 1000;
-    const busy = () => document.hidden || document.querySelector('.sheet-bg.open, .pop.open');
-    setInterval(() => { if (!busy()) { refresh('schedule', true); refresh('tasks', true); } }, every);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh('schedule', true); refresh('tasks', true); } });
+    const busy = () => document.hidden || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
+    const sync = () => { if (!busy()) { refresh('schedule', true); refresh('tasks', true); if (state.me) refresh('personal', true); } };
+    setInterval(sync, every);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   }
-  if (location.hash === '#tasks') showTab('tasks');
-  init('schedule'); init('tasks');
+  renderPersonal();
+  boot();
 </script>
 </body>
 </html>

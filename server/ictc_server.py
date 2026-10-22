@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 r"""
-ICTC 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 사용)
+지휘역량강화센터 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 사용)
 
 프로그램 폴더 (압축 푼 위치, 어디든 상관없음):
   ictc_server.py   이 파일
   start.bat        더블클릭 실행용 (DB 위치를 D:\일정표,주요업무\ 로 지정)
-  site\            웹앱 화면 (index.html, config.js, data\, checklist\)
+  site\            웹앱 화면 (index.html, config.js, data\, checklist\, assets\)
 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
   ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
@@ -15,13 +15,19 @@ ICTC 일정·업무 보드 로컬 서버 (Python 3.8+ 표준 라이브러리만 
 실행:  python ictc_server.py  [--port 8080] [--db 경로] [--pin-file 경로] [--static 경로]
 접속:  본인  http://localhost:8080
        팀원  http://<이 PC의 IP>:8080
-r"""
-import argparse, json, os, socket, sqlite3, sys, threading, time
+"""
+import argparse, hashlib, hmac, json, os, secrets, socket, sqlite3, sys, threading, time
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+KINDS = ('schedule', 'tasks')
+
+
+class ApiError(Exception):
+    def __init__(self, code, status=400):
+        super().__init__(code); self.code = code; self.status = status
 
 
 def find_static():
@@ -45,6 +51,20 @@ def view_pin_path(pin_path):
     return os.path.join(os.path.dirname(pin_path), 'view_pin.txt')
 
 
+def hash_pin(pin, salt=None):
+    salt = salt or secrets.token_hex(8)
+    h = hashlib.pbkdf2_hmac('sha256', pin.encode('utf-8'), salt.encode('utf-8'), 50000).hex()
+    return f'{salt}${h}'
+
+
+def check_hash(pin, stored):
+    try:
+        salt, _ = stored.split('$', 1)
+    except ValueError:
+        return False
+    return hmac.compare_digest(hash_pin(pin, salt), stored)
+
+
 class DB:
     def __init__(self, path):
         self.path = path
@@ -53,6 +73,13 @@ class DB:
         con.execute('pragma journal_mode=wal')
         con.execute('''create table if not exists items (
             id text primary key, kind text not null, data text not null, updated_at text not null)''')
+        cols = [r[1] for r in con.execute('pragma table_info(items)')]
+        if 'board' not in cols:
+            con.execute("alter table items add column board text not null default 'main'")
+        con.execute('create index if not exists items_kind_board on items(kind, board)')
+        con.execute('create table if not exists boards (id text primary key, name text not null, created_at text not null)')
+        con.execute("insert or ignore into boards(id, name, created_at) values('main', '지휘역량강화센터', ?)", (self.now(),))
+        con.execute('create table if not exists users (id text primary key, name text not null, pin_hash text not null, created_at text not null)')
         con.commit(); con.close()
 
     def _con(self):
@@ -62,37 +89,87 @@ class DB:
     def now():
         return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
-    def list(self, kind):
+    def _run(self, fn):
         with self.lock:
             con = self._con()
-            rows = con.execute('select data, updated_at from items where kind=? order by updated_at desc', (kind,)).fetchall()
-            con.close()
+            try:
+                r = fn(con); con.commit(); return r
+            finally:
+                con.close()
+
+    # ----- 항목 -----
+    def list(self, kind, board):
+        rows = self._run(lambda c: c.execute('select data, updated_at from items where kind=? and board=? order by updated_at desc', (kind, board)).fetchall())
         return [{'data': json.loads(d), 'updated_at': u} for d, u in rows]
 
-    def save(self, kind, item):
-        with self.lock:
-            con = self._con()
-            con.execute('''insert into items(id, kind, data, updated_at) values(?,?,?,?)
-                on conflict(id) do update set data=excluded.data, kind=excluded.kind, updated_at=excluded.updated_at''',
-                        (item['id'], kind, json.dumps(item, ensure_ascii=False), self.now()))
-            con.commit(); con.close()
+    def save(self, kind, board, item):
+        self._run(lambda c: c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
+            on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at''',
+                                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now())))
 
-    def delete(self, kind, id_):
-        with self.lock:
-            con = self._con()
-            con.execute('delete from items where id=? and kind=?', (id_, kind))
-            con.commit(); con.close()
+    def delete(self, kind, board, id_):
+        self._run(lambda c: c.execute('delete from items where id=? and kind=? and board=?', (id_, kind, board)))
 
-    def replace(self, kind, items):
+    def replace(self, kind, board, items):
         now = self.now()
-        with self.lock:
-            con = self._con()
-            con.execute('delete from items where kind=?', (kind,))
+        def fn(c):
+            c.execute('delete from items where kind=? and board=?', (kind, board))
             for x in items:
                 x.setdefault('id', f'{int(time.time()*1000):x}{os.urandom(3).hex()}')
-                con.execute('insert into items(id, kind, data, updated_at) values(?,?,?,?)',
-                            (x['id'], kind, json.dumps(x, ensure_ascii=False), now))
-            con.commit(); con.close()
+                c.execute('insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)', (x['id'], kind, board, json.dumps(x, ensure_ascii=False), now))
+        self._run(fn)
+
+    # ----- 대시보드 -----
+    def boards(self):
+        rows = self._run(lambda c: c.execute("select id, name from boards order by (id <> 'main'), created_at").fetchall())
+        return [{'id': i, 'name': n} for i, n in rows]
+
+    def board_add(self, id_, name):
+        if not name.strip(): raise ApiError('NAME_REQUIRED')
+        def fn(c):
+            if c.execute('select 1 from boards where id=?', (id_,)).fetchone(): raise ApiError('BOARD_EXISTS')
+            c.execute('insert into boards(id, name, created_at) values(?,?,?)', (id_, name.strip(), self.now()))
+        self._run(fn)
+
+    def board_rename(self, id_, name):
+        if not name.strip(): raise ApiError('NAME_REQUIRED')
+        self._run(lambda c: c.execute('update boards set name=? where id=?', (name.strip(), id_)))
+
+    def board_delete(self, id_):
+        if id_ == 'main': raise ApiError('BOARD_PROTECTED')
+        def fn(c):
+            c.execute("delete from items where board=? and kind in ('schedule','tasks')", (id_,))
+            c.execute('delete from boards where id=?', (id_,))
+        self._run(fn)
+
+    # ----- 개인업무 -----
+    def user_check(self, id_, pin):
+        row = self._run(lambda c: c.execute('select pin_hash, name from users where id=?', (id_,)).fetchone())
+        if not row: raise ApiError('USER_NOT_FOUND', 403)
+        if not check_hash(pin or '', row[0]): raise ApiError('USER_PIN_INVALID', 403)
+        return row[1]
+
+    def user_register(self, id_, name, pin):
+        if len(id_ or '') < 4: raise ApiError('USER_ID_INVALID')
+        if not (name or '').strip(): raise ApiError('NAME_REQUIRED')
+        if len(pin or '') < 4: raise ApiError('PIN_TOO_SHORT')
+        def fn(c):
+            if c.execute('select 1 from users where id=?', (id_,)).fetchone(): raise ApiError('USER_EXISTS')
+            c.execute('insert into users(id, name, pin_hash, created_at) values(?,?,?,?)', (id_, name.strip(), hash_pin(pin), self.now()))
+        self._run(fn); return name.strip()
+
+    def user_set_pin(self, id_, new):
+        if len(new or '') < 4: raise ApiError('PIN_TOO_SHORT')
+        self._run(lambda c: c.execute('update users set pin_hash=? where id=?', (hash_pin(new), id_)))
+
+    def personal_list(self, id_):
+        return self.list('personal', id_)
+
+    def personal_save(self, id_, item):
+        self.save('personal', id_, item)
+
+    def personal_delete(self, id_, item_id):
+        self.delete('personal', id_, item_id)
 
 
 def make_handler(db, static_dir, pin_path, poll):
@@ -110,70 +187,103 @@ def make_handler(db, static_dir, pin_path, poll):
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self.end_headers(); self.wfile.write(body)
 
         def end_headers(self):
             if not self.path.startswith('/api/'):
                 self.send_header('Cache-Control', 'no-cache')
             super().end_headers()
 
+        def _edit_pin(self): return read_pin(pin_path)
+        def _view_pin(self): return read_pin(view_pin_path(pin_path), '0000', '조회')
+
+        def require_view(self, given):
+            vp = self._view_pin(); given = (given or '').strip()
+            if vp and given not in (vp, self._edit_pin()):
+                raise ApiError('VIEW_PIN_INVALID' if given else 'VIEW_PIN_REQUIRED', 403)
+
+        def require_edit(self, given):
+            if (given or '').strip() != self._edit_pin(): raise ApiError('PIN_INVALID', 403)
+
         def do_GET(self):
-            u = urlparse(self.path)
+            u = urlparse(self.path); q = parse_qs(u.query)
             if u.path == '/config.js':
                 body = ('window.ICTC_CONFIG = { apiUrl: "", pollSeconds: %d };\n' % poll).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/javascript; charset=utf-8')
-                self.send_header('Cache-Control', 'no-store')
-                self.send_header('Content-Length', str(len(body)))
+                self.send_header('Cache-Control', 'no-store'); self.send_header('Content-Length', str(len(body)))
                 self.end_headers(); self.wfile.write(body); return
-            if u.path == '/api/items':
-                kind = parse_qs(u.query).get('kind', [''])[0]
-                if kind not in ('schedule', 'tasks'):
-                    return self._json(400, {'message': 'kind 오류'})
-                vp = read_pin(view_pin_path(pin_path), '0000', '조회')
-                given = (self.headers.get('X-Pin') or '').strip()
-                if vp and given not in (vp, read_pin(pin_path)):
-                    return self._json(403, {'message': 'VIEW_PIN_INVALID' if given else 'VIEW_PIN_REQUIRED'})
-                return self._json(200, db.list(kind))
-            if u.path == '/api/health':
-                return self._json(200, {'ok': True, 'time': db.now()})
-            if u.path.startswith('/api/'):
-                return self._json(404, {'message': 'not found'})
-            return super().do_GET()
+            if not u.path.startswith('/api/'):
+                return super().do_GET()
+            try:
+                if u.path == '/api/health':
+                    return self._json(200, {'ok': True, 'time': db.now()})
+                self.require_view(self.headers.get('X-Pin'))
+                if u.path == '/api/items':
+                    kind = q.get('kind', [''])[0]; board = q.get('board', ['main'])[0] or 'main'
+                    if kind not in KINDS: raise ApiError('KIND_INVALID')
+                    return self._json(200, db.list(kind, board))
+                if u.path == '/api/boards':
+                    return self._json(200, db.boards())
+                raise ApiError('NOT_FOUND', 404)
+            except ApiError as e:
+                return self._json(e.status, {'message': e.code})
 
         def do_POST(self):
             u = urlparse(self.path)
-            if not u.path.startswith('/api/'):
-                return self._json(404, {'message': 'not found'})
             try:
-                n = int(self.headers.get('Content-Length') or 0)
-                body = json.loads(self.rfile.read(n) or b'{}')
-            except Exception:
-                return self._json(400, {'message': 'JSON 오류'})
-            if str(body.get('pin', '')).strip() != read_pin(pin_path):
-                return self._json(403, {'message': 'PIN_INVALID'})
-            kind = body.get('kind')
-            if kind not in ('schedule', 'tasks'):
-                return self._json(400, {'message': 'kind 오류'})
-            try:
-                if u.path == '/api/save':
-                    item = body.get('item') or {}
-                    if not item.get('id'):
-                        return self._json(400, {'message': 'ID_REQUIRED'})
-                    db.save(kind, item)
-                elif u.path == '/api/delete':
-                    db.delete(kind, str(body.get('id', '')))
-                elif u.path == '/api/replace':
-                    items = body.get('items')
-                    if not isinstance(items, list):
-                        return self._json(400, {'message': 'items 배열 필요'})
-                    db.replace(kind, items)
-                else:
-                    return self._json(404, {'message': 'not found'})
+                if not u.path.startswith('/api/'): raise ApiError('NOT_FOUND', 404)
+                try:
+                    n = int(self.headers.get('Content-Length') or 0)
+                    b = json.loads(self.rfile.read(n) or b'{}')
+                except Exception:
+                    raise ApiError('JSON_INVALID')
+                fn = u.path[5:]
+                kind = b.get('kind'); board = (b.get('board') or 'main')
+                if fn in ('save', 'delete', 'replace'):
+                    self.require_edit(b.get('pin'))
+                    if kind not in KINDS: raise ApiError('KIND_INVALID')
+                    if fn == 'save':
+                        item = b.get('item') or {}
+                        if not item.get('id'): raise ApiError('ID_REQUIRED')
+                        db.save(kind, board, item)
+                    elif fn == 'delete':
+                        db.delete(kind, board, str(b.get('id', '')))
+                    else:
+                        items = b.get('items')
+                        if not isinstance(items, list): raise ApiError('ITEMS_REQUIRED')
+                        db.replace(kind, board, items)
+                    return self._json(204)
+                if fn == 'board_add':
+                    self.require_edit(b.get('pin')); db.board_add(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
+                if fn == 'board_rename':
+                    self.require_edit(b.get('pin')); db.board_rename(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
+                if fn == 'board_delete':
+                    self.require_edit(b.get('pin')); db.board_delete(str(b.get('id', ''))); return self._json(204)
+                if fn == 'user_register':
+                    self.require_view(b.get('view_pin'))
+                    return self._json(200, {'name': db.user_register(str(b.get('id', '')), str(b.get('name', '')), str(b.get('user_pin', '')))})
+                if fn == 'user_login':
+                    return self._json(200, {'name': db.user_check(str(b.get('id', '')), str(b.get('user_pin', '')))})
+                if fn == 'user_set_pin':
+                    db.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn == 'user_reset_pin':
+                    self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn in ('personal_list', 'personal_save', 'personal_delete'):
+                    uid = str(b.get('id', '')); db.user_check(uid, str(b.get('user_pin', '')))
+                    if fn == 'personal_list': return self._json(200, db.personal_list(uid))
+                    if fn == 'personal_save':
+                        item = b.get('item') or {}
+                        if not item.get('id'): raise ApiError('ID_REQUIRED')
+                        db.personal_save(uid, item)
+                    else:
+                        db.personal_delete(uid, str(b.get('item_id', '')))
+                    return self._json(204)
+                raise ApiError('NOT_FOUND', 404)
+            except ApiError as e:
+                return self._json(e.status, {'message': e.code})
             except Exception as e:
                 return self._json(500, {'message': str(e)})
-            return self._json(204)
 
     return Handler
 
@@ -183,8 +293,7 @@ def lan_ips():
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             ip = info[4][0]
-            if not ip.startswith('127.'):
-                ips.add(ip)
+            if not ip.startswith('127.'): ips.add(ip)
     except Exception:
         pass
     try:
@@ -196,38 +305,34 @@ def lan_ips():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='ICTC 보드 로컬 서버')
+    ap = argparse.ArgumentParser(description='일정·업무 보드 로컬 서버')
     ap.add_argument('--port', type=int, default=8080)
     ap.add_argument('--db', default=os.path.join(HERE, 'ictc.db'))
     ap.add_argument('--pin-file', default=os.path.join(HERE, 'pin.txt'))
-    ap.add_argument('--static', default=None, help='ictc 폴더 경로 (기본: 자동 탐색)')
+    ap.add_argument('--static', default=None, help='웹앱 폴더 경로 (기본: 자동 탐색)')
     ap.add_argument('--poll', type=int, default=15, help='팀원 화면 자동 새로고침 주기(초)')
     ap.add_argument('--host', default='0.0.0.0', help='127.0.0.1 로 바꾸면 이 PC에서만 접속 가능')
     a = ap.parse_args()
 
     static = a.static or find_static()
     if not static:
-        print('[오류] 웹앱 폴더(site)를 찾을 수 없습니다. 이 파일 옆에 site 폴더를 복사하세요.')
-        sys.exit(1)
+        print('[오류] 웹앱 폴더(site)를 찾을 수 없습니다. 이 파일 옆에 site 폴더를 복사하세요.'); sys.exit(1)
     for path in (a.db, a.pin_file):
         d = os.path.dirname(os.path.abspath(path))
         if d and not os.path.isdir(d):
-            os.makedirs(d, exist_ok=True)
-            print(f'[안내] 데이터 폴더를 만들었습니다: {d}')
+            os.makedirs(d, exist_ok=True); print(f'[안내] 데이터 폴더를 만들었습니다: {d}')
     db = DB(a.db)
-    read_pin(a.pin_file)
-    read_pin(view_pin_path(a.pin_file), '0000', '조회')
+    read_pin(a.pin_file); read_pin(view_pin_path(a.pin_file), '0000', '조회')
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
     print('=' * 56)
-    print(' ICTC 일정·업무 보드 서버 실행 중')
+    print(' 지휘역량강화센터 일정·업무 보드 서버 실행 중')
     print(f'   화면 폴더 : {static}')
     print(f'   DB 파일   : {a.db}')
     print(f'   편집 PIN  : {a.pin_file}')
     print(f'   조회 PIN  : {view_pin_path(a.pin_file)}  (비우면 누구나 조회)')
     print(f'   본인 접속 : http://localhost:{a.port}')
-    for ip in lan_ips():
-        print(f'   팀원 접속 : http://{ip}:{a.port}')
+    for ip in lan_ips(): print(f'   팀원 접속 : http://{ip}:{a.port}')
     print(' 종료하려면 이 창을 닫거나 Ctrl+C')
     print('=' * 56)
     try:

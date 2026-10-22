@@ -5,12 +5,12 @@ import os, zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'dist', 'ictc-board-server.zip')
 TOP = 'ictc-board-server/'
-GUIDE = """ICTC 일정·업무 보드 - 설치 안내
+GUIDE = """지휘역량강화센터 일정·업무 보드 - 설치 안내
 
 1. Python 설치 (https://www.python.org/downloads/)
    설치 첫 화면에서 "Add python.exe to PATH" 를 반드시 체크하세요.
 2. start.bat 더블클릭
-   -> D:\\일정표,주요업무\\ 폴더가 자동 생성되고 그 안에 ictc.db(데이터), pin.txt(편집 PIN, 기본 1234)가 만들어집니다.
+   -> D:\\일정표,주요업무\\ 폴더가 자동 생성되고 그 안에 ictc.db(데이터), pin.txt(편집 PIN, 기본 1234), view_pin.txt(조회 PIN, 기본 0000)가 만들어집니다.
 3. Windows 방화벽 창이 뜨면 개인/공용 네트워크 모두 체크 후 "액세스 허용".
 4. 검은 창의 "팀원 접속: http://192.168.x.x:8080" 주소를 팀원에게 공유합니다.
    본인은 http://localhost:8080 으로 접속합니다.
@@ -27,7 +27,7 @@ with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
     z.writestr(TOP + '설치안내.txt', GUIDE.replace('\n', '\r\n').encode('utf-8-sig'))
     z.write(os.path.join(ROOT, 'index.html'), TOP + 'site/index.html')
     z.write(os.path.join(ROOT, 'config.js'), TOP + 'site/config.js')
-    for sub in ('data', 'checklist'):
+    for sub in ('data', 'checklist', 'assets'):
         for dirpath, _, files in os.walk(os.path.join(ROOT, sub)):
             for f in sorted(files):
                 full = os.path.join(dirpath, f)
