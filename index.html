@@ -476,6 +476,16 @@
     .cal-more { font-size: 10px; }
   }
 
+  /* 페이지 나누기 */
+  .pager { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; padding: 10px 14px; background: var(--card); border-radius: var(--radius-sm); box-shadow: var(--shadow); font-size: 13px; color: var(--text-3); }
+  .pager-size { display: flex; align-items: center; gap: 6px; }
+  .pager-size select { font: inherit; font-size: 13px; font-weight: 700; color: var(--text-2); padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card); }
+  .pager-nav { display: flex; align-items: center; gap: 8px; }
+  .pager-nav span { min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+  .pager-nav b { color: var(--text); font-weight: 800; }
+  .pager-nav button { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--text-2); font-size: 20px; line-height: 1; transition: .15s; }
+  .pager-nav button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .pager-nav button:disabled { opacity: .35; cursor: default; }
   .past-toggle { display: block; width: 100%; border: 1.5px dashed var(--line); background: transparent; color: var(--text-3); font-size: 13px; font-weight: 600; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 14px; transition: .15s; }
   .past-toggle:hover { border-color: var(--text-3); color: var(--text-2); background: var(--card); }
   .retry-btn { margin-top: 12px; border: none; background: var(--primary-soft); color: var(--primary-text); font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
@@ -889,7 +899,29 @@
   const DEFAULT_BOARD = { id: 'main', name: '지휘역량강화센터' };
   const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, me: null,
     view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체', pYear: String(new Date().getFullYear()), pMonth: '전체',
-    source: {}, lastSync: null };
+    source: {}, lastSync: null, page: { schedule: 1, tasks: 1, personal: 1 }, pageKey: {} };
+
+  /* ── 페이지 나누기: 5·10·15·20개씩. 탭마다 기억(localStorage). 필터가 바뀌면 1쪽으로 ── */
+  const PAGE_SIZES = [5, 10, 15, 20];
+  const LIST_EL = { schedule: 'scheduleList', tasks: 'taskList', personal: 'personalList' };
+  function pageSize(kind) { const v = Number(lsGet('ictc.pageSize.' + kind)); return PAGE_SIZES.includes(v) ? v : 10; }
+  function setPageSize(kind, v) { lsSet('ictc.pageSize.' + kind, Number(v)); state.page[kind] = 1; render(kind); }
+  function gotoPage(kind, p) {
+    state.page[kind] = p; render(kind);
+    const el = document.getElementById(LIST_EL[kind]); if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--appbar-h')) || 112) - 70;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+  function paginate(kind, list, filterKey, focusIdx) {
+    const key = JSON.stringify(filterKey); if (state.pageKey[kind] !== key) { state.pageKey[kind] = key; state.page[kind] = 1; }
+    const size = pageSize(kind), total = list.length, pages = Math.max(1, Math.ceil(total / size));
+    if (focusIdx != null && focusIdx >= 0) state.page[kind] = Math.floor(focusIdx / size) + 1;
+    const p = state.page[kind] = Math.min(Math.max(1, state.page[kind] || 1), pages);
+    const from = (p - 1) * size + 1, to = Math.min(total, p * size);
+    const html = total <= PAGE_SIZES[0] ? '' : `<div class="pager"><label class="pager-size">한 번에 <select onchange="setPageSize('${kind}', this.value)" aria-label="한 번에 보는 개수">${PAGE_SIZES.map(n => `<option value="${n}" ${n === size ? 'selected' : ''}>${n}개씩</option>`).join('')}</select></label>
+      <div class="pager-nav"><button type="button" ${p <= 1 ? 'disabled' : ''} onclick="gotoPage('${kind}', ${p - 1})" aria-label="이전 ${size}개">‹</button><span><b>${from}–${to}</b> / ${total}건</span><button type="button" ${p >= pages ? 'disabled' : ''} onclick="gotoPage('${kind}', ${p + 1})" aria-label="다음 ${size}개">›</button></div></div>`;
+    return { slice: list.slice(from - 1, to), html, page: p, pages };
+  }
 
   const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1171,7 +1203,7 @@
   }
   async function switchBoard(id, fromHistory) {
     closeBoardMenu(); if (id === state.board) return;
-    state.board = id; lsSet(LS.board, id); renderBoardTitle(); if (fromHistory) updateHash(); else pushNav({ board: id });
+    state.board = id; lsSet(LS.board, id); state.page = { schedule: 1, tasks: 1, personal: 1 }; renderBoardTitle(); if (fromHistory) updateHash(); else pushNav({ board: id });
     state.scheduleTag = '전체'; state.taskStatus = state.taskCat = state.taskOwner = '전체'; state.showPast = false;
     await Promise.all([refresh('schedule', true), refresh('tasks', true)]);
     window.scrollTo({ top: 0 });
@@ -1268,15 +1300,18 @@
         : `<div class="empty"><div class="ico">${I.cal}</div>${state.scheduleTag === '전체' ? '아직 일정이 없어요<br>아래 버튼으로 첫 일정을 추가해 보세요' : `'${esc(state.scheduleTag)}' 일정이 없어요<br>다른 구분을 눌러 보세요`}</div>`;
       return;
     }
-    const byDate = {}; expand(items).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
+    // 쪽은 '일정' 단위로 나눈다(여러 날 일정은 한 쪽에 모두). 지난 일정 = 종료일이 오늘 이전
+    const pastCnt = items.filter(e => endOf(e) < TODAY).length;
+    const showPast = state.showPast || !items.some(e => endOf(e) >= TODAY);
+    const vis = showPast ? items : items.filter(e => endOf(e) >= TODAY);
+    const fd = state.focusDate;
+    const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
+    const byDate = {}; expand(pg.slice).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
     const dates = Object.keys(byDate).sort();
-    const pastDates = dates.filter(d => d < TODAY), pastCnt = pastDates.reduce((n, d) => n + byDate[d].length, 0);
-    const showPast = state.showPast || !dates.some(d => d >= TODAY);
     let html = '', lastMonth = '';
     if (pastCnt && !showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
     else if (pastCnt && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">지난 일정 ${pastCnt}건 접기</button>`;
     dates.forEach(date => {
-      if (date < TODAY && !showPast) return;
       const dd = new Date(date + 'T00:00:00'); const month = date.slice(0, 7);
       if (month !== lastMonth) { html += `<div class="month">${dd.getFullYear()}년 ${dd.getMonth()+1}월</div>`; lastMonth = month; }
       const dow = dd.getDay(); const cls = date === TODAY ? 'today' : (date < TODAY ? 'past' : '');
@@ -1294,7 +1329,7 @@
       });
       html += `</div></div>`;
     });
-    list.innerHTML = html;
+    list.innerHTML = html + pg.html;
     if (state.focusDate) { const el = list.querySelector(`.day[data-date="${state.focusDate}"]`); state.focusDate = null; if (el) { el.classList.add('flash'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
   }
   /* 카드 보조 정보 순서는 항상 같다: 기간 → 장소 → 담당 */
@@ -1444,7 +1479,8 @@
         : `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.inbox}</div>${data.items.length ? '이 조건에 맞는 업무가 없어요<br>필터를 바꿔 보세요' : '아직 업무가 없어요<br>아래 버튼으로 첫 업무를 추가해 보세요'}</div>`;
       return;
     }
-    list.innerHTML = taskCards(items, 'tasks');
+    const pg = paginate('tasks', items, [state.board, state.taskStatus, state.taskCat, state.taskOwner], state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1);
+    list.innerHTML = taskCards(pg.slice, 'tasks') + pg.html;
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
 
@@ -1486,12 +1522,17 @@
     const items = sortTasks(inYear.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)
       && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth))));
     if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가하거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
+    const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth];
     if (state.pMonth === '전체') {
-      // 월별 묶음 (최근 월부터)
+      // 월별 묶음 (최근 월부터). 묶음 순서대로 한 줄로 세운 뒤 쪽을 나누고, 이 쪽에 있는 월만 머리글을 붙인다
       const groups = {}; items.forEach(i => { const k = keyOf(i) || '미정'; (groups[k] = groups[k] || []).push(i); });
       const keys = Object.keys(groups).sort((a, b) => a === '미정' ? 1 : b === '미정' ? -1 : b.localeCompare(a));
-      list.innerHTML = keys.map(k => `<div class="month-head grid-span">${k === '미정' ? '날짜 미정' : `${Number(k.slice(0, 4))}년 ${Number(k.slice(5, 7))}월`} <span class="cnt">${groups[k].length}건</span></div>` + taskCards(groups[k], 'personal')).join('');
-    } else list.innerHTML = taskCards(items, 'personal');
+      const flat = keys.flatMap(k => groups[k]);
+      const pg = paginate('personal', flat, filterKey, state.focusTask ? flat.findIndex(t => t.id === state.focusTask) : -1);
+      const pageGroups = {}; pg.slice.forEach(i => { const k = keyOf(i) || '미정'; (pageGroups[k] = pageGroups[k] || []).push(i); });
+      list.innerHTML = keys.filter(k => pageGroups[k]).map(k => `<div class="month-head grid-span">${k === '미정' ? '날짜 미정' : `${Number(k.slice(0, 4))}년 ${Number(k.slice(5, 7))}월`} <span class="cnt">${pageGroups[k].length}${pageGroups[k].length < groups[k].length ? ` / ${groups[k].length}` : ''}건</span></div>` + taskCards(pageGroups[k], 'personal')).join('') + pg.html;
+    } else { const pg = paginate('personal', items, filterKey, state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1); list.innerHTML = taskCards(pg.slice, 'personal') + pg.html; }
+    if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
   function renderLoginForm() {}
   async function submitLogin(e) {
@@ -1632,7 +1673,8 @@
     if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
     v.tags = (v.tag || '').split(',').filter(Boolean); if (!v.tags.length) v.tags = ['기타']; v.tag = v.tags[0];
     if (!v.id) { v.id = uid(); v.created = TODAY; }
-    setBusy(form, true); const ok = await saveItem('schedule', v); setBusy(form, false);
+    setBusy(form, true); state.focusDate = v.date; if (v.date < TODAY) state.showPast = true; const ok = await saveItem('schedule', v); setBusy(form, false);
+    if (!ok) state.focusDate = null;
     if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('Attention에도 등록했어요. Schedule에도 그대로 있어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast('저장했어요'); }
   }
   /* 일정 구분 '주요업무' ↔ 주요업무 카드 연동 */
@@ -1680,8 +1722,8 @@
     e.preventDefault();
     const form = document.getElementById('taskForm'); const v = readForm(form); const scope = v.scope; delete v.scope;
     if (!v.id) { v.id = uid(); v.created = TODAY; } else { const prev = state[scope].items.find(i => i.id === v.id); if (prev?.created) v.created = prev.created; }
-    setBusy(form, true); const ok = await saveItem(scope, v); setBusy(form, false);
-    if (ok) { closeModal('taskModal'); toast('저장했어요'); }
+    setBusy(form, true); state.focusTask = v.id; const ok = await saveItem(scope, v); setBusy(form, false);
+    if (ok) { closeModal('taskModal'); toast('저장했어요'); } else state.focusTask = null;
   }
   async function deleteItem(kind) {
     const form = document.getElementById(kind === 'schedule' ? 'scheduleForm' : 'taskForm');
