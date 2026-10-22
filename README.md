@@ -41,13 +41,28 @@ GitHub Pages(HTTPS)는 사내 PC 서버(HTTP)의 데이터를 직접 읽을 수 
 1. https://supabase.com 가입(GitHub 계정 로그인 가능) → **New project**. Region은 Northeast Asia (Seoul).
 2. 좌측 **SQL Editor** → **New query** → 저장소의 `server/supabase.sql` 내용을 전부 붙여넣기.
    파일 상단의 `'1234'`(편집 PIN)와 `'0000'`(조회 PIN)을 팀 PIN으로 바꾼 뒤 **Run**.
-   **보드가 업데이트되면 이 SQL을 다시 Run** 해야 새 기능(대시보드·개인업무)이 동작합니다. 여러 번 실행해도 기존 데이터와 PIN은 유지됩니다.
+   **보드가 업데이트되면 이 SQL을 다시 Run** 해야 새 기능이 동작합니다. 여러 번 실행해도 기존 데이터와 PIN은 유지됩니다.
+   아래 "SQL 자동 적용"을 설정해 두면 이 재실행이 자동으로 됩니다.
 3. **Project Settings → API** 에서 **Project URL** 과 **anon public** 키를 복사.
 4. `config.js` 의 `supabaseUrl`, `supabaseAnonKey` 에 붙여넣고 커밋·푸시.
 5. https://kwonyujin119.github.io/test2/ 를 열면 조회 PIN 잠금 화면이 뜨고, 통과하면 "팀 공유 모드"가 됩니다.
 
 anon 키는 브라우저에 노출되도록 설계된 공개 키입니다. 조회·편집 모두 PIN을 검증하는 DB 함수만 거치므로 키만으로는 데이터를 읽거나 쓸 수 없습니다.
 무료 플랜은 1주일간 접속이 없으면 프로젝트가 일시중지되며, 대시보드에서 Restore 하면 데이터는 그대로 복구됩니다.
+
+### SQL 자동 적용 (1회 설정, 2분)
+
+`server/supabase.sql` 이 바뀌어 푸시되면 GitHub Actions 가 Supabase DB 에 자동으로 실행합니다. 설정은 한 번만 하면 됩니다.
+
+1. Supabase 대시보드 상단 **Connect** 버튼 → **Session pooler** 탭 → URI 복사.
+   `postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres` 형태이며, `[YOUR-PASSWORD]` 자리를 프로젝트 생성 때 정한 DB 비밀번호로 바꿉니다.
+   (비밀번호를 잊었으면 Project Settings → Database → Reset database password)
+2. GitHub 저장소 → **Settings → Secrets and variables → Actions → New repository secret**
+   Name: `SUPABASE_DB_URL`, Secret: 1번 값. **Add secret**.
+3. 확인: 저장소 **Actions** 탭 → "Apply Supabase SQL" → **Run workflow** → 초록 체크가 뜨면 완료.
+
+이후에는 SQL이 바뀔 때마다 자동 실행되고, Actions 탭에서 결과를 볼 수 있습니다. 실패하면 빨간 표시와 함께 원인이 로그에 남습니다.
+이 비밀값은 DB 전체 권한이므로 채팅이나 코드에 절대 적지 마세요. GitHub Secret 에만 넣습니다.
 
 ### 접근 통제 (PIN 2종)
 

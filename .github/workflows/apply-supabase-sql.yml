@@ -1,0 +1,53 @@
+# server/supabase.sql 이 main 에 푸시되면 Supabase DB 에 자동 실행합니다.
+# 1회 설정: GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
+#   이름: SUPABASE_DB_URL
+#   값  : Supabase 대시보드 상단 [Connect] → Session pooler 의 URI (비밀번호 포함)
+#         예) postgresql://postgres.xxxx:비밀번호@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+# 수동 실행: Actions 탭 → "Apply Supabase SQL" → Run workflow
+name: Apply Supabase SQL
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/supabase.sql']
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-sql
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret 확인
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$PGURL" ]; then
+            echo "::error::SUPABASE_DB_URL secret 이 없습니다. 저장소 Settings → Secrets and variables → Actions 에 등록하세요."
+            exit 1
+          fi
+          case "$PGURL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::SUPABASE_DB_URL 형식이 postgresql:// 로 시작해야 합니다."; exit 1 ;;
+          esac
+
+      - name: SQL 실행
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+          PGCONNECT_TIMEOUT: '20'
+        run: |
+          psql --version
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f server/supabase.sql
+          echo "적용 완료: $(git log -1 --format='%h %s' -- server/supabase.sql)"
+
+      - name: 적용 결과 확인
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$PGURL" -At -c "select 'functions: ' || count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%';"
+          psql "$PGURL" -At -c "select 'boards: ' || count(*) from public.ictc_boards;"
