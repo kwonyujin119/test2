@@ -262,6 +262,9 @@
   .btn.primary:hover { background: var(--primary-hover); }
   .btn.ghost { background: var(--card-2); color: var(--text-2); }
   .btn.danger { background: var(--red-soft); color: var(--red); flex: 0 0 auto; padding: 14px 18px; }
+  .btn.copy { flex: 0 0 auto; padding: 14px 16px; }
+  .sheet .copy-hint { font-size: 12.5px; color: var(--primary-text); background: var(--primary-soft); border-radius: 10px; padding: 8px 12px; margin: -8px 0 14px; display: none; }
+  .sheet.copying .copy-hint { display: block; }
 
   .menu { position: fixed; z-index: 60; background: var(--card); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 210px; display: none; }
   .menu.open { display: block; animation: fade .15s ease; }
@@ -620,6 +623,7 @@
   <form class="sheet" id="scheduleForm" onsubmit="saveSchedule(event)">
     <div class="handle"></div>
     <h2 id="scheduleFormTitle">일정 추가</h2>
+    <div class="copy-hint">내용을 복사했어요. 날짜를 고르고 저장하면 새 일정으로 추가됩니다.</div>
     <input type="hidden" name="id"><input type="hidden" name="tag" value="기타">
     <div class="field"><label>제목</label><input name="title" required maxlength="100" placeholder="예) 현장지휘관 양성과정 1일차"></div>
     <div class="field"><label>구분</label><div class="picker" id="catPicker"></div></div>
@@ -641,6 +645,7 @@
     <div class="field"><label>메모</label><textarea name="note" maxlength="500"></textarea></div>
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="scheduleDelete" onclick="deleteItem('schedule')">삭제</button>
+      <button type="button" class="btn ghost copy" id="scheduleCopy" onclick="copySchedule()" title="내용은 그대로, 날짜만 새로">복사</button>
       <button type="button" class="btn ghost" onclick="closeModal('scheduleModal')">취소</button>
       <button type="submit" class="btn primary">저장</button>
     </div>
@@ -652,6 +657,7 @@
   <form class="sheet" id="taskForm" onsubmit="saveTask(event)">
     <div class="handle"></div>
     <h2 id="taskFormTitle">업무 추가</h2>
+    <div class="copy-hint">내용을 복사했어요. 기한을 정하고 저장하면 새 업무로 추가됩니다.</div>
     <input type="hidden" name="id"><input type="hidden" name="status" value="예정"><input type="hidden" name="category" value="기타"><input type="hidden" name="scope" value="tasks">
     <div class="field"><label>업무명</label><input name="title" required maxlength="100" placeholder="예) 2027년 교육계획 수립"></div>
     <div class="field"><label>분류</label><div class="picker" id="taskCatPicker"></div></div>
@@ -663,6 +669,7 @@
     <div class="field"><label>상세</label><textarea name="detail" maxlength="1000"></textarea></div>
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="taskDelete" onclick="deleteItem('tasks')">삭제</button>
+      <button type="button" class="btn ghost copy" id="taskCopy" onclick="copyTask()" title="내용은 그대로, 기한만 새로">복사</button>
       <button type="button" class="btn ghost" onclick="closeModal('taskModal')">취소</button>
       <button type="submit" class="btn primary">저장</button>
     </div>
@@ -1334,14 +1341,20 @@
   }
   function pickCat(c) { renderCatPicker(c); }
   function expandWhen() { document.getElementById('scheduleForm').classList.remove('compact'); }
-  function openScheduleForm(id, mode, presetDate) {
-    const form = document.getElementById('scheduleForm'); form.reset(); form.classList.remove('compact');
+  function openScheduleForm(id, mode, presetDate, preset) {
+    const form = document.getElementById('scheduleForm'); form.reset(); form.classList.remove('compact'); form.classList.toggle('copying', !!preset);
     const item = id ? state.schedule.items.find(i => i.id === id) : null;
-    document.getElementById('scheduleFormTitle').textContent = item ? '일정 수정' : '새 일정';
+    document.getElementById('scheduleFormTitle').textContent = preset ? '일정 복사' : item ? '일정 수정' : '새 일정';
     document.getElementById('scheduleDelete').style.display = item ? '' : 'none';
-    fillForm(form, item || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? catOf(item) : '교육');
+    document.getElementById('scheduleCopy').style.display = item ? '' : 'none';
+    fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? catOf(item) : preset ? catOf(preset) : '교육');
     if (item && mode === 'detail') { form.classList.add('compact'); document.getElementById('whenText').textContent = fmtWhen(item); }
-    openModal('scheduleModal'); setTimeout(() => form.title.focus(), 300);
+    openModal('scheduleModal'); setTimeout(() => (preset ? form.date : form.title).focus(), 300);
+  }
+  async function copySchedule() {
+    const form = document.getElementById('scheduleForm'); const src = state.schedule.items.find(i => i.id === form.elements.id.value); if (!src) return;
+    await closeModal('scheduleModal');
+    openScheduleForm(null, null, null, { ...src, id: '', date: '', endDate: '' });
   }
   async function saveSchedule(e) {
     e.preventDefault();
@@ -1375,16 +1388,24 @@
     document.getElementById('taskForm').elements.category.value = current;
   }
   function pickTaskCat(c) { renderTaskCatPicker(c); }
-  function openTaskForm(id, scope) {
+  function openTaskForm(id, scope, preset) {
     scope = scope || 'tasks';
     if (scope === 'personal' && !state.me) { showTab('personal'); return; }
-    const form = document.getElementById('taskForm'); form.reset(); form.elements.scope.value = scope;
+    const form = document.getElementById('taskForm'); form.reset(); form.elements.scope.value = scope; form.classList.toggle('copying', !!preset);
     const item = id ? state[scope].items.find(i => i.id === id) : null;
-    document.getElementById('taskFormTitle').textContent = (scope === 'personal' ? '개인업무' : '업무') + (item ? ' 수정' : ' 추가');
+    document.getElementById('taskFormTitle').textContent = (scope === 'personal' ? '개인업무' : '업무') + (preset ? ' 복사' : item ? ' 수정' : ' 추가');
     document.getElementById('taskDelete').style.display = item ? '' : 'none';
+    document.getElementById('taskCopy').style.display = item ? '' : 'none';
     document.getElementById('taskOwnerField').style.display = scope === 'personal' ? 'none' : '';
-    fillForm(form, item || {}); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(item ? tcatOf(item) : '교육운영');
-    openModal('taskModal'); if (!item) setTimeout(() => form.title.focus(), 300);
+    const base = item || preset || {};
+    fillForm(form, base); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영');
+    openModal('taskModal'); if (!item) setTimeout(() => (preset ? form.due : form.title).focus(), 300);
+  }
+  async function copyTask() {
+    const form = document.getElementById('taskForm'); const scope = form.elements.scope.value; const src = state[scope].items.find(i => i.id === form.elements.id.value); if (!src) return;
+    await closeModal('taskModal');
+    const { id, fromSchedule, ...rest } = src;
+    openTaskForm(null, scope, { ...rest, id: '', due: '', status: '예정' });
   }
   async function saveTask(e) {
     e.preventDefault();
