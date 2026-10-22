@@ -215,6 +215,8 @@
   .fab:hover { background: var(--primary-hover); }
   .fab:active { transform: scale(.95); }
   @media (min-width: 880px) { .fab { right: calc(50% - 440px + 20px); } }
+  @media (min-width: 1024px) { .fab.show-pc { display: flex; right: max(24px, calc(50% - 620px + 24px)); bottom: 28px; } }
+  @media (min-width: 1400px) { .fab.show-pc { right: max(24px, calc(50% - 700px + 24px)); } }
 
   /* ── 시트 ── */
   .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
@@ -299,7 +301,7 @@
     .side-actions .btn.ghost { font-weight: 600; }
     .side-actions .hint { font-size: 11.5px; color: var(--text-3); text-align: center; margin-top: 2px; }
     .side-actions kbd { font: inherit; background: var(--card-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
-    .fab { display: none; }
+    .fab:not(.show-pc) { display: none; }
     .toast { bottom: 32px; }
     .day { grid-template-columns: 60px 1fr; gap: 16px; margin-bottom: 14px; }
     .event-time { width: 92px; font-size: 14px; padding-left: 14px; }
@@ -807,7 +809,7 @@
     document.getElementById('segment').dataset.pos = TABS.indexOf(name);
     document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === name));
     document.getElementById('fabLabel').textContent = { schedule: '일정 추가', tasks: '업무 추가', personal: '개인업무 추가' }[name];
-    document.getElementById('fab').style.display = (name === 'personal' && !state.me) ? 'none' : '';
+    const fab = document.getElementById('fab'); fab.style.display = (name === 'personal' && !state.me) ? 'none' : ''; fab.classList.toggle('show-pc', name === 'personal');
   }
   function tabClick(name) {
     if (name === 'schedule' && currentTab() === 'schedule') { toggleView(); return; }
