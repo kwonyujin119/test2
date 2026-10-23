@@ -1756,16 +1756,18 @@
     }
     // 쪽은 '일정' 단위로 나눈다(여러 날 일정은 한 쪽에 모두). 지난 일정 = 종료일이 오늘 이전
     const pastCnt = items.filter(e => endOf(e) < TODAY).length;
+    const pastDays = items.reduce((n, e) => endOf(e) >= TODAY ? n + daysOf(e).filter(d => d < TODAY).length : n, 0);   // 진행 중인 여러 날 일정의 이미 지난 날짜 수
     const showPast = !!q || state.showPast;   // 검색 중에는 지난 일정도 함께. 예정 일정이 없어도 지난 일정은 접어 둔다
     const vis = showPast ? items : items.filter(e => endOf(e) >= TODAY);
     const fd = state.focusDate;
     const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast, q], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
-    const byDate = {}; expand(pg.slice).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
+    const byDate = {}; expand(pg.slice).filter(o => showPast || o.day >= TODAY).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));   // 접힌 상태에서는 진행 중 일정의 지난 날짜도 숨김
     const dates = Object.keys(byDate).sort();
     let html = '', lastMonth = '';
     if (q) { const days = [...new Set(expand(vis).map(o => o.day))].sort(); html += `<div class="q-summary">'${esc(q)}' 검색 결과 <b>${vis.length}건</b> · <b>${days.length}일</b>${days.length ? ` (${days[0].slice(5).replace('-', '/')} ~ ${days[days.length - 1].slice(5).replace('-', '/')})` : ''} <button type="button" class="linklike" onclick="setQ('schedule','')">지우기</button></div>`; }
-    if (pastCnt && !showPast && !q) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
-    else if (pastCnt && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">지난 일정 ${pastCnt}건 접기</button>`;
+    const pastLabel = [pastCnt ? `지난 일정 ${pastCnt}건` : '', pastDays ? `진행 중 일정의 지난 날짜 ${pastDays}일` : ''].filter(Boolean).join(' · ');
+    if ((pastCnt || pastDays) && !showPast && !q) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">${pastLabel} 펼치기</button>`;
+    else if ((pastCnt || pastDays) && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">${pastLabel} 접기</button>`;
     if (!vis.length) html += `<div class="empty"><div class="ico">${I.cal}</div>예정된 일정이 없어요<br>위 '지난 일정 펼치기'를 누르거나 '+ 일정 추가'로 새 일정을 넣어 보세요</div>`;
     dates.forEach(date => {
       const dd = new Date(date + 'T00:00:00'); const month = date.slice(0, 7);
