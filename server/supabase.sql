@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v4: 개인업무 비밀번호 4자리, 이름 수정 함수)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v5: 41망 팀 대화 종류 추가 · v4: 개인업무 비밀번호 4자리, 이름 수정 함수)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -20,7 +20,7 @@ create table if not exists public.ictc_items (
 );
 alter table public.ictc_items add column if not exists board text not null default 'main';
 alter table public.ictc_items drop constraint if exists ictc_items_kind_check;
-alter table public.ictc_items add constraint ictc_items_kind_check check (kind in ('schedule', 'tasks', 'personal'));
+alter table public.ictc_items add constraint ictc_items_kind_check check (kind in ('schedule', 'tasks', 'personal', 'chat'));
 drop index if exists public.ictc_items_kind_board_idx;
 create index if not exists ictc_items_kind_board_updated_idx on public.ictc_items (kind, board, updated_at desc);
 
@@ -128,7 +128,7 @@ create or replace function public.ictc_list(p_pin text, p_kind text, p_board tex
 returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
   return query select i.data, i.updated_at from public.ictc_items i
     where i.kind = p_kind and i.board = coalesce(p_board, 'main') order by i.updated_at desc;
 end $$;
@@ -138,19 +138,24 @@ create or replace function public.ictc_save(p_pin text, p_kind text, p_item json
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
   if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', p_kind, coalesce(p_board, 'main'), p_item, now())
   on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now()
-  where public.ictc_items.kind in ('schedule', 'tasks');   -- 같은 id 의 개인업무 행은 덮어쓰지 않음
+  where public.ictc_items.kind in ('schedule', 'tasks', 'chat');   -- 같은 id 의 개인업무 행은 덮어쓰지 않음
+  -- 41망(chat)은 최근 300개만 보관. 넘치는 옛 글은 휴지통 없이 지운다
+  if p_kind = 'chat' then
+    delete from public.ictc_items where kind = 'chat' and board = coalesce(p_board, 'main') and id not in (
+      select id from public.ictc_items where kind = 'chat' and board = coalesce(p_board, 'main') order by updated_at desc limit 300);
+  end if;
 end $$;
 
 create or replace function public.ictc_delete(p_pin text, p_kind text, p_id text, p_board text default 'main')
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
   perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), p_id, 'delete');
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
 end $$;

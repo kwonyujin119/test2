@@ -14,7 +14,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.title = await P.locator('#boardName').innerText();
   r.logos = await P.locator('.logos img').evaluateAll(els => els.every(e => e.naturalWidth > 0));
   r.tabs = (await P.locator('.segment button').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
-  P.on('dialog', d => { const m = d.message(); if (m.includes('관리자 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else d.accept(); });
+  P.on('dialog', d => { const m = d.message(); if (m.includes('관리자 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else if (m.includes('41망에 표시할 이름')) d.accept('테스터'); else d.accept(); });
   r.noPinPromptOnSave = true;
   await P.keyboard.press('n'); await P.waitForTimeout(300);
   await P.fill('#scheduleForm [name=title]', 'E2E 일정'); await P.click('#catPicker button.cat-회의');
@@ -59,6 +59,13 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.badgeOpensForm = await P.locator('#taskModal.open').count(); await P.keyboard.press('Escape'); await P.waitForTimeout(200);
   r.ownerChip = await P.locator('#tasksOwnerFilters .chip', { hasText: '홍길동' }).count();
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-tasks.png` });
+  // 41망 팀 대화: 이름 정하고 글 보내기 → 내 말풍선, 삭제 버튼, 닫은 뒤 배지 없음
+  await P.click('#chatBtn'); await P.waitForTimeout(500); r.chatOpen = await P.locator('#chatModal.open').count();
+  await P.fill('#chatText', 'E2E 41망 첫 글'); await P.click('#chatSend'); await P.waitForTimeout(900);
+  r.chatMine = await P.locator('#chatList .chat-msg.mine .chat-bubble', { hasText: 'E2E 41망 첫 글' }).count();
+  r.chatWho = await P.locator('#chatWho b').innerText().catch(() => '');
+  await P.screenshot({ path: `${OUT}/e2e-${MODE}-chat.png` });
+  await P.click('#chatModal .chat-close'); await P.waitForTimeout(400); r.chatBadgeHidden = await P.locator('#chatBadge').isHidden();
   // 페이지 나누기: 주요업무 5개씩 → 카드 5개 + 쪽 표시, 다음 쪽으로 이동, 기본값(10)으로 복귀
   await P.evaluate(() => setPageSize('tasks', 5)); await P.waitForTimeout(200);
   r.pageCards = await P.locator('#taskList .task').count(); r.pageLabel = await P.locator('#taskList .pager-nav span').innerText().catch(() => '');
@@ -108,10 +115,18 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   }
   await Q.fill('#loginForm [name=upw]', '1111'); await Q.click('#loginSubmit'); await Q.waitForTimeout(800);
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
+  if (shared) {
+    r.chatBadgeOther = await Q.locator('#chatBadge').innerText().catch(() => '');
+    await Q.click('#chatBtn'); await Q.waitForTimeout(700);
+    r.chatOtherSees = await Q.locator('#chatList .chat-msg:not(.mine) .chat-bubble', { hasText: 'E2E 41망 첫 글' }).count();
+    r.chatOtherName = await Q.locator('#chatList .chat-name', { hasText: '테스터' }).count();
+    await Q.screenshot({ path: `${OUT}/e2e-${MODE}-chat-mobile.png` });
+    await Q.click('#chatModal .chat-close'); await Q.waitForTimeout(300);
+  }
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요', migrated: '남궁민수', migratedLogin: '남궁민수' });
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, chatOpen: 1, chatMine: 1, chatWho: '테스터', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
+  if (shared) Object.assign(expect, { chatBadgeOther: '1', chatOtherSees: 1, chatOtherName: 1, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요', migrated: '남궁민수', migratedLogin: '남궁민수' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

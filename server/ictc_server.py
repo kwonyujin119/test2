@@ -25,7 +25,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KINDS = ('schedule', 'tasks')
+KINDS = ('schedule', 'tasks', 'chat')   # chat = 41망 팀 대화(대시보드 main 고정, 최근 300개 보관)
 VERSION = '4.0'
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
@@ -148,10 +148,15 @@ class DB:
         return [{'data': json.loads(d), 'updated_at': u} for d, u in rows]
 
     def save(self, kind, board, item):
-        self._run(lambda c: c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
-            on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at
-            where items.kind in ('schedule','tasks')''',
-                                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now())))   # 같은 id 의 개인업무 행은 덮어쓰지 않음
+        def go(c):
+            c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
+                on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at
+                where items.kind in ('schedule','tasks','chat')''',
+                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now()))   # 같은 id 의 개인업무 행은 덮어쓰지 않음
+            if kind == 'chat':   # 41망은 최근 300개만 보관 (supabase.sql ictc_save 와 동일)
+                c.execute('''delete from items where kind='chat' and board=? and id not in
+                             (select id from items where kind='chat' and board=? order by updated_at desc limit 300)''', (board, board))
+        self._run(go)
 
     def _trash(self, c, kind, board, id_, reason):
         """삭제 전 사본을 items_deleted 에 남기고 TRASH_DAYS 지난 보관 행을 정리 (supabase.sql ictc_trash 와 동일). id_ 가 None 이면 kind·board 전체"""
