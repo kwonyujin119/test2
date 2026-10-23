@@ -67,7 +67,7 @@
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }  /* 두 번 탭 확대 끄기(핀치 확대는 유지) */
   body { background: var(--bg); color: var(--text); font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   a { color: inherit; text-decoration: none; }
   button { font: inherit; color: inherit; cursor: pointer; }
@@ -81,7 +81,7 @@
   .appbar :focus-visible { outline-color: var(--gold); }
 
   /* ── 상단 바 ── */
-  .appbar { position: sticky; top: 0; z-index: 50; background: var(--navy); color: var(--on-navy); border-bottom: 3px solid var(--gold); box-shadow: 0 2px 10px rgba(6,31,92,.22); }
+  .appbar { position: sticky; top: 0; z-index: 50; padding-top: env(safe-area-inset-top); background: var(--navy); color: var(--on-navy); border-bottom: 3px solid var(--gold); box-shadow: 0 2px 10px rgba(6,31,92,.22); }
   .appbar-inner { max-width: 880px; margin: 0 auto; padding: 14px 20px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
   .appbar-row { display: flex; align-items: center; gap: 12px; grid-column: 1; min-width: 0; }
   .appbar-inner > .appbar-right { grid-column: 2; grid-row: 1; }
@@ -280,7 +280,7 @@
   /* ── 시트 ── */
   .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .sheet-bg.open { opacity: 1; pointer-events: auto; }
-  .sheet { background: var(--card); width: 100%; max-width: 560px; border-radius: 24px 24px 0 0; padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
+  .sheet { background: var(--card); width: 100%; max-width: 560px; border-radius: 24px 24px 0 0; padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; max-height: 92dvh; overflow-y: auto; transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1); }
   .sheet-bg.open .sheet { transform: none; }
   .handle { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 14px; }
   .sheet h2 { font-size: 19px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
@@ -288,6 +288,12 @@
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
   .field input, .field select, .field textarea { width: 100%; background: var(--card-2); border: 1.5px solid transparent; border-radius: var(--radius-sm); color: var(--text); font: inherit; font-size: 15px; padding: 12px 14px; outline: none; transition: .15s; appearance: none; -webkit-appearance: none; }
+  /* 아이폰: 글자 16px 미만 입력창에 초점이 가면 화면이 확대되므로 터치 기기에서는 16px */
+  @media (max-width: 1023px) { .field input, .field select, .field textarea, .pop .field input, .xl-opts select, .xl-map-row select, .pager-size select { font-size: 16px; } }
+  /* 아이폰 Safari 의 날짜·시간 입력은 폭이 0 이 되므로 블록으로 */
+  .field input[type=date], .field input[type=time] { -webkit-appearance: none; appearance: none; display: block; min-height: 46px; text-align: left; }
+  .field input::-webkit-date-and-time-value { text-align: left; }
+  .sheet, .xl-scroll, .menu, .cal-agenda { -webkit-overflow-scrolling: touch; }
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); background: var(--card); box-shadow: 0 0 0 3px var(--primary-soft); }
   .field textarea { min-height: 88px; resize: vertical; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -532,6 +538,9 @@
   .login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; max-width: 420px; margin: 0 auto; }
   .login-card h2 { font-size: 19px; font-weight: 800; margin-bottom: 4px; color: var(--primary-text); }
   .login-card p { font-size: 13.5px; color: var(--text-3); margin-bottom: 18px; line-height: 1.55; }
+  .login-tabs { display: flex; background: var(--card-2); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
+  .login-tabs button { flex: 1; border: none; background: transparent; border-radius: 10px; padding: 9px 0; font-size: 14px; font-weight: 700; color: var(--text-3); transition: .15s; }
+  .login-tabs button.on { background: var(--card); color: var(--primary-text); box-shadow: var(--shadow); }
   .login-card .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 4px 0 8px; }
   .login-card .err-hint { color: var(--text-3); font-size: 13px; margin: -6px 0 8px; display: none; }
   .login-card .err-hint.show { display: block; }
@@ -659,14 +668,19 @@
     <div class="personal-login" id="personalLogin">
       <form class="login-card" id="loginForm" onsubmit="submitLogin(event)">
         <h2 id="loginTitle">개인업무</h2>
-        <p id="loginDesc">행정전화번호 뒤 4자리와 이름을 입력하세요. 처음이면 자동으로 등록되고, 폰·PC 어디서나 같은 정보로 내 업무를 볼 수 있어요.</p>
+        <p id="loginDesc">행정전화번호 뒤 4자리와 비밀번호 4자리로 들어가요. 내 업무는 나만 볼 수 있어요.</p>
+        <div class="login-tabs" role="tablist"><button type="button" class="on" id="loginTabLogin" role="tab" aria-selected="true" onclick="setLoginMode('login')">들어가기</button><button type="button" id="loginTabRegister" role="tab" aria-selected="false" onclick="setLoginMode('register')">처음 등록</button></div>
         <div class="row">
-          <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234 (전체 번호를 넣어도 됨)" required></div>
-          <div class="field"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동" required></div>
+          <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234 (전체 번호도 됨)" required></div>
+          <div class="field"><label>비밀번호 4자리</label><input name="upw" type="password" inputmode="numeric" autocomplete="current-password" placeholder="숫자 4자리" required></div>
+        </div>
+        <div class="row reg-only" id="loginRegRow" style="display:none">
+          <div class="field"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동"></div>
+          <div class="field"><label>비밀번호 확인</label><input name="upw2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="한 번 더"></div>
         </div>
         <div class="err" id="loginErr"></div><div class="err-hint" id="loginErrHint"></div>
         <button type="submit" class="btn primary" id="loginSubmit" style="width:100%">들어가기</button>
-        <p class="login-note">비밀번호가 없어요. 민감한 내용은 적지 마세요.</p>
+        <p class="login-note" id="loginNote">비밀번호는 본인만 알아요. 잊으면 담당자가 초기화해 줘요.</p>
       </form>
     </div>
     <aside class="side" id="personalSide" style="display:none">
@@ -686,6 +700,7 @@
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
         <button class="btn ghost" onclick="importExcel()">엑셀로 가져오기</button>
+        <button class="btn ghost" onclick="changeMyPin()">비밀번호 변경</button>
         <button class="btn ghost" onclick="logout()">로그아웃</button>
         <div class="hint"><kbd>N</kbd> 새 개인업무 · <kbd>Esc</kbd> 닫기</div>
       </div>
@@ -707,6 +722,7 @@
   <button id="menuPin" data-ico="key" style="display:none" onclick="changePin()"><span>관리자 PIN 입력</span></button>
   <button id="menuAdminOff" data-ico="shieldOff" style="display:none" onclick="adminOff()"><span>관리자 모드 해제</span></button>
   <button id="menuViewPin" data-ico="eye" style="display:none" onclick="changeViewPin()"><span>팀 PIN 다시 입력</span></button>
+  <button id="menuMyPin" data-ico="key" style="display:none" onclick="changeMyPin()"><span>내 비밀번호 변경</span></button>
   <button id="menuLogout" data-ico="logout" style="display:none" onclick="logout()"><span>개인업무 로그아웃</span></button>
   <button id="menuExcel" data-ico="upload" style="display:none" onclick="importExcel()"><span>엑셀로 개인업무 가져오기</span></button>
   <button id="menuUsers" data-ico="users" onclick="manageUsers()"><span>개인업무 사용자 관리</span></button>
@@ -973,8 +989,8 @@
 
   /* ── 오류 코드 → 메시지 ── */
   const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요합니다', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않습니다', PIN_INVALID: '관리자 PIN이 올바르지 않습니다',
-    USER_NOT_FOUND: '등록되지 않은 번호입니다', USER_PIN_INVALID: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요', USER_EXISTS: '이미 등록된 번호입니다',
-    USER_ID_INVALID: '뒤 4자리를 확인하세요', PIN_TOO_SHORT: '이름은 2자 이상', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
+    USER_NOT_FOUND: '등록되지 않은 번호예요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요',
+    USER_ID_INVALID: '뒤 4자리를 확인하세요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류',
     TOO_MANY_ATTEMPTS: '시도가 너무 많습니다. 10분 후 다시 하세요', DELETED_NOT_FOUND: '보관된 항목이 없어요' };
   class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
@@ -1007,6 +1023,8 @@
       userRegister: (id, name, upin) => rpc('ictc_user_register', { p_view_pin: viewPin(), p_id: id, p_name: name, p_pin: upin }),
       userLogin: (id, upin) => rpc('ictc_user_login', { p_id: id, p_pin: upin }),
       userSetPin: (id, old, nw) => rpc('ictc_user_set_pin', { p_id: id, p_old: old, p_new: nw }),
+      userResetPin: (pin, id, nw) => rpc('ictc_user_reset_pin', { p_edit_pin: pin, p_id: id, p_new: nw }),
+      userRename: (pin, id, name) => rpc('ictc_user_rename', { p_edit_pin: pin, p_id: id, p_name: name }),
       personalList: async (id, upin) => rows2(await rpc('ictc_personal_list', { p_id: id, p_pin: upin })),
       personalSave: (id, upin, item) => rpc('ictc_personal_save', { p_id: id, p_pin: upin, p_item: item }),
       personalDelete: (id, upin, itemId) => rpc('ictc_personal_delete', { p_id: id, p_pin: upin, p_item_id: itemId }),
@@ -1030,6 +1048,8 @@
       userRegister: async (id, name, upin) => (await post('/api/user_register', { view_pin: viewPin(), id, name, user_pin: upin })).name,
       userLogin: async (id, upin) => (await post('/api/user_login', { id, user_pin: upin })).name,
       userSetPin: (id, old, nw) => post('/api/user_set_pin', { id, user_pin: old, new_pin: nw }),
+      userResetPin: (pin, id, nw) => post('/api/user_reset_pin', { pin, id, new_pin: nw }),
+      userRename: (pin, id, name) => post('/api/user_rename', { pin, id, name }),
       personalList: async (id, upin) => rows2(await post('/api/personal_list', { id, user_pin: upin })),
       personalSave: (id, upin, item) => post('/api/personal_save', { id, user_pin: upin, item }),
       personalDelete: (id, upin, itemId) => post('/api/personal_delete', { id, user_pin: upin, item_id: itemId }),
@@ -1065,6 +1085,8 @@
       userRegister: async (id, name, upin) => { const u = users(); if (u[id]) throw new ApiError('USER_EXISTS'); if (upin.trim().length < 2) throw new ApiError('PIN_TOO_SHORT'); u[id] = { name, pin: upin }; lsSet(LS.users, u); return name; },
       userLogin: async (id, upin) => { const u = users()[id]; if (!u) throw new ApiError('USER_NOT_FOUND'); if (u.pin !== upin) throw new ApiError('USER_PIN_INVALID'); return u.name; },
       userSetPin: async (id, old, nw) => { const u = users(); if (!u[id] || u[id].pin !== old) throw new ApiError('USER_PIN_INVALID'); u[id].pin = nw; lsSet(LS.users, u); },
+      userResetPin: async (pin, id, nw) => { const u = users(); if (!u[id]) throw new ApiError('USER_NOT_FOUND'); u[id].pin = nw; lsSet(LS.users, u); },
+      userRename: async (pin, id, name) => { const u = users(); if (!u[id]) throw new ApiError('USER_NOT_FOUND'); u[id].name = name.trim(); lsSet(LS.users, u); },
       personalList: async (id) => ({ updated: null, items: getItems('personal', id) }),
       personalSave: async (id, upin, item) => api.save('personal', item, id),
       personalDelete: async (id, upin, itemId) => api.remove('personal', itemId, id),
@@ -1182,7 +1204,7 @@
       show('menuBoardDelete', state.board !== 'main'); show('menuImport', currentTab() !== 'personal');
       show('menuPin', REMOTE); show('menuViewPin', REMOTE); show('menuAdminOff', REMOTE && document.body.classList.contains('admin'));
     }
-    show('menuLogout', !!state.me);
+    show('menuLogout', !!state.me); show('menuMyPin', !!state.me);
     show('menuExcel', !!state.me);
     m.classList.toggle('open');
   }
@@ -1554,21 +1576,59 @@
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
   function renderLoginForm() {}
+  let loginMode = 'login';
+  const PW_RE = /^\d{4}$/;
+  function setLoginMode(m) {
+    loginMode = m; const reg = m === 'register';
+    document.getElementById('loginRegRow').style.display = reg ? '' : 'none';
+    document.getElementById('loginTabLogin').classList.toggle('on', !reg); document.getElementById('loginTabLogin').setAttribute('aria-selected', String(!reg));
+    document.getElementById('loginTabRegister').classList.toggle('on', reg); document.getElementById('loginTabRegister').setAttribute('aria-selected', String(reg));
+    document.getElementById('loginSubmit').textContent = reg ? '등록하고 들어가기' : '들어가기';
+    document.getElementById('loginNote').textContent = reg ? '이름은 업무 카드의 담당자로 표시돼요. 전에 이름으로 들어가던 분도 여기서 이름과 새 비밀번호를 넣으면 전환돼요.' : '비밀번호는 본인만 알아요. 잊으면 담당자가 초기화해 줘요.';
+    const f = document.getElementById('loginForm'); f.elements.upw.autocomplete = reg ? 'new-password' : 'current-password';
+    document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show');
+  }
   async function submitLogin(e) {
     e.preventDefault();
-    const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), name = (f.elements.uname.value || '').trim();
+    const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), pw = (f.elements.upw.value || '').replace(/\D/g, '');
+    const name = (f.elements.uname.value || '').trim(), pw2 = (f.elements.upw2.value || '').replace(/\D/g, '');
     const err = document.getElementById('loginErr'); err.textContent = ''; const hint = document.getElementById('loginErrHint'); hint.classList.remove('show');
-    if (id.length !== 4) { err.textContent = '뒤 4자리 숫자를 입력하세요'; return; }
-    if (name.length < 2) { err.textContent = '이름을 2자 이상 입력하세요'; return; }
+    const showHint = t => { hint.textContent = t; hint.classList.add('show'); };
+    if (id.length !== 4) { err.textContent = '뒤 4자리 숫자를 입력하세요'; f.elements.uid.focus(); return; }
+    if (!PW_RE.test(pw)) { err.textContent = '비밀번호는 숫자 4자리예요'; f.elements.upw.focus(); return; }
+    if (loginMode === 'register') {
+      if (name.length < 2) { err.textContent = '이름을 2자 이상 입력하세요'; f.elements.uname.focus(); return; }
+      if (pw2 !== pw) { err.textContent = '비밀번호 확인이 달라요'; f.elements.upw2.focus(); return; }
+    }
     const btn = document.getElementById('loginSubmit'); btn.disabled = true;
     try {
-      let nm, isNew = false;
-      try { nm = await api.userLogin(id, name); }
-      catch (ex) { if (ex.code === 'USER_NOT_FOUND') { nm = await api.userRegister(id, name, name); isNew = true; } else throw ex; }
-      state.me = { id, pin: name, name: nm }; lsSet(LS.me, state.me); f.reset();
-      await refresh('personal'); toast(isNew ? `${nm}님, 등록했어요` : `${nm}님, 환영합니다`); showTab('personal');
-    } catch (ex) { err.textContent = ex.message; if (ex.code === 'USER_PIN_INVALID') { hint.textContent = '오타로 등록됐으면 담당자에게 말해 주세요'; hint.classList.add('show'); } }
+      let nm, msg;
+      if (loginMode === 'register') {
+        try { nm = await api.userRegister(id, name, pw); msg = `${nm}님, 등록했어요`; }
+        catch (ex) {
+          if (ex.code !== 'USER_EXISTS') throw ex;
+          // 예전 방식(이름이 곧 비밀번호)으로 등록된 사용자 → 이름이 맞으면 새 비밀번호로 전환
+          try { await api.userSetPin(id, name, pw); nm = name; msg = `${nm}님, 비밀번호를 설정했어요`; }
+          catch (ex2) { err.textContent = '이미 등록된 번호예요'; showHint('비밀번호로 들어가거나, 잊었으면 담당자에게 초기화를 요청하세요'); btn.disabled = false; return; }
+        }
+      } else {
+        nm = await api.userLogin(id, pw); msg = `${nm}님, 환영합니다`;
+      }
+      state.me = { id, pin: pw, name: nm }; lsSet(LS.me, state.me); f.reset(); setLoginMode('login');
+      await refresh('personal'); toast(msg); showTab('personal');
+    } catch (ex) {
+      err.textContent = ex.message;
+      if (ex.code === 'USER_NOT_FOUND') showHint('처음이면 위의 \'처음 등록\'을 눌러 주세요');
+      else if (ex.code === 'USER_PIN_INVALID') showHint('잊었으면 담당자에게 초기화를 요청하세요. 전에 이름으로 들어가던 분은 \'처음 등록\'에서 이름과 새 비밀번호를 넣으면 전환돼요');
+    }
     btn.disabled = false;
+  }
+  async function changeMyPin() {
+    if (!state.me) return;
+    const nw = (prompt('새 비밀번호 4자리(숫자)를 입력하세요') || '').replace(/\D/g, ''); if (!nw) return;
+    if (!PW_RE.test(nw)) { toast('비밀번호는 숫자 4자리예요'); return; }
+    try { await api.userSetPin(state.me.id, state.me.pin, nw); state.me.pin = nw; lsSet(LS.me, state.me); toast('비밀번호를 바꿨어요'); }
+    catch (e) { toast(e.message); if (e.code === 'USER_PIN_INVALID') logout(true); }
   }
   async function manageUsers() {
     let rows;
@@ -1581,7 +1641,18 @@
     if (!rows.length) { el.innerHTML = '<div class="empty" style="padding:28px">등록된 사용자가 없어요</div>'; return; }
     el.innerHTML = rows.map(u => `<div class="user-row"><span class="avatar">${esc(initial(u.name))}</span>
       <div class="meta"><b>${esc(u.name)}</b><span>${esc(u.id)} · 개인업무 ${u.item_count ?? 0}건${u.created_at ? ' · ' + esc(String(u.created_at).slice(0, 10)) : ''}</span></div>
-      <button type="button" class="btn danger" onclick="deleteUser('${esc(u.id)}','${esc(u.name)}')">삭제</button></div>`).join('');
+      <button type="button" class="btn ghost" onclick="renameUser('${esc(u.id)}','${esc(u.name)}')">이름</button><button type="button" class="btn ghost" onclick="resetUserPin('${esc(u.id)}','${esc(u.name)}')">비밀번호</button><button type="button" class="btn danger" onclick="deleteUser('${esc(u.id)}','${esc(u.name)}')">삭제</button></div>`).join('');
+  }
+  async function renameUser(id, name) {
+    const nm = (prompt(`${name}(${id})의 바른 이름을 입력하세요`, name) || '').trim(); if (!nm || nm === name) return;
+    if (nm.length < 2) { toast('이름은 2자 이상'); return; }
+    let rows;
+    if (await withPin(async pin => { await api.userRename(pin, id, nm); rows = await api.usersList(pin); })) { renderUsers(rows || []); if (state.me && state.me.id === id) { state.me.name = nm; lsSet(LS.me, state.me); renderPersonal(); } toast('이름을 바꿨어요'); }
+  }
+  async function resetUserPin(id, name) {
+    const nw = (prompt(`${name}(${id})의 새 비밀번호 4자리(숫자)를 입력하세요. 본인에게 알려 준 뒤 바꾸게 하세요`) || '').replace(/\D/g, ''); if (!nw) return;
+    if (!PW_RE.test(nw)) { toast('비밀번호는 숫자 4자리예요'); return; }
+    if (await withPin(pin => api.userResetPin(pin, id, nw))) toast(`${name}님 비밀번호를 초기화했어요`);
   }
   async function deleteUser(id, name) {
     if (!confirm(`${name}(${id}) 사용자와 그 사람의 개인업무를 모두 삭제할까요?\n${REMOTE ? '개인업무는 담당자가 30일 안에 복구할 수 있어요.' : '되돌릴 수 없어요.'}`)) return;
@@ -1619,7 +1690,7 @@
     else if (board === state.board) await refresh(kind, true);
     renderTrash(rows || []); toast('복구했어요');
   }
-  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show'); renderPersonal(); if (!silent) toast('로그아웃했어요'); }
+  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); setLoginMode('login'); document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show'); renderPersonal(); if (!silent) toast('로그아웃했어요'); }
   /* ── 저장 계층 ── */
   async function saveItem(kind, item) {
     try {
@@ -1970,6 +2041,7 @@
   const isAndroid = /Android/.test(ua);
   const isNaverApp = /NAVER\(inapp/i.test(ua), isKakao = /KAKAOTALK/i.test(ua), isInApp = isNaverApp || isKakao || /FBAN|FBAV|Instagram|Line\//i.test(ua) || (isAndroid && /; wv\)/.test(ua));
   const isSamsung = /SamsungBrowser/i.test(ua), isWhale = /Whale/i.test(ua), isChromeMobile = isAndroid && /Chrome\//.test(ua) && !isSamsung && !isWhale && !isInApp;
+  const isChromeIOS = isIOS && /CriOS/.test(ua), isSafariIOS = isIOS && !isInApp && !/CriOS|FxiOS|EdgiOS|Whale|NAVER/.test(ua);
   const browserName = isNaverApp ? '네이버 앱' : isKakao ? '카카오톡' : isInApp ? '앱 내 브라우저' : isSamsung ? '삼성 인터넷' : isWhale ? '네이버 웨일' : isChromeMobile ? 'Chrome' : '';
   // 안드로이드 인앱 브라우저에서 외부 브라우저로 여는 intent 링크
   const a2hsUrl = () => location.origin + location.pathname + location.search + '#a2hs';   // 돌아오면 설치 안내가 바로 열린다
@@ -2003,8 +2075,8 @@
       b.querySelector('.btn.primary').textContent = '브라우저로 열기';
     } else {
       b.querySelector('.txt b').textContent = 'SAIL:41 홈 화면에 추가';
-      b.querySelector('.txt span').textContent = (browserName ? browserName + ' · ' : '') + '앱처럼 바로 열 수 있어요';
-      b.querySelector('.btn.primary').textContent = deferredInstall ? '설치하기' : '추가하기';
+      b.querySelector('.txt span').textContent = isSafariIOS ? '아래 공유 버튼 → 홈 화면에 추가. 앱처럼 열려요' : isChromeIOS ? '주소창 오른쪽 공유 → 홈 화면에 추가' : (browserName ? browserName + ' · ' : '') + '앱처럼 바로 열 수 있어요';
+      b.querySelector('.btn.primary').textContent = deferredInstall ? '설치하기' : isIOS ? '방법 보기' : '추가하기';
     }
     b.classList.add('open'); document.body.classList.add('a2hs-open');
   }
@@ -2019,7 +2091,9 @@
       lsSet(A2HS_KEY, Date.now() + 7 * 864e5); return;
     }
     const g = document.getElementById('a2hsGuide');
-    const ios = `<div class="os">아이폰 · 아이패드 (Safari)</div><ol><li>화면 아래 <b>공유</b> 버튼(네모에 화살표)을 누르세요</li><li><b>홈 화면에 추가</b>를 선택하세요</li><li>오른쪽 위 <b>추가</b>를 누르면 끝</li></ol>`;
+    const shareIco = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;color:var(--primary)"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+    const ios = `<div class="os">아이폰 · 아이패드 (Safari)</div><ol><li>화면 아래 가운데 <b>공유</b> 버튼 ${shareIco} 을 누르세요${isIOS ? ' (주소창이 아래에 있으면 그 옆)' : ''}</li><li>목록을 아래로 내려 <b>홈 화면에 추가</b>를 누르세요</li><li>오른쪽 위 <b>추가</b>를 누르면 끝. 홈 화면의 SAIL:41 아이콘으로 여세요</li></ol><p style="font-size:13px;color:var(--text-3);margin:6px 0 0">설치한 앱은 처음 한 번 팀 PIN과 개인업무 비밀번호를 다시 넣어요. 이후로는 기억돼요.</p>`;
+    const iosChrome = `<div class="os">아이폰 Chrome</div><ol><li>주소창 오른쪽 <b>공유</b> 버튼 ${shareIco} 을 누르세요</li><li><b>홈 화면에 추가</b>를 누르세요</li></ol>`;
     const chrome = `<div class="os">Chrome (안드로이드)</div><ol><li>오른쪽 위 <b>⋮</b> 메뉴를 누르세요</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 선택하세요</li><li><b>설치</b>를 누르면 끝</li></ol>`;
     const samsung = `<div class="os">삼성 인터넷</div><ol><li>아래 오른쪽 <b>≡</b> 메뉴를 누르세요</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 선택하세요</li><li><b>추가</b>를 누르면 끝</li></ol>`;
     const whale = `<div class="os">네이버 웨일</div><ol><li>아래 <b>≡</b> 메뉴를 누르세요</li><li><b>홈 화면에 추가</b>를 선택하세요</li></ol>`;
@@ -2028,7 +2102,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${kakaoBtn}${isAndroid ? `<button type="button" class="btn ${isKakao ? 'ghost' : 'primary'}" onclick="openInChrome()">Chrome으로 열기</button><button type="button" class="btn ghost" onclick="openInSamsung()">삼성 인터넷으로 열기</button>` : ''}<button type="button" class="btn ghost" onclick="copyLink()">주소 복사</button></div>
       ${isIOS ? `<ol><li>버튼이 안 되면 오른쪽 아래 <b>⋯</b> 또는 <b>공유</b> 메뉴 → <b>Safari로 열기</b>${isKakao ? '(<b>다른 브라우저로 열기</b>)' : ''}</li><li>Safari에서 아래 방법으로 추가</li></ol>` : `<ol><li>버튼이 안 되면 오른쪽 위 <b>⋮</b> 메뉴 → <b>다른 브라우저로 열기</b></li></ol>`}`;
     const pc = `<div class="os">PC (Chrome · Edge · 웨일)</div><ol><li>주소창 오른쪽 끝의 <b>설치</b> 아이콘(모니터에 화살표)을 누르세요</li><li>또는 Chrome ⋮ → <b>저장 및 공유</b> → <b>앱 설치</b> / Edge ⋯ → <b>앱</b> → <b>이 사이트를 앱으로 설치</b></li><li>설치하면 바탕화면·시작 메뉴에 SAIL:41 아이콘이 생기고 창으로 열려요</li></ol><p style="font-size:13px;color:var(--text-3);margin:6px 0 0">설치 아이콘이 안 보이면 새로고침 뒤 잠시 기다리거나, 이 사이트를 한 번 더 방문하면 나타나요.</p>`;
-    g.innerHTML = isInApp ? inapp + (isIOS ? ios : chrome + samsung) : isIOS ? ios : isSamsung ? samsung + chrome : isWhale ? whale + chrome : isAndroid ? chrome + samsung + whale : pc + chrome + samsung + ios;
+    g.innerHTML = isInApp ? inapp + (isIOS ? ios : chrome + samsung) : isIOS ? (isChromeIOS ? iosChrome + ios : ios) : isSamsung ? samsung + chrome : isWhale ? whale + chrome : isAndroid ? chrome + samsung + whale : pc + chrome + samsung + ios;
     openModal('a2hsModal');
   }
   if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }

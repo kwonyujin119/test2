@@ -68,10 +68,23 @@ class H(BaseHTTPRequestHandler):
             if fn=='ictc_user_register':
                 view(g('p_view_pin') or '')
                 if g('p_id') in USERS: raise ValueError('USER_EXISTS')
-                if len((g('p_pin') or '').strip())<2: raise ValueError('PIN_TOO_SHORT')   # supabase.sql 과 동일 (이름 2자 이상)
+                if len((g('p_pin') or '').strip())<4: raise ValueError('PIN_TOO_SHORT')   # supabase.sql v4 와 동일 (비밀번호 4자리)
                 USERS[g('p_id')]={'name':g('p_name'),'pin':g('p_pin')}; return self._send(200,json.dumps(g('p_name')).encode())
             if fn=='ictc_user_login': user(g('p_id'),g('p_pin')); return self._send(200,json.dumps(USERS[g('p_id')]['name']).encode())
-            if fn=='ictc_user_set_pin': user(g('p_id'),g('p_old')); USERS[g('p_id')]['pin']=g('p_new'); return self._send(204)
+            if fn=='ictc_user_set_pin':
+                user(g('p_id'),g('p_old'))
+                if len((g('p_new') or '').strip())<4: raise ValueError('PIN_TOO_SHORT')
+                USERS[g('p_id')]['pin']=g('p_new').strip(); return self._send(204)
+            if fn=='ictc_user_reset_pin':
+                edit(g('p_edit_pin'))
+                if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')
+                if len((g('p_new') or '').strip())<4: raise ValueError('PIN_TOO_SHORT')
+                USERS[g('p_id')]['pin']=g('p_new').strip(); return self._send(204)
+            if fn=='ictc_user_rename':
+                edit(g('p_edit_pin'))
+                if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')
+                if len((g('p_name') or '').strip())<2: raise ValueError('NAME_REQUIRED')
+                USERS[g('p_id')]['name']=g('p_name').strip(); return self._send(204)
             if fn=='ictc_personal_list':
                 user(g('p_id'),g('p_pin')); rows=[{'data':v['data'],'updated_at':v['u']} for v in ITEMS.values() if v['kind']=='personal' and v['board']==g('p_id')]
                 return self._send(200,json.dumps(rows).encode())

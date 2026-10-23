@@ -65,7 +65,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   await P.evaluate(() => gotoPage('tasks', 2)); await P.waitForTimeout(300); r.page2Label = await P.locator('#taskList .pager-nav span').innerText().catch(() => '');
   await P.evaluate(() => setPageSize('tasks', 10)); await P.waitForTimeout(200);
   await P.click('.segment [data-tab=personal]'); await P.waitForTimeout(300);
-  await P.fill('#loginForm [name=uid]', '032-870-1234'); await P.fill('#loginForm [name=uname]', '홍길동'); await P.click('#loginSubmit'); await P.waitForTimeout(800);
+  await P.click('#loginTabRegister'); await P.fill('#loginForm [name=uid]', '032-870-1234'); await P.fill('#loginForm [name=upw]', '1111'); await P.fill('#loginForm [name=uname]', '홍길동'); await P.fill('#loginForm [name=upw2]', '1111'); await P.click('#loginSubmit'); await P.waitForTimeout(800);
   r.personalName = await P.locator('#personalSummary .name').innerText().catch(() => '');
   await P.keyboard.press('n'); await P.waitForTimeout(300); await P.fill('#taskForm [name=title]', 'E2E 개인'); await P.click('#taskForm button[type=submit]'); await P.waitForTimeout(700);
   r.personalSaved = await P.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count();
@@ -93,16 +93,25 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   await Q.goto(URL + '#personal', { waitUntil: 'networkidle' }); await Q.waitForTimeout(400);
   if (shared) { await Q.fill('#viewPinInput', '0000'); await Q.click('#lock button[type=submit]'); await Q.waitForTimeout(800); }
   await Q.fill('#loginForm [name=uid]', '1234');
-  if (shared) { // 미리보기 모드는 브라우저별 저장이라 다른 이름이 자동 등록되므로 공유 모드에서만 검사
-    await Q.fill('#loginForm [name=uname]', '김영희'); await Q.click('#loginSubmit'); await Q.waitForTimeout(700);
+  if (shared) { // 미리보기 모드는 브라우저별 저장이라 사용자가 없으므로 공유 모드에서만 검사
+    await Q.fill('#loginForm [name=upw]', '9999'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
     r.wrongName = await Q.locator('#loginErr').innerText();
+    // 예전 방식(이름=비밀번호) 사용자 전환: 서버에 이름 그대로 pin 인 사용자를 만들어 두고 '처음 등록'으로 비밀번호 설정
+    await Q.evaluate(() => api.userRegister('5678', '남궁민수', '남궁민수'));
+    await Q.click('#loginTabRegister'); await Q.fill('#loginForm [name=uid]', '5678'); await Q.fill('#loginForm [name=upw]', '2222'); await Q.fill('#loginForm [name=uname]', '남궁민수'); await Q.fill('#loginForm [name=upw2]', '2222'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
+    r.migrated = await Q.locator('#personalSummary .name').innerText().catch(() => '');
+    await Q.evaluate(() => logout(true)); await Q.waitForTimeout(300);
+    await Q.fill('#loginForm [name=uid]', '5678'); await Q.fill('#loginForm [name=upw]', '2222'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
+    r.migratedLogin = await Q.locator('#personalSummary .name').innerText().catch(() => '');
+    await Q.evaluate(() => logout(true)); await Q.waitForTimeout(300);
+    await Q.fill('#loginForm [name=uid]', '1234');
   }
-  await Q.fill('#loginForm [name=uname]', '홍길동'); await Q.click('#loginSubmit'); await Q.waitForTimeout(800);
+  await Q.fill('#loginForm [name=upw]', '1111'); await Q.click('#loginSubmit'); await Q.waitForTimeout(800);
   r.otherDeviceSees = shared ? await Q.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count() : 'n/a';
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
   const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '이 번호는 다른 이름으로 등록되어 있습니다. 이름을 확인하세요' });
+  if (shared) Object.assign(expect, { pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요', migrated: '남궁민수', migratedLogin: '남궁민수' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

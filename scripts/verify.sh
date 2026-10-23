@@ -24,8 +24,10 @@ if [[ " $* " != *" --no-sql "* ]]; then
     denied=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select * from ictc_items" 2>&1 | grep -c "permission denied")
     fn=$($PS -d ictc_verify -At -c "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%'")
     [ "$denied" = "1" ] && echo "  anon 직접 조회 차단 ok" || { echo "  anon 직접 조회가 막히지 않음!"; ok=0; }
-    reg=$($PS -d ictc_verify -At -c "select ictc_user_register('0000','9999','검증','검증')" 2>&1)
+    reg=$($PS -d ictc_verify -At -c "select ictc_user_register('0000','9999','검증','1234')" 2>&1)
     [ "$reg" = "검증" ] && echo "  개인업무 등록(pgcrypto) ok" || { echo "  개인업무 등록 실패: $reg"; ok=0; }
+    [ "$($PS -d ictc_verify -At -c "select ictc_user_login('9999','1234')" 2>&1)" = "검증" ] && echo "  개인업무 로그인 ok" || { echo "  개인업무 로그인 실패"; ok=0; }
+    short=$($PS -d ictc_verify -At -c "select ictc_user_set_pin('9999','1234','12')" 2>&1); [[ "$short" == *PIN_TOO_SHORT* ]] && echo "  4자리 미만 비밀번호 거부 ok" || { echo "  4자리 미만 비밀번호가 허용됨: $short"; ok=0; }
     echo "  함수 $fn 개, 2회 실행 완료"
     su postgres -c "$PGBIN/pg_ctl -D $PGD/data stop >/dev/null 2>&1"
   else echo "  (PostgreSQL 없음, 건너뜀)"; fi

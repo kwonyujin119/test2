@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v3: 삭제 항목 보관 추가)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v4: 개인업무 비밀번호 4자리, 이름 수정 함수)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -223,7 +223,7 @@ begin
   perform public.ictc_require_view(p_view_pin);
   if length(coalesce(p_id, '')) < 4 then raise exception 'USER_ID_INVALID'; end if;
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
-  if length(trim(coalesce(p_pin, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
+  if length(trim(coalesce(p_pin, ''))) < 4 then raise exception 'PIN_TOO_SHORT'; end if;   -- v4: 비밀번호 4자리
   if exists (select 1 from public.ictc_users where id = p_id) then raise exception 'USER_EXISTS'; end if;
   insert into public.ictc_users (id, name, pin_hash) values (p_id, trim(p_name), crypt(p_pin, gen_salt('bf')));
   return trim(p_name);
@@ -240,18 +240,28 @@ create or replace function public.ictc_user_set_pin(p_id text, p_old text, p_new
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_old);
-  if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
-  -- 개인업무는 이름이 곧 확인값이므로 이름도 함께 바꾼다 (로컬 서버 user_set_pin 과 동일)
-  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')), name = trim(p_new) where id = p_id;
+  if length(trim(coalesce(p_new, ''))) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
+  -- v4: 비밀번호(4자리)와 이름은 별개. 이름은 ictc_user_rename 으로만 바꾼다
+  update public.ictc_users set pin_hash = crypt(trim(p_new), gen_salt('bf')) where id = p_id;
 end $$;
 
--- 개인업무 이름 정정 (개인업무는 뒤4자리 + 이름으로 로그인하므로 이름이 곧 확인값). 담당자가 편집 PIN으로 실행
+-- 개인업무 비밀번호 초기화(담당자, 편집 PIN). 본인이 잊었을 때 새 4자리를 정해 알려 주고 바꾸게 한다
 create or replace function public.ictc_user_reset_pin(p_edit_pin text, p_id text, p_new text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
-  if length(trim(coalesce(p_new, ''))) < 2 then raise exception 'PIN_TOO_SHORT'; end if;
-  update public.ictc_users set pin_hash = crypt(p_new, gen_salt('bf')), name = p_new where id = p_id;
+  if length(trim(coalesce(p_new, ''))) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
+  update public.ictc_users set pin_hash = crypt(trim(p_new), gen_salt('bf')) where id = p_id;
+  if not found then raise exception 'USER_NOT_FOUND'; end if;
+end $$;
+
+-- 개인업무 이름 수정(담당자, 편집 PIN). 업무 카드의 담당자 표시도 이 이름을 쓴다
+create or replace function public.ictc_user_rename(p_edit_pin text, p_id text, p_name text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  if length(trim(coalesce(p_name, ''))) < 2 then raise exception 'NAME_REQUIRED'; end if;
+  update public.ictc_users set name = trim(p_name) where id = p_id;
   if not found then raise exception 'USER_NOT_FOUND'; end if;
 end $$;
 
@@ -334,7 +344,7 @@ end $$;
 -- ---------- 관리 ----------
 -- 편집 PIN 변경: select ictc_set_pin('기존편집PIN', '새편집PIN');
 -- 조회 PIN 변경: select ictc_set_view_pin('편집PIN', '새조회PIN');   ('' 이면 누구나 조회)
--- 개인업무 이름 정정: select ictc_user_reset_pin('편집PIN', '뒤4자리', '바른이름');  (개인업무는 뒤4자리 + 이름으로 로그인)
+-- 개인업무 비밀번호 초기화: select ictc_user_reset_pin('편집PIN', '뒤4자리', '새비밀번호4자리');  이름 수정: select ictc_user_rename('편집PIN', '뒤4자리', '바른이름');
 create or replace function public.ictc_set_pin(p_old text, p_new text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin

@@ -26,7 +26,7 @@ from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')
-VERSION = '3.0'
+VERSION = '4.0'
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -227,15 +227,22 @@ class DB:
     def user_register(self, id_, name, pin):
         if len(id_ or '') < 4: raise ApiError('USER_ID_INVALID')
         if not (name or '').strip(): raise ApiError('NAME_REQUIRED')
-        if len((pin or '').strip()) < 2: raise ApiError('PIN_TOO_SHORT')
+        if len((pin or '').strip()) < 4: raise ApiError('PIN_TOO_SHORT')
         def fn(c):
             if c.execute('select 1 from users where id=?', (id_,)).fetchone(): raise ApiError('USER_EXISTS')
             c.execute('insert into users(id, name, pin_hash, created_at) values(?,?,?,?)', (id_, name.strip(), hash_pin(pin), self.now()))
         self._run(fn); return name.strip()
 
     def user_set_pin(self, id_, new):
-        if len((new or '').strip()) < 2: raise ApiError('PIN_TOO_SHORT')
-        self._run(lambda c: c.execute('update users set pin_hash=?, name=? where id=?', (hash_pin(new), new.strip(), id_)))
+        # v4: 비밀번호(4자리)와 이름은 별개
+        if len((new or '').strip()) < 4: raise ApiError('PIN_TOO_SHORT')
+        self._run(lambda c: c.execute('update users set pin_hash=? where id=?', (hash_pin(new.strip()), id_)))
+
+    def user_rename(self, id_, name):
+        if len((name or '').strip()) < 2: raise ApiError('NAME_REQUIRED')
+        def go(c):
+            if c.execute('update users set name=? where id=?', (name.strip(), id_)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
+        self._run(go)
 
     def personal_list(self, id_):
         return self.list('personal', id_)
@@ -378,6 +385,8 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
                 if fn == 'user_reset_pin':
                     self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn == 'user_rename':
+                    self.require_edit(b.get('pin')); db.user_rename(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
                 if fn == 'users_list':
                     self.require_edit(b.get('pin')); return self._json(200, db.users_list())
                 if fn == 'user_delete':
