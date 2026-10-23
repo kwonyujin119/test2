@@ -337,7 +337,10 @@
   .qbox .qclear { display: none; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--card-2); color: var(--text-3); font-size: 18px; line-height: 1; }
   .qbox.has .qclear { display: flex; align-items: center; justify-content: center; }
   .qbox.has svg { color: var(--primary); }
-  .side-actions .qbox { margin-bottom: 4px; }
+  .side-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }   /* PC 사이드바: 검색창 | + 추가 버튼 한 줄 */
+  .side-row .qbox { flex: 1; min-width: 0; height: 44px; padding: 0 8px 0 12px; }
+  .side-row .btn.primary { flex-shrink: 0; white-space: nowrap; margin: 0 !important; padding: 12px 13px !important; border-radius: 999px; }
+  .side-row .qbox.has svg { display: none; }
   .qfab { position: fixed; right: calc(20px + var(--fab-w, 130px) + 10px); bottom: calc(27px + env(safe-area-inset-bottom)); z-index: 40; width: min(180px, calc(100vw - 50px - var(--fab-w, 130px))); height: 46px; box-shadow: 0 8px 24px rgba(10,47,126,.25); transition: width .15s; }
   .qfab:focus-within, .qfab.has { width: min(420px, calc(100vw - 50px - var(--fab-w, 130px))); }
   @media (min-width: 880px) { .qfab { right: calc(50% - 440px + 20px + var(--fab-w, 130px) + 10px); } }
@@ -873,8 +876,7 @@
       <div class="summary" id="scheduleSummary"></div>
       <div class="filters"><div class="chips" id="scheduleFilters"></div></div>
       <div class="side-actions">
-        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="schedule" placeholder="키워드 검색" autocomplete="off" oninput="setQ('schedule', this.value)" onkeydown="if(event.key==='Escape'){setQ('schedule','');this.blur()}"><button type="button" class="qclear" onclick="setQ('schedule','')" aria-label="지우기">×</button></label>
-        <button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button>
+        <div class="side-row"><label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="schedule" placeholder="키워드 검색" autocomplete="off" oninput="setQ('schedule', this.value)" onkeydown="if(event.key==='Escape'){setQ('schedule','');this.blur()}"><button type="button" class="qclear" onclick="setQ('schedule','')" aria-label="지우기">×</button></label><button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button></div>
         <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
         <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
@@ -897,8 +899,7 @@
         </div>
       </div>
       <div class="side-actions">
-        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="tasks" placeholder="키워드 검색" autocomplete="off" oninput="setQ('tasks', this.value)" onkeydown="if(event.key==='Escape'){setQ('tasks','');this.blur()}"><button type="button" class="qclear" onclick="setQ('tasks','')" aria-label="지우기">×</button></label>
-        <button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button>
+        <div class="side-row"><label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="tasks" placeholder="키워드 검색" autocomplete="off" oninput="setQ('tasks', this.value)" onkeydown="if(event.key==='Escape'){setQ('tasks','');this.blur()}"><button type="button" class="qclear" onclick="setQ('tasks','')" aria-label="지우기">×</button></label><button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button></div>
         <button class="btn ghost" onclick="toggleTaskView('tasks')">달력으로 보기</button>
         <div class="hint"><kbd>N</kbd> 새 업무 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
@@ -935,8 +936,7 @@
         </div>
       </div>
       <div class="side-actions">
-        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="personal" placeholder="키워드 검색" autocomplete="off" oninput="setQ('personal', this.value)" onkeydown="if(event.key==='Escape'){setQ('personal','');this.blur()}"><button type="button" class="qclear" onclick="setQ('personal','')" aria-label="지우기">×</button></label>
-        <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
+        <div class="side-row"><label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="personal" placeholder="키워드 검색" autocomplete="off" oninput="setQ('personal', this.value)" onkeydown="if(event.key==='Escape'){setQ('personal','');this.blur()}"><button type="button" class="qclear" onclick="setQ('personal','')" aria-label="지우기">×</button></label><button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button></div>
         <button class="btn ghost" onclick="toggleTaskView('personal')">달력으로 보기</button>
         <button class="btn ghost" onclick="importExcel()">엑셀로 가져오기</button>
         <button class="btn ghost" onclick="changeMyName()">이름 변경</button>
@@ -1698,7 +1698,7 @@
     }
     // 쪽은 '일정' 단위로 나눈다(여러 날 일정은 한 쪽에 모두). 지난 일정 = 종료일이 오늘 이전
     const pastCnt = items.filter(e => endOf(e) < TODAY).length;
-    const showPast = !!q || state.showPast || !items.some(e => endOf(e) >= TODAY);   // 검색 중에는 지난 일정도 함께
+    const showPast = !!q || state.showPast;   // 검색 중에는 지난 일정도 함께. 예정 일정이 없어도 지난 일정은 접어 둔다
     const vis = showPast ? items : items.filter(e => endOf(e) >= TODAY);
     const fd = state.focusDate;
     const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
@@ -1708,6 +1708,7 @@
     if (q) { const days = [...new Set(expand(vis).map(o => o.day))].sort(); html += `<div class="q-summary">'${esc(q)}' 검색 결과 <b>${vis.length}건</b> · <b>${days.length}일</b>${days.length ? ` (${days[0].slice(5).replace('-', '/')} ~ ${days[days.length - 1].slice(5).replace('-', '/')})` : ''} <button type="button" class="linklike" onclick="setQ('schedule','')">지우기</button></div>`; }
     if (pastCnt && !showPast && !q) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
     else if (pastCnt && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">지난 일정 ${pastCnt}건 접기</button>`;
+    if (!vis.length) html += `<div class="empty"><div class="ico">${I.cal}</div>예정된 일정이 없어요<br>위 버튼으로 지난 일정을 펼치거나 새 일정을 추가해 보세요</div>`;
     dates.forEach(date => {
       const dd = new Date(date + 'T00:00:00'); const month = date.slice(0, 7);
       if (month !== lastMonth) { html += `<div class="month">${dd.getFullYear()}년 ${dd.getMonth()+1}월</div>`; lastMonth = month; }
