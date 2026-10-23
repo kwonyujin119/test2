@@ -150,6 +150,33 @@
   .stat b { display: block; font-size: 17px; font-weight: 700; }
   .stat span { font-size: 12px; color: var(--text-3); }
   .stat.c-진행중 b { color: var(--primary); } .stat.c-예정 b { color: var(--amber); } .stat.c-완료 b { color: var(--green); } .stat.c-보류 b { color: var(--gray); }
+  /* 넓게 보기: 사이드바를 접고 목록을 전체 폭으로. 폰은 요약 카드를 숨기고 전체화면 */
+  .wide-btn { display: none; position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text-3); align-items: center; justify-content: center; transition: .15s; }
+  .wide-btn:hover { color: var(--primary); border-color: var(--primary); }
+  .wide-btn svg { width: 18px; height: 18px; }
+  .summary { position: relative; }
+  .wide-bar { display: none; position: fixed; left: 16px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 46; gap: 6px; }
+  .wide-bar button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text-2); font-size: 13px; font-weight: 700; box-shadow: var(--shadow-lg); }
+  .wide-bar button svg { width: 16px; height: 16px; }
+  body.wide .wide-bar { display: flex; }
+  body.wide .summary { display: none; }
+  body.wide .segment button small { display: none; }
+  @media (min-width: 1024px) {
+    .wide-btn { display: flex; }
+    body.wide .appbar-inner, body.wide main { max-width: none; }
+    body.wide section.active { grid-template-columns: minmax(0, 1fr); }
+    body.wide .side { position: static; display: contents; }
+    body.wide .side-actions { display: none; }
+    body.wide .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; position: sticky; top: var(--appbar-h, 72px); z-index: 30; background: var(--bg); padding: 8px 0 6px; margin: -8px 0 10px; }
+    body.wide .filters .filter-label { margin: 0 2px 0 0; }
+    body.wide .filters .chips { padding: 0; overflow: visible; flex-wrap: wrap; }
+    body.wide .filters .more { display: contents; }
+    body.wide .fab { display: flex; right: 24px; bottom: 28px; }
+    body.wide .task-list { grid-template-columns: repeat(3, 1fr); }
+    body.wide .wide-bar { left: 24px; bottom: 28px; }
+  }
+  @media (min-width: 1500px) { body.wide .task-list { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 1900px) { body.wide .task-list { grid-template-columns: repeat(5, 1fr); } }
   .view-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex-shrink: 0; }
   .view-switch button { border: none; background: transparent; width: 40px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
   .view-switch button + button { border-left: 1px solid var(--line); }
@@ -741,7 +768,7 @@
       <div class="side-actions">
         <button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button>
         <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
-        <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 전환 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
+        <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
     </aside>
     <div class="content" id="scheduleList"></div>
@@ -810,6 +837,7 @@
   </section>
 </main>
 
+<div class="wide-bar" id="wideBar"><button type="button" id="wideExit" onclick="toggleWide(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>기본 보기</button><button type="button" id="wideView" style="display:none" onclick="toggleView()">달력 보기</button></div>
 <button class="fab" id="fab" onclick="fabClick()" aria-label="추가"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="fabLabel">일정 추가</span></button>
 
 <div class="menu" id="menu" role="menu">
@@ -827,6 +855,7 @@
   <button id="menuExcel" data-ico="upload" style="display:none" onclick="importExcel()"><span>엑셀로 개인업무 가져오기</span></button>
   <button id="menuUsers" data-ico="users" onclick="manageUsers()"><span>개인업무 사용자 관리</span></button>
   <button id="menuTrash" data-ico="trash" onclick="openTrash()"><span>휴지통</span></button>
+  <button id="menuWide" data-ico="view" onclick="toggleWide()"><span>넓게 보기</span></button>
   <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>홈 화면에 추가</span></button>
   <button id="menuReset" data-ico="refresh" onclick="resetToDefault(currentTab())"><span>기본값으로 복원</span></button>
   <hr id="menuAdminHr">
@@ -1302,6 +1331,7 @@
     document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === name));
     document.getElementById('fabLabel').textContent = { schedule: '일정 추가', tasks: '업무 추가', personal: '개인업무 추가' }[name];
     const fab = document.getElementById('fab'); fab.style.display = (name === 'personal' && !state.me) ? 'none' : ''; fab.classList.toggle('show-pc', name === 'personal');
+    if (typeof updateWideBar === 'function') updateWideBar();
   }
   function tabClick(name) {
     if (name === 'schedule' && currentTab() === 'schedule') { hideTabTip(); toggleView(); return; }
@@ -1373,6 +1403,7 @@
     const isAdminDevice = document.body.classList.contains('admin');
     show('menuPin', REMOTE && !isAdminDevice); show('menuAdminOff', REMOTE && isAdminDevice); show('menuAdminHr', REMOTE);
     show('menuLogout', !!state.me); show('menuMyPin', !!state.me); show('menuMyName', !!state.me);
+    document.querySelector('#menuWide span').textContent = document.body.classList.contains('wide') ? '기본 보기' : '넓게 보기';
     show('menuExcel', !!state.me);
     m.classList.toggle('open');
   }
@@ -1497,11 +1528,12 @@
     document.getElementById('scheduleSummary').innerHTML = `
       <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건<span class="mo-only"> · 예정 ${upcoming}건</span></div></div>
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>
-      <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>`;
+      <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>${wideBtn()}`;
     const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
     renderChips(document.getElementById('scheduleFilters'), zerosLast(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
     document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
+    if (typeof updateWideBar === 'function') updateWideBar();
     const items = data.items.filter(i => state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
     if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
@@ -1671,7 +1703,7 @@
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('tasksSummary').innerHTML = `
       <div><div class="big">${counts['진행중'] || 0}건 진행중</div><div class="label">${overdueCnt ? `<span style="color:var(--red);font-weight:600">기한 지연 ${overdueCnt}건</span>` : '지연된 업무 없음'}</div></div>
-      <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
+      <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${wideBtn()}`;
     fillDatalist('ownerList', data.items.map(i => i.owner));
     if (state.taskStatus !== '전체' && !counts[state.taskStatus]) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
@@ -1706,7 +1738,7 @@
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('personalSummary').innerHTML = `
       <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div class="me-info"><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div><button type="button" class="logout-btn" onclick="logout()" aria-label="개인업무 로그아웃">로그아웃</button></div>
-      <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>`;
+      <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${wideBtn()}`;
     if (state.pStatus !== '전체' && !counts[state.pStatus]) state.pStatus = '전체';
     renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
@@ -2383,7 +2415,23 @@
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
     else if (e.key === 'c' || e.key === 'C') { if (currentTab() !== 'schedule') showTab('schedule'); toggleView(); }
     else if (e.key === '1') tabClick('schedule'); else if (e.key === '2') tabClick('tasks'); else if (e.key === '3') tabClick('personal');
+    else if (e.key === 'w' || e.key === 'W') toggleWide();
   });
+
+  /* ── 넓게 보기 ── */
+  const WIDE_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  const wideBtn = () => `<button type="button" class="wide-btn" title="넓게 보기 (W)" aria-label="넓게 보기" onclick="toggleWide(true)">${WIDE_ICO}</button>`;
+  function toggleWide(force) {
+    const on = force != null ? force : !document.body.classList.contains('wide');
+    document.body.classList.toggle('wide', on); lsSet('ictc.wide', on ? 1 : 0);
+    if (window.innerWidth < 1024) {   // 폰·태블릿: 브라우저 전체화면도 함께 (지원하는 기기만)
+      try { if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
+    }
+    setTimeout(setAppbarH, 50); updateWideBar(); toast(on ? '넓게 보기' : '기본 보기', 1200);
+  }
+  function updateWideBar() { const b = document.getElementById('wideView'); if (!b) return; b.style.display = currentTab() === 'schedule' ? '' : 'none'; b.textContent = state.view === 'calendar' ? '목록 보기' : '달력 보기'; }
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('wide') && window.innerWidth < 1024) { document.body.classList.remove('wide'); lsSet('ictc.wide', 0); setTimeout(setAppbarH, 50); } });
+  if (lsGet('ictc.wide')) document.body.classList.add('wide');
 
   /* ── 홈 화면에 추가 (PWA 설치) ── */
   let deferredInstall = null;
