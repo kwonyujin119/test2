@@ -10,5 +10,6 @@
 window.ICTC_CONFIG = {
   supabaseUrl: "https://bcajgbpsfjufgkppxshm.supabase.co",
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYWpnYnBzZmp1ZmdrcHB4c2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDY5NDIsImV4cCI6MjEwODE4Mjk0Mn0.nOv2Q_Vg2ZHuDy8BfU1cjaHyvOb2U0zWSOWsWJTs3Fg",
-  pollSeconds: 30
+  pollSeconds: 30,
+  fileMaxMB: 50          // 41망 첨부 파일당 한도(MB). Supabase 무료 요금제는 50MB. 고르는 순간 막아 다 올린 뒤 실패하지 않게
 };

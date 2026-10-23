@@ -122,14 +122,16 @@
   .segment button .ini { font-size: 1.3em; font-weight: 900; color: var(--gold, #F5C400); letter-spacing: .5px; line-height: 1; vertical-align: -1px; }
   .segment button.active .ini { color: var(--gold-text, #8A6A00); }
   .segment button:not(.active) { color: rgba(255,255,255,.72); }
-  .segment button small { display: block; font-size: 11px; font-weight: 600; line-height: 1.2; margin-top: 1px; opacity: .75; }
-  .segment button.active small { opacity: .8; }
-  @media (max-width: 640px) { .segment button { font-size: 13px; padding: 7px 0; } .segment button small { font-size: 10.5px; } }
+  .segment button small { display: block; font-size: 11.5px; font-weight: 600; line-height: 1.2; margin-top: 1px; opacity: .92; }
+  .segment button.active small { opacity: .85; }
+  @media (max-width: 640px) { .segment button { font-size: 13px; padding: 7px 0; } .segment button small { font-size: 11px; }
+    /* 폰: '달력' 배지는 자리가 없어 잘리므로 숨기고, 대신 아래 작은 글자를 '달력'으로 바꿔 보여 준다 */
+    .segment button .vbadge { display: none !important; } .segment button.active.cal small { font-size: 0; } .segment button.active.cal small::after { content: '달력 보기'; font-size: 11px; color: var(--primary-text); } }
   .appbar-right { display: flex; gap: 6px; align-items: center; }
   .install-btn { display: none; align-items: center; gap: 6px; height: 36px; white-space: nowrap; padding: 0 12px 0 10px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: var(--on-navy); font-size: 13px; font-weight: 700; align-self: center; transition: .15s; }
   .install-btn:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.6); }
   body.installable .install-btn { display: inline-flex; }
-  @media (max-width: 639px) { body.installable .install-btn { display: none; } .icon-btn { width: 36px; } .hdr-left { gap: 8px; } .hdr-row1 { column-gap: 6px; } }
+  @media (max-width: 639px) { body.installable .install-btn { display: none; } .icon-btn { width: 40px; } .appbar-right { gap: 2px; } .hdr-left { gap: 8px; } .hdr-row1 { column-gap: 6px; } }
   .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent; color: var(--on-navy); display: flex; align-items: center; justify-content: center; }
   .icon-btn:hover { background: rgba(255,255,255,.12); }
   .segment { margin-top: 12px; display: flex; background: rgba(255,255,255,.13); border-radius: 12px; padding: 3px; position: relative; }
@@ -138,10 +140,11 @@
   .segment .thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(33.333% - 2px); background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: transform .25s cubic-bezier(.4,0,.2,1); }
   .segment[data-pos="1"] .thumb { transform: translateX(100%); }
   .segment[data-pos="2"] .thumb { transform: translateX(200%); }
-  .tab-tip { position: absolute; top: calc(100% + 10px); left: calc(16.67% - 86px); width: 172px; text-align: center; background: var(--text); color: var(--card); font-size: 13px; font-weight: 600; padding: 8px 10px; border-radius: 10px; z-index: 5; display: none; pointer-events: none; animation: fade .2s ease; }
+  /* 처음 안내 말풍선: 세 탭 모두 '한 번 더 누르면 달력'이므로 탭 묶음 가운데에 둔다 */
+  .tab-tip { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); text-align: center; background: var(--text); color: var(--card); font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 10px; z-index: 5; display: none; pointer-events: none; animation: fade .2s ease; }
   .tab-tip::before { content: ''; position: absolute; top: -6px; left: calc(50% - 6px); border: 6px solid transparent; border-top: 0; border-bottom-color: var(--text); }
   .tab-tip.show { display: block; }
-  @media (max-width: 640px) { .tab-tip { left: 2px; width: auto; white-space: nowrap; font-size: 12.5px; } .tab-tip::before { left: 52px; } }
+  @media (max-width: 640px) { .tab-tip { left: 0; right: 0; transform: none; width: auto; max-width: none; white-space: normal; font-size: 12.5px; } }   /* 폰: 탭 묶음 폭 안에서 줄바꿈(가로 스크롤 방지) */
   .segment button .vbadge { display: none; font-size: 10.5px; font-weight: 700; color: var(--primary-text); background: var(--primary-soft); border-radius: 999px; padding: 1px 6px; margin-left: 5px; vertical-align: 1px; }
   .segment button.active.cal .vbadge { display: inline-block; }
 
@@ -152,7 +155,7 @@
 
   .summary { background: var(--card); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
   .summary .big { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.15; color: var(--primary-text); }
-  .summary .label { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+  .summary .label { font-size: 13px; color: var(--text-3); margin-top: 2px; word-break: keep-all; }   /* 좁은 폰에서 '없\n음'처럼 낱말 중간이 끊기지 않게 */
   .summary .stats { margin-left: auto; display: flex; gap: 14px; }
   .stat { text-align: center; }
   .stat b { display: block; font-size: 17px; font-weight: 700; }
@@ -227,7 +230,7 @@
   .event-time small { display: block; color: var(--text-3); font-weight: 500; }
   .event-time .dayidx { display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 700; color: var(--text-2); background: var(--gray-soft); border-radius: 999px; padding: 1px 6px; }
   .event-sub .range { font-weight: 600; color: var(--text-2); }
-  .done-btn { margin-left: auto; border: 1.5px solid var(--green); background: transparent; color: var(--green); font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; transition: .15s; }
+  .done-btn { margin-left: auto; border: 1.5px solid var(--green); background: transparent; color: var(--green); font-size: 13px; font-weight: 700; padding: 7px 13px; min-height: 34px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; transition: .15s; }
   .done-btn svg { width: 14px; height: 14px; }
   .done-btn:hover { background: var(--green); color: #fff; }
   .done-btn.undo { border-color: var(--line); color: var(--text-3); }
@@ -334,7 +337,8 @@
   .qbox svg { width: 20px; height: 20px; color: var(--text-3); flex-shrink: 0; }
   .qbox .qin { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--text); outline: none; }
   .qbox .qin::-webkit-search-cancel-button { display: none; }
-  .qbox .qclear { display: none; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--card-2); color: var(--text-3); font-size: 18px; line-height: 1; }
+  .qbox .qclear { display: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--card-2); color: var(--text-3); font-size: 18px; line-height: 1; }
+  .qfab.hidden { display: none !important; }   /* 개인업무 로그인 화면처럼 찾을 목록이 없을 때 */
   .qbox.has .qclear { display: flex; align-items: center; justify-content: center; }
   .qbox.has svg { color: var(--primary); }
   .side-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }   /* PC 사이드바: 검색창 | + 추가 버튼 한 줄 */
@@ -418,6 +422,7 @@
   .menu button.danger { color: var(--red); }
   .menu hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
   .toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--card); font-size: 14px; font-weight: 600; padding: 12px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: .25s; z-index: 300; max-width: calc(100vw - 32px); text-align: center; line-height: 1.4; }
+  .toast.act { cursor: pointer; } .toast.act.show { pointer-events: auto; } .toast.act u { text-decoration-thickness: 1.5px; text-underline-offset: 3px; margin-left: 6px; }
   body.a2hs-open .toast { bottom: calc(184px + env(safe-area-inset-bottom)); }
   .toast.show { opacity: 1; transform: translateX(-50%); }
 
@@ -481,6 +486,17 @@
   .a2hs .btn.ghost { padding: 6px 12px; font-size: 13px; }
   @media (min-width: 640px) { .a2hs { left: auto; right: 24px; bottom: 24px; width: 380px; } .fab.show-pc ~ .a2hs, body.fab-visible .a2hs { bottom: 96px; } }
   @media (min-width: 1024px) { .a2hs { left: auto; right: 24px; bottom: 24px; } body.fab-visible .a2hs, .fab.show-pc ~ .a2hs { bottom: 92px; } }  /* 왼쪽 사이드바(필터)를 가리지 않게 오른쪽 아래 */
+  /* ── 사용 안내 시트 ── */
+  .help-sheet { max-width: 600px; }
+  .help-list { display: flex; flex-direction: column; gap: 4px; }
+  .help-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .help-row:last-child { border-bottom: none; }
+  .help-row .help-ico { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--gold-soft); color: var(--gold-text); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .help-row > div { flex: 1; min-width: 0; }
+  .help-row > div > b { display: block; font-size: 15px; font-weight: 800; margin-bottom: 2px; }
+  .help-row > div > span { display: block; font-size: 14px; line-height: 1.6; color: var(--text-2); }
+  .help-row kbd { font: inherit; font-size: 13px; background: var(--card-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
+  @media (max-width: 1023px) { .help-row.pc-only { display: none; } }
   .a2hs-guide ol { margin: 0 0 0 18px; padding: 0; font-size: 14px; line-height: 1.8; }
   .a2hs-guide .os { font-size: 13px; font-weight: 700; color: var(--text-3); margin: 14px 0 4px; }
   .a2hs-guide .os:first-child { margin-top: 0; }
@@ -554,7 +570,7 @@
   .cal-cell.other { opacity: .4; }
   .cal-cell .n { font-size: 13px; font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
   .cal-cell.sun .n { color: var(--sun); } .cal-cell.sat .n { color: var(--sat); }
-  .cal-cell.today { background: color-mix(in srgb, var(--gold-soft) 55%, var(--card)); }
+  .cal-cell.today { background: var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 55%, var(--card)); }   /* 구형 브라우저는 앞 줄로 대체 */
   .cal-cell.today .n { background: var(--primary); color: #fff; box-shadow: 0 0 0 2px var(--gold); }
   .cal-ev { display: block; width: 100%; box-sizing: border-box; font-size: 12px; font-weight: 600; line-height: 1.35; padding: 2px 6px; border-radius: 6px; background: var(--cat-soft); color: var(--cat); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--cat); }
   .cal-ev.multi { border-left-style: double; border-left-width: 4px; }
@@ -859,10 +875,10 @@
       </div>
       <div class="segment" id="segment" data-pos="0" role="tablist" aria-label="보드 탭">
       <div class="thumb"></div>
-      <button class="active" role="tab" aria-selected="true" data-tab="schedule" onclick="tabClick('schedule')" title="한 번 더 누르면 달력"><b class="ini">S</b>chedule<span class="vbadge">달력</span><small>일정표</small></button>
-      <div class="tab-tip" id="tabTip" role="status">탭을 한 번 더 누르면 달력</div>
-      <button role="tab" aria-selected="false" data-tab="tasks" onclick="tabClick('tasks')"><b class="ini">A</b>ttention<small>주요업무</small></button>
-      <button role="tab" aria-selected="false" data-tab="personal" onclick="tabClick('personal')"><b class="ini">I</b>ndividual <b class="ini">L</b>og<small>개인업무</small></button>
+      <button class="active" role="tab" aria-selected="true" aria-controls="schedule" data-tab="schedule" onclick="tabClick('schedule')" title="일정표 · 한 번 더 누르면 달력"><b class="ini">S</b>chedule<span class="vbadge">달력</span><small>일정표</small></button>
+      <div class="tab-tip" id="tabTip" role="status">탭을 한 번 더 누르면 달력으로 바뀌어요</div>
+      <button role="tab" aria-selected="false" aria-controls="tasks" data-tab="tasks" onclick="tabClick('tasks')" title="주요업무 · 한 번 더 누르면 달력"><b class="ini">A</b>ttention<span class="vbadge">달력</span><small>주요업무</small></button>
+      <button role="tab" aria-selected="false" aria-controls="personal" data-tab="personal" onclick="tabClick('personal')" title="개인업무 · 한 번 더 누르면 달력"><b class="ini">I</b>ndividual <b class="ini">L</b>og<span class="vbadge">달력</span><small>개인업무</small></button>
     </div>
     </div>
   </div>
@@ -871,20 +887,20 @@
 <main>
   <div class="notice" id="notice"></div>
 
-  <section id="schedule" class="active">
+  <section id="schedule" class="active" role="tabpanel" aria-label="일정표">
     <aside class="side">
       <div class="summary" id="scheduleSummary"></div>
       <div class="filters"><div class="chips" id="scheduleFilters"></div></div>
       <div class="side-actions">
         <div class="side-row"><label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="schedule" placeholder="키워드 검색" autocomplete="off" oninput="setQ('schedule', this.value)" onkeydown="if(event.key==='Escape'){setQ('schedule','');this.blur()}"><button type="button" class="qclear" onclick="setQ('schedule','')" aria-label="지우기">×</button></label><button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button></div>
         <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
-        <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
+        <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 · <kbd>/</kbd> 검색 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
     </aside>
     <div class="content" id="scheduleList"></div>
   </section>
 
-  <section id="tasks">
+  <section id="tasks" role="tabpanel" aria-label="주요업무">
     <aside class="side">
       <div class="summary" id="tasksSummary"></div>
       <div class="filters" id="tasksFiltersBox">
@@ -901,19 +917,19 @@
       <div class="side-actions">
         <div class="side-row"><label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="tasks" placeholder="키워드 검색" autocomplete="off" oninput="setQ('tasks', this.value)" onkeydown="if(event.key==='Escape'){setQ('tasks','');this.blur()}"><button type="button" class="qclear" onclick="setQ('tasks','')" aria-label="지우기">×</button></label><button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button></div>
         <button class="btn ghost" onclick="toggleTaskView('tasks')">달력으로 보기</button>
-        <div class="hint"><kbd>N</kbd> 새 업무 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
+        <div class="hint"><kbd>N</kbd> 새 업무 · <kbd>C</kbd> 달력 · <kbd>/</kbd> 검색 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
     </aside>
     <div class="content task-list" id="taskList"></div>
   </section>
 
-  <section id="personal">
+  <section id="personal" role="tabpanel" aria-label="개인업무">
     <div class="personal-login" id="personalLogin">
       <form class="login-card" id="loginForm" onsubmit="submitLogin(event)">
         <h2 id="loginTitle">개인업무</h2>
         <p id="loginDesc">행정전화번호 뒤 4자리와 내가 정한 비밀번호 4자리로 들어가요. 처음이면 그 자리에서 바로 등록돼요. 내 업무는 나만 볼 수 있어요.</p>
         <div class="row">
-          <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234 (전체 번호도 됨)" required></div>
+          <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234" required></div>
           <div class="field"><label>비밀번호 4자리</label><input name="upw" type="password" inputmode="numeric" autocomplete="current-password" placeholder="숫자 4자리" required></div>
         </div>
         <div class="err" id="loginErr"></div><div class="err-hint" id="loginErrHint"></div>
@@ -942,7 +958,7 @@
         <button class="btn ghost" onclick="changeMyName()">이름 변경</button>
         <button class="btn ghost" onclick="changeMyPin()">비밀번호 변경</button>
         <button class="btn ghost" onclick="logout()">로그아웃</button>
-        <div class="hint"><kbd>N</kbd> 새 개인업무 · <kbd>Esc</kbd> 닫기</div>
+        <div class="hint"><kbd>N</kbd> 새 개인업무 · <kbd>C</kbd> 달력 · <kbd>/</kbd> 검색 · <kbd>Esc</kbd> 닫기</div>
       </div>
     </aside>
     <div class="content task-list" id="personalList" style="display:none"></div>
@@ -954,8 +970,9 @@
 <button class="fab" id="fab" onclick="fabClick()" aria-label="추가"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="fabLabel">일정 추가</span></button>
 
 <div class="menu" id="menu" role="menu">
-  <button id="menuExport" data-ico="download" onclick="exportJSON(currentTab())"><span>JSON 내보내기</span></button>
-  <button id="menuImport" data-ico="upload" onclick="importJSON(currentTab())"><span>JSON 가져오기</span></button>
+  <button id="menuHelp" data-ico="help" onclick="openHelp()"><span>사용 안내</span></button>
+  <button id="menuExport" data-ico="download" onclick="exportJSON(currentTab())"><span>JSON 내보내기 (백업)</span></button>
+  <button id="menuImport" data-ico="upload" onclick="importJSON(currentTab())"><span>JSON 가져오기 (통째로 교체)</span></button>
   <hr class="admin-only">
   <button id="menuBoardAdd" data-ico="plus" class="mo-only-item" onclick="addBoard()"><span>새 대시보드 추가</span></button>
   <button id="menuBoardRename" data-ico="pencil" onclick="renameBoard()"><span>대시보드 이름 변경</span></button>
@@ -1105,7 +1122,7 @@
       <button type="button" class="att-tile" onclick="chatPick('image')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></svg><span>갤러리</span></button>
     </div>
     <button type="button" class="att-file-row" onclick="chatPick('file')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span>파일</span></button>
-    <p class="att-help">'갤러리'를 누르면 휴대폰 갤러리(최근 사진)가 열려요. 고른 사진이 위 줄에 번호와 함께 올라오고, <b>전송</b>을 누르면 올라가요. 사진을 누르면 펜·지우개·자르기로 고칠 수 있어요. 한 번에 100MB · 10개까지.</p>
+    <p class="att-help">'갤러리'를 누르면 휴대폰 갤러리(최근 사진)가 열려요. 고른 사진이 위 줄에 번호와 함께 올라오고, <b>전송</b>을 누르면 올라가요. 사진을 누르면 펜·지우개·자르기로 고칠 수 있어요. <span id="attHelpMax">파일당 100MB · 한 번에 10개까지.</span></p>
   </div>
 </div>
 <div class="sheet-bg" id="imgEditModal" onclick="if(event.target===this)subClose('imgEditModal')">
@@ -1169,8 +1186,26 @@
     <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('a2hsModal')">닫기</button></div>
   </div>
 </div>
+<!-- 사용 안내 시트: 처음 온 직원이 기능을 한 화면에서 보게 -->
+<div class="sheet-bg" id="helpModal" onclick="if(event.target===this)closeModal('helpModal')">
+  <div class="sheet help-sheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="handle"></div>
+    <h2 id="helpTitle">SAIL:41 사용 안내</h2>
+    <div class="help-list">
+      <div class="help-row"><span class="help-ico">1</span><div><b>탭 세 개</b><span>일정표(Schedule) · 주요업무(Attention) · 개인업무(Individual Log). 탭을 <b>한 번 더</b> 누르면 달력으로 바뀌고, 또 누르면 목록으로 돌아와요.</span></div></div>
+      <div class="help-row"><span class="help-ico">2</span><div><b>추가 · 수정</b><span><b>+ 추가</b> 버튼(폰은 오른쪽 아래, PC는 왼쪽 칸)으로 새로 넣고, 카드를 누르면 고쳐요. 일정의 <b>시간</b>을 누르면 날짜·시간만 바로 바꿀 수 있어요. 누구나 할 수 있어요.</span></div></div>
+      <div class="help-row"><span class="help-ico">3</span><div><b>검색</b><span>돋보기 칸에 단어를 넣으면 제목·장소·담당·메모에서 찾아요. 띄어쓰기로 여러 단어를 넣으면 <b>모두 들어 있는 것만</b> 나와요. 달력에서는 찾은 날이 금색으로 표시돼요.</span></div></div>
+      <div class="help-row"><span class="help-ico">4</span><div><b>41망 (부서 톡방)</b><span>오른쪽 위 <b>말풍선 아이콘</b>(⋮ 바로 왼쪽)을 누르세요. 부서별 톡방이고 <b>입장코드 4자리</b>는 담당자에게 받아요. 사진·파일을 보낼 수 있고, 글을 <b>꾹 누르면</b>(PC는 오른쪽 클릭) 답장·복사·저장·삭제가 나와요.</span></div></div>
+      <div class="help-row"><span class="help-ico">5</span><div><b>개인업무</b><span>행정전화 <b>뒤 4자리</b>와 내가 정한 <b>비밀번호 4자리</b>로 들어가요. 처음이면 그 자리에서 등록돼요. 내 업무는 나만 보고, 엑셀 파일로 한 번에 넣을 수도 있어요.</span></div></div>
+      <div class="help-row"><span class="help-ico">6</span><div><b>넓게 보기 · 홈 화면</b><span>⋮ 메뉴의 <b>넓게 보기</b>는 옆 칸을 접고 목록을 넓게 펼쳐요(폰은 전체화면). <b>홈 화면에 추가</b>를 하면 앱처럼 아이콘으로 열려요.</span></div></div>
+      <div class="help-row pc-only"><span class="help-ico">⌨</span><div><b>PC 단축키</b><span><kbd>N</kbd> 새로 추가 · <kbd>C</kbd> 달력 · <kbd>/</kbd> 검색 · <kbd>W</kbd> 넓게 보기 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 이동 · <kbd>Esc</kbd> 닫기</span></div></div>
+      <div class="help-row"><span class="help-ico">?</span><div><b>막힐 때</b><span>팀 PIN·입장코드·비밀번호 초기화·대시보드 관리는 담당자(관리자)에게 요청하세요. 지운 항목은 담당자가 30일 안에 휴지통에서 되살릴 수 있어요.</span></div></div>
+    </div>
+    <div class="sheet-foot"><button type="button" class="btn primary" onclick="closeModal('helpModal')">알겠어요</button></div>
+  </div>
+</div>
 <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" onclick="toastClick()"></div>
 
 <script src="config.js"></script>
 <script>
@@ -1202,6 +1237,7 @@
     users: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 20a7 7 0 0 0-5-6.7"/>'),
     install: svg('<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/>'),
     refresh: svg('<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>'),
+    help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/>'),
   };
   /* 상태는 색만이 아니라 아이콘으로도 구분 */
   const STATUS_ICON = { '예정': svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), '진행중': svg('<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5Z" fill="currentColor"/>'),
@@ -1214,7 +1250,9 @@
   const qNorm = v => String(v || '').toLowerCase().replace(/\s+/g, '');
   const qTerms = q => String(q || '').trim().split(/\s+/).filter(Boolean);   // 공백으로 나눈 단어 모두 들어가야 일치(AND)
   const qMatch = (it, q) => { const ts = qTerms(q); if (!ts.length) return true; const hay = [it.title, it.place, it.owner, it.note, it.detail, it.category, it.date, it.due, ...(it.tags || [])].map(qNorm); return ts.every(t => { const n = qNorm(t); return hay.some(v => v.includes(n)); }); };
-  const qMark = (text, q) => { const e = esc(text); const ts = qTerms(q); if (!ts.length) return e; try { return e.replace(new RegExp(ts.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'), m => `<mark>${m}</mark>`); } catch (x) { return e; } };
+  // 강조는 원문에서 찾은 뒤 조각마다 이스케이프한다(이스케이프한 글에서 찾으면 &amp; 같은 엔티티 안이 깨질 수 있음)
+  const qMark = (text, q) => { const raw = String(text == null ? '' : text); const ts = qTerms(q); if (!ts.length) return esc(raw);
+    try { const re = new RegExp(ts.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'); let out = '', last = 0, m; while ((m = re.exec(raw))) { if (!m[0]) { re.lastIndex++; continue; } out += esc(raw.slice(last, m.index)) + `<mark>${esc(m[0])}</mark>`; last = m.index + m[0].length; } return out + esc(raw.slice(last)); } catch (x) { return esc(raw); } };
   const prioOf = tags => Math.min(3, ...(tags || []).map(t => TEAM_PRIO[t] ?? 3));
   const prioChips = chips => [...chips.filter(c => TEAM_PRIO[c.key] != null), ...zerosLast(chips.filter(c => TEAM_PRIO[c.key] == null))];
   const TASK_OF = id => 'sch-' + id;   // 일정 → 연동 주요업무 카드 id
@@ -1256,7 +1294,11 @@
     return { slice: list.slice(from - 1, to), html, page: p, pages };
   }
 
-  const TODAY = (() => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); })();
+  /* '오늘'은 켜 둔 채 날이 바뀌어도 맞아야 한다(사무실 PC·폰에 며칠씩 열어 둠). 1분마다 확인해 날짜가 바뀌면 다시 그린다 */
+  const todayStr = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); };
+  let TODAY = todayStr();
+  function tickToday() { const t = todayStr(); if (t === TODAY) return false; TODAY = t; try { ['schedule', 'tasks', 'personal'].forEach(k => { if (state[k]) render(k); }); } catch (e) {} return true; }
+  setInterval(tickToday, 60 * 1000); document.addEventListener('visibilitychange', () => { if (!document.hidden) tickToday(); });
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const initial = s => (s || '').trim().charAt(0) || '?';
@@ -1268,7 +1310,7 @@
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const endOf = ev => (ev.endDate && ev.endDate > ev.date) ? ev.endDate : ev.date;
   const addDays = (date, n) => { const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
-  const daysOf = ev => { const out = []; let d = ev.date; const e = endOf(ev); while (d && d <= e && out.length < 62) { out.push(d); d = addDays(d, 1); } return out; };
+  const daysOf = ev => { const out = []; let d = ev.date; const e = endOf(ev); while (d && d <= e && out.length < 366) { out.push(d); d = addDays(d, 1); } return out; };   // 장기 교육과정(두 달 이상)도 끝까지 표시. 1년 상한
   const md = date => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); const multi = endOf(ev) !== ev.date;
     return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})${multi ? ' ~ ' + md(endOf(ev)) : ''} ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
@@ -1280,8 +1322,10 @@
   const SHORT_NAME = { '지휘역량강화센터': 'ICTC', '교육지원과': '지원', '교육기획과': '기획', '훈련운영과': '훈련' };
   const shortName = n => SHORT_NAME[(n || '').trim()] || n;
 
-  let toastTimer;
-  function toast(msg, ms) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms || Math.min(5000, 2200 + Math.max(0, msg.length - 12) * 90)); }
+  let toastTimer, toastAction = null;
+  // action 을 주면 토스트를 눌러 실행할 수 있다(예: 사용 안내 열기). actionLabel 은 밑줄로 표시
+  function toast(msg, ms, action, actionLabel) { const t = document.getElementById('toast'); t.textContent = msg; toastAction = typeof action === 'function' ? action : null; t.classList.toggle('act', !!toastAction); if (toastAction) t.insertAdjacentHTML('beforeend', `<u>${esc(actionLabel || '보기')}</u>`); t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms || Math.min(5000, 2200 + Math.max(0, msg.length - 12) * 90)); }
+  function toastClick() { const t = document.getElementById('toast'); if (!toastAction) return; const a = toastAction; toastAction = null; t.classList.remove('show', 'act'); a(); }
   let tabTipTimer;
   function showTabTip() { const el = document.getElementById('tabTip'); el.classList.add('show'); clearTimeout(tabTipTimer); tabTipTimer = setTimeout(hideTabTip, 6000); }
   function hideTabTip() { document.getElementById('tabTip').classList.remove('show'); }
@@ -1290,16 +1334,25 @@
   function lsDel(key) { try { localStorage.removeItem(key); } catch (e) {} }
 
   /* ── 오류 코드 → 메시지 ── */
-  const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요합니다', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않습니다', PIN_INVALID: '관리자 PIN이 올바르지 않습니다',
-    USER_NOT_FOUND: '등록되지 않은 번호예요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요',
-    USER_ID_INVALID: '뒤 4자리를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요', CHAT_CODE_TOO_SHORT: '입장코드는 4자리 이상', CHAT_ROOM_EXISTS: '이미 있는 톡방이에요', FILE_TOO_LARGE: '파일이 너무 커요 (서버 한도를 넘었어요. Supabase 무료 요금제는 파일당 50MB)', FILE_TYPE: '올릴 수 없는 파일 형식이에요', UPLOAD_FAILED: '파일을 올리지 못했어요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요 (담당자: SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
-    BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류',
-    TOO_MANY_ATTEMPTS: '시도가 너무 많습니다. 10분 후 다시 하세요', DELETED_NOT_FOUND: '보관된 항목이 없어요' };
-  class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
+  /* 원인 + 해결을 함께 말한다. USER_PIN_INVALID 문구는 로그인 화면 검사(e2e)와 맞물려 있으니 그대로 둔다 */
+  const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요해요. 담당자에게 받은 숫자를 넣으세요', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않아요. 담당자에게 받은 숫자를 다시 확인하세요', PIN_INVALID: '관리자 PIN이 올바르지 않아요. 담당자(관리자)만 쓰는 기능이에요',
+    USER_NOT_FOUND: '등록되지 않은 번호예요. 행정전화 뒤 4자리를 확인하세요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요. 비밀번호를 잊었으면 담당자에게 초기화를 요청하세요',
+    USER_ID_INVALID: '행정전화 뒤 4자리(숫자)를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요. 담당자에게 톡방 입장코드를 확인하세요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요. 톡방 목록을 새로 고치세요', CHAT_CODE_TOO_SHORT: '입장코드는 숫자 4자리 이상이어야 해요', CHAT_ROOM_EXISTS: '같은 이름의 톡방이 이미 있어요', FILE_TOO_LARGE: '파일이 너무 커요. 서버 한도(무료 요금제는 파일당 50MB)보다 작게 줄여서 보내세요', FILE_TYPE: '보낼 수 없는 파일 형식이에요(사진·PDF·문서·압축 파일만)', UPLOAD_FAILED: '파일이 끝까지 올라가지 않았어요. 인터넷 연결을 확인하고 다시 보내 주세요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하 파일만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리로 넣으세요', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '같은 이름의 대시보드가 이미 있어요',
+    BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없어요', BOARD_NOT_FOUND: '이 대시보드가 지워졌어요. 과 이름▾에서 다른 대시보드를 고르세요', ID_REQUIRED: '항목 번호가 없어요. 화면을 새로고침한 뒤 다시 해 보세요', KIND_INVALID: '종류 오류예요. 화면을 새로고침한 뒤 다시 해 보세요',
+    ITEM_TOO_LARGE: '내용이 너무 길어요. 메모·상세를 줄여서 저장하세요', ITEMS_REQUIRED: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', JSON_INVALID: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', NOT_FOUND: '요청한 주소가 없어요. 새로고침해 보세요',
+    SERVER_ERROR: '서버에 문제가 생겼어요. 잠시 뒤 다시 시도하고, 계속되면 담당자에게 알려 주세요', SQL_OUTDATED: '서버 설정이 최신이 아니에요. 담당자에게 알려 주세요(SQL 재적용)', KEY_INVALID: '연결 키가 맞지 않아요. 담당자에게 알려 주세요',
+    TOO_MANY_ATTEMPTS: '틀린 시도가 너무 많아요. 10분 뒤에 다시 하세요', DELETED_NOT_FOUND: '보관된 항목이 없어요. 30일이 지나 지워졌을 수 있어요',
+    NETWORK: '서버에 연결할 수 없어요. 와이파이·데이터 연결을 확인하고 다시 시도하세요' };
+  // 코드가 아닌 영문 서버 메시지(PostgREST 등)를 코드로 바꾼다: 함수 없음 → SQL 미적용, 키 오류 → 연결 키
+  const ERR_TEXT = [[/Could not find the function|does not exist|schema cache/i, 'SQL_OUTDATED'], [/Invalid API key|JWT|apikey/i, 'KEY_INVALID'], [/^(Internal Server Error|SERVER_ERROR)/i, 'SERVER_ERROR']];
+  class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || (status ? `서버 오류예요 (코드 ${status}). 잠시 뒤 다시 시도하세요` : '알 수 없는 오류예요. 다시 시도하세요')); this.code = code; this.status = status; } }
+  // fetch 가 통신 자체에 실패하면(오프라인·DNS·CORS) 영어 'Failed to fetch' 대신 한국어 안내로
+  const netFetch = async (...a) => { try { return await fetch(...a); } catch (e) { throw new ApiError('NETWORK'); } };
   async function throwApi(res) {
     let code = '';
     try { const j = await res.json(); code = (j.message || j.hint || '').trim(); } catch (e) {}
     const known = Object.keys(ERR).filter(k => code === k || new RegExp('(^|[^A-Z_])' + k + '($|[^A-Z_])').test(code)).sort((a, b) => b.length - a.length)[0]; code = known || code;
+    if (!known) { const t = ERR_TEXT.find(([re]) => re.test(code)); if (t) code = t[1]; else if (res.status >= 500) code = 'SERVER_ERROR'; }
     if (code === 'PIN_INVALID') { lsDel(LS.pin); updateAdminUI(); }
     if (code === 'VIEW_PIN_INVALID') lsDel(LS.viewPin);
     throw new ApiError(code, res.status);
@@ -1314,7 +1367,7 @@
   let api;
   if (SUPABASE) {
     const H = () => ({ apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' });
-    const rpc = async (fn, body) => { const res = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST', headers: H(), cache: 'no-store', body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
+    const rpc = async (fn, body) => { const res = await netFetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST', headers: H(), cache: 'no-store', body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
     api = {
       list: async (kind, board) => rows2(await rpc('ictc_list', { p_pin: viewPin(), p_kind: kind, p_board: board })),
       save: (kind, item, board, pin) => rpc('ictc_save', { p_pin: pin, p_kind: kind, p_item: item, p_board: board }),
@@ -1357,8 +1410,8 @@
       },
     };
   } else if (LOCALSRV) {
-    const get = async (path) => { const res = await fetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
-    const post = async (path, body) => { const res = await fetch(`${CFG.apiUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
+    const get = async (path) => { const res = await netFetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
+    const post = async (path, body) => { const res = await netFetch(`${CFG.apiUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!res.ok) await throwApi(res); const t = await res.text(); return t ? JSON.parse(t) : null; };
     api = {
       list: async (kind, board) => rows2(await get(`/api/items?kind=${kind}&board=${encodeURIComponent(board)}`)),
       save: (kind, item, board, pin) => post('/api/save', { pin, kind, board, item }),
@@ -1470,7 +1523,7 @@
     const v = document.getElementById('viewPinInput').value.trim(); if (!v) return;
     lsSet(LS.viewPin, v);
     try { await api.boards(); hideLock(); await boot(); }
-    catch (err) { lsDel(LS.viewPin); showLock(err.code && err.code.startsWith('VIEW_PIN') ? '팀 PIN이 올바르지 않습니다' : '연결 실패: ' + err.message); }
+    catch (err) { lsDel(LS.viewPin); showLock(err.code && err.code.startsWith('VIEW_PIN') ? ERR.VIEW_PIN_INVALID : err.message); }
   }
   function changeViewPin() { lsDel(LS.viewPin); showLock(); }
 
@@ -1508,9 +1561,11 @@
   function updateHash() { try { const cur = history.state && history.state.app ? history.state : navNow(); history.replaceState({ ...cur, board: state.board, tab: currentTab(), view: state.view, app: true }, '', hashFor({ tab: currentTab(), board: state.board })); } catch (e) {} }
   let exitTimer = null;
   function closeOverlaysDirect() {
+    const had = document.querySelectorAll('.sheet-bg.open').length;
     document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open'));
     document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open');
     closeBoardMenu(); document.getElementById('menu').classList.remove('open');
+    if (had && typeof restoreFocus === 'function') restoreFocus();
   }
   async function applyNav(n) {
     closeOverlaysDirect();
@@ -1601,8 +1656,10 @@
     state.scheduleTag = '전체'; state.taskStatus = state.taskCat = state.taskOwner = '전체'; state.showPast = false;
     await Promise.all([refresh('schedule', true), refresh('tasks', true)]);
     window.scrollTo({ top: 0 });
-    toast(boardName() + ' 대시보드');
+    toast(`'${boardName()}' 대시보드로 바꿨어요`);
   }
+  // 대시보드가 둘 이상일 때 빈 목록 아래 붙는 안내
+  const boardHint = () => state.boards.length > 1 ? `<br><span style="font-size:13px">다른 대시보드를 보고 있다면 위 과 이름▾에서 바꿔 보세요</span>` : '';
   async function addBoard() {
     closeBoardMenu();
     const name = prompt('새 대시보드 이름 (예: 교육운영팀, 2027 계획)'); if (!name || !name.trim()) return;
@@ -1634,7 +1691,7 @@
       state[kind] = normalize(data); state.source[kind] = REMOTE ? 'remote' : 'local'; state.lastSync = new Date(); render(kind);
     } catch (e) {
       if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; }
-      if (kind === 'personal' && e.code && e.code.startsWith('USER_')) { logout(true); return; }
+      if (kind === 'personal' && e.code && e.code.startsWith('USER_')) { logout(true); toast('개인업무 로그인이 풀렸어요. 비밀번호가 바뀌었거나 사용자가 삭제된 경우예요. 다시 들어가세요', 5000); return; }
       if (!state[kind]) { state[kind] = { updated: null, items: [] }; state.source[kind] = 'error'; render(kind); }
       if (!silent) toast('불러오기 실패: ' + e.message);
       setSyncStatus('연결 안 됨 · ' + e.message, true);
@@ -1660,6 +1717,7 @@
     lsSet(LS.server, v); renderNotice(); toast('서버 주소를 저장했어요');
   }
   function goServer() { const v = lsGet(LS.server); if (v) location.href = v + (location.hash || ''); }
+  function openHelp() { document.getElementById('menu').classList.remove('open'); openModal('helpModal'); setTimeout(() => { const b = document.querySelector('#helpModal .sheet-foot .btn'); if (b) b.focus({ preventScroll: true }); }, 300); }
 
   function renderChips(container, options, current, onPick) {
     container.innerHTML = '';
@@ -1685,7 +1743,7 @@
       <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>${wideBtn()}`;
     const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
     renderChips(document.getElementById('scheduleFilters'), prioChips(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
-    document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
+    markTabCal('schedule', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
     if (typeof updateWideBar === 'function') updateWideBar();
     const q = Q.schedule;
@@ -1693,7 +1751,7 @@
     if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
       list.innerHTML = state.source.schedule === 'error' ? `<div class="empty"><div class="ico">${I.alert}</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('schedule')">다시 시도</button></div>`
-        : `<div class="empty"><div class="ico">${I.cal}</div>${q ? `'${esc(q)}' 로 찾은 일정이 없어요` : state.scheduleTag === '전체' ? '아직 일정이 없어요<br>아래 버튼으로 첫 일정을 추가해 보세요' : `'${esc(state.scheduleTag)}' 일정이 없어요<br>다른 구분을 눌러 보세요`}</div>`;
+        : `<div class="empty"><div class="ico">${I.cal}</div>${q ? `'${esc(q)}' 로 찾은 일정이 없어요<br>다른 단어로 찾거나 <button type="button" class="linklike" onclick="setQ('schedule','')">검색을 지워</button> 보세요` : state.scheduleTag === '전체' ? '아직 일정이 없어요<br>\'+ 일정 추가\' 버튼으로 첫 일정을 넣어 보세요' + boardHint() : `'${esc(state.scheduleTag)}' 일정이 없어요<br>다른 구분을 눌러 보세요`}</div>`;
       return;
     }
     // 쪽은 '일정' 단위로 나눈다(여러 날 일정은 한 쪽에 모두). 지난 일정 = 종료일이 오늘 이전
@@ -1701,14 +1759,14 @@
     const showPast = !!q || state.showPast;   // 검색 중에는 지난 일정도 함께. 예정 일정이 없어도 지난 일정은 접어 둔다
     const vis = showPast ? items : items.filter(e => endOf(e) >= TODAY);
     const fd = state.focusDate;
-    const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
+    const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast, q], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
     const byDate = {}; expand(pg.slice).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
     const dates = Object.keys(byDate).sort();
     let html = '', lastMonth = '';
     if (q) { const days = [...new Set(expand(vis).map(o => o.day))].sort(); html += `<div class="q-summary">'${esc(q)}' 검색 결과 <b>${vis.length}건</b> · <b>${days.length}일</b>${days.length ? ` (${days[0].slice(5).replace('-', '/')} ~ ${days[days.length - 1].slice(5).replace('-', '/')})` : ''} <button type="button" class="linklike" onclick="setQ('schedule','')">지우기</button></div>`; }
     if (pastCnt && !showPast && !q) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
     else if (pastCnt && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">지난 일정 ${pastCnt}건 접기</button>`;
-    if (!vis.length) html += `<div class="empty"><div class="ico">${I.cal}</div>예정된 일정이 없어요<br>위 버튼으로 지난 일정을 펼치거나 새 일정을 추가해 보세요</div>`;
+    if (!vis.length) html += `<div class="empty"><div class="ico">${I.cal}</div>예정된 일정이 없어요<br>위 '지난 일정 펼치기'를 누르거나 '+ 일정 추가'로 새 일정을 넣어 보세요</div>`;
     dates.forEach(date => {
       const dd = new Date(date + 'T00:00:00'); const month = date.slice(0, 7);
       if (month !== lastMonth) { html += `<div class="month">${dd.getFullYear()}년 ${dd.getMonth()+1}월</div>`; lastMonth = month; }
@@ -1735,6 +1793,8 @@
     return [multi ? `<span class="range">${I.cal}${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? `<span>${I.pin}${esc(ev.place)}</span>` : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
   }
   function setView(v) { if (state.view !== v) toggleView(); }
+  // 탭 버튼에 '달력' 표시(PC 배지 / 폰은 작은 글자 교체). 세 탭 공통
+  function markTabCal(tab, on) { const b = document.querySelector(`.segment [data-tab=${tab}]`); if (b) b.classList.toggle('cal', !!on); }
   function renderCalendar(items) {
     const list = document.getElementById('scheduleList');
     const [y, m] = state.calMonth.split('-').map(Number);
@@ -1790,7 +1850,7 @@
     if (e.target.closest('.cal-ev')) return;
     const has = state.schedule.items.some(i => i.date <= date && endOf(i) >= date && (state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)));
     if (!has) { openScheduleForm(null, null, date); return; }
-    state.view = 'list'; state.focusDate = date; if (date < TODAY) state.showPast = true; renderSchedule();
+    state.view = 'list'; state.focusDate = date; if (date < TODAY) state.showPast = true; renderSchedule(); pushNav({ view: 'list' });   // 뒤로 가기로 달력에 돌아올 수 있게
   }
 
   /* ── 시간 팝오버 ── */
@@ -1871,15 +1931,16 @@
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
     renderChips(document.getElementById('tasksOwnerFilters'), owners.map(o => ({ key: o, avatar: true, count: ownerCounts[o] })), state.taskOwner, o => { state.taskOwner = o; renderTasks(); });
     moreLabel('tasks', [state.taskCat, state.taskOwner].filter(v => v !== '전체'), '분류 · 담당자 필터');
+    markTabCal('tasks', state.tview.tasks === 'calendar');
     const items = sortTasks(data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus) && (state.taskCat === '전체' || tcatOf(i) === state.taskCat) && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner) && qMatch(i, Q.tasks)));
     if (state.tview.tasks === 'calendar' && state.source.tasks !== 'error') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); renderTaskCalendar('tasks', items, list); return; }
     if (!items.length) {
       list.innerHTML = state.source.tasks === 'error' ? `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.alert}</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('tasks')">다시 시도</button></div>`
-        : `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.inbox}</div>${Q.tasks ? `'${esc(Q.tasks)}' 로 찾은 업무가 없어요` : data.items.length ? '이 조건에 맞는 업무가 없어요<br>필터를 바꿔 보세요' : '아직 업무가 없어요<br>아래 버튼으로 첫 업무를 추가해 보세요'}</div>`;
+        : `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.inbox}</div>${Q.tasks ? `'${esc(Q.tasks)}' 로 찾은 업무가 없어요<br>다른 단어로 찾거나 <button type="button" class="linklike" onclick="setQ('tasks','')">검색을 지워</button> 보세요` : data.items.length ? '이 조건에 맞는 업무가 없어요<br>상태·분류·담당자 선택을 \'전체\'로 바꿔 보세요' : '아직 업무가 없어요<br>\'+ 업무 추가\' 버튼으로 첫 업무를 넣어 보세요' + boardHint()}</div>`;
       return;
     }
     if (state.tview.tasks === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); renderTaskCalendar('tasks', items, list); return; }
-    const pg = paginate('tasks', items, [state.board, state.taskStatus, state.taskCat, state.taskOwner], state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1);
+    const pg = paginate('tasks', items, [state.board, state.taskStatus, state.taskCat, state.taskOwner, Q.tasks], state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1);
     list.innerHTML = taskCards(pg.slice, 'tasks') + pg.html;
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
@@ -1891,6 +1952,8 @@
     document.getElementById('personalSide').style.display = loggedIn ? '' : 'none';
     document.getElementById('personalList').style.display = loggedIn ? '' : 'none';
     document.getElementById('fab').style.display = (currentTab() === 'personal' && !loggedIn) ? 'none' : '';
+    if (typeof syncQFab === 'function') syncQFab();
+    markTabCal('personal', loggedIn && state.tview.personal === 'calendar');
     if (!loggedIn) return;
     const data = state.personal || { items: [] }, list = document.getElementById('personalList');
     const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
@@ -1922,8 +1985,8 @@
     const items = sortTasks(inYear.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)
       && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth)) && qMatch(i, Q.personal)));
     if (state.tview.personal === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); const all = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat) && qMatch(i, Q.personal))); renderTaskCalendar('personal', all, list); return; }
-    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${Q.personal ? `'${esc(Q.personal)}' 로 찾은 개인업무가 없어요` : data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가하거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
-    const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth];
+    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${Q.personal ? `'${esc(Q.personal)}' 로 찾은 개인업무가 없어요<br>다른 단어로 찾거나 <button type="button" class="linklike" onclick="setQ('personal','')">검색을 지워</button> 보세요` : data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 선택을 \'전체\'로 바꿔 보세요' : '아직 개인업무가 없어요<br>\'+ 개인업무 추가\' 버튼으로 첫 업무를 넣거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
+    const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth, Q.personal];
     if (state.pMonth === '전체') {
       // 월별 묶음 (최근 월부터). 묶음 순서대로 한 줄로 세운 뒤 쪽을 나누고, 이 쪽에 있는 월만 머리글을 붙인다
       const groups = {}; items.forEach(i => { const k = keyOf(i) || '미정'; (groups[k] = groups[k] || []).push(i); });
@@ -1953,7 +2016,11 @@
         if (ex.code !== 'USER_NOT_FOUND') throw ex;
         // 처음 쓰는 번호: 번호 오타를 한 번 확인한 뒤 바로 등록
         if (!confirm(`${id} 번호는 아직 등록되지 않았어요.\n이 번호와 지금 넣은 비밀번호로 새로 등록할까요?\n(번호를 잘못 넣었으면 취소)`)) { btn.disabled = false; return; }
-        nm = await api.userRegister(id, defaultName(id), pw); msg = `등록했어요. 이름은 ⋮ → 내 이름 변경에서 정할 수 있어요`;
+        nm = await api.userRegister(id, defaultName(id), pw); msg = `등록했어요. 이름은 ⋮ → 내 이름 변경에서 바꿀 수 있어요`;
+        // 등록 직후 이름을 바로 받는다(취소하면 '직원 1234' 로 남음). 업무 카드·41망에 그대로 보이기 때문
+        const first = (prompt('이름을 넣어 주세요 (업무 카드와 41망에 보여요. 나중에 ⋮ → 내 이름 변경에서 바꿀 수 있어요)', '') || '').trim().slice(0, 20);
+        if (first.length >= 2) { try { await api.userSetName(id, pw, first); nm = first; msg = `${nm}님, 등록했어요`; } catch (ex2) { toast(ex2.message); } }
+        else if (first) toast('이름은 2자 이상이어야 해요. 나중에 ⋮ → 내 이름 변경에서 정하세요');
       }
       state.me = { id, pin: pw, name: nm }; lsSet(LS.me, state.me); f.reset();
       await refresh('personal'); toast(msg, 4500); showTab('personal');
@@ -2054,7 +2121,10 @@
     await refresh(kind, true); return true;
   }
   async function replaceAll(kind, items) {
-    if (!await withPin(pin => api.replace(kind, items, state.board, pin))) return false;
+    // JSON 가져오기 전용: 형식 오류 코드는 '새로고침' 대신 파일을 확인하라고 안내
+    const pin = getPin(); if (!pin) { toast('관리자 PIN이 필요해요'); return false; }
+    try { await api.replace(kind, items, state.board, pin); savePin(pin); }
+    catch (e) { toast(['KIND_INVALID', 'ID_REQUIRED', 'ITEMS_REQUIRED', 'JSON_INVALID'].includes(e.code) ? 'JSON 파일 형식이 맞지 않아요. 파일의 items 형식을 확인하세요 (JSON 내보내기로 받은 파일이어야 해요)' : e.message); return false; }
     await refresh(kind, true); return true;
   }
   async function setDone(id, scope, done) {
@@ -2064,13 +2134,26 @@
   }
 
   /* ── 시트 ── */
-  function openModal(id) { document.getElementById(id).classList.add('open'); pushNav({ overlay: id }); }
+  /* 창을 열 때 초점을 기억했다가 닫히면 그 자리로 돌려준다(키보드·스크린리더). 열린 동안 Tab 은 창 안에서만 돈다 */
+  let lastFocus = null;
+  function openModal(id) { if (!document.querySelector('.sheet-bg.open')) lastFocus = document.activeElement; document.getElementById(id).classList.add('open'); pushNav({ overlay: id }); }
+  function restoreFocus() { const el = lastFocus; lastFocus = null; if (el && el.isConnected && typeof el.focus === 'function' && !document.querySelector('.sheet-bg.open')) { try { el.focus({ preventScroll: true }); } catch (e) {} } }
   let pendingNav = [];
   function closeModal(id) {
     const el = document.getElementById(id); if (!el.classList.contains('open')) return Promise.resolve();
     if (history.state && history.state.overlay === id) { return new Promise(res => { pendingNav.push(res); history.back(); setTimeout(res, 800); }); }   // popstate 가 닫는다
-    el.classList.remove('open'); return Promise.resolve();
+    el.classList.remove('open'); restoreFocus(); return Promise.resolve();
   }
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const tops = [...document.querySelectorAll('.sheet-bg.open')]; const top = document.querySelector('#imgEditModal.open') || document.querySelector('#attachModal.open') || tops[tops.length - 1]; if (!top) return;   // 첨부·편집 시트는 DOM 순서와 달리 톡방 위에 뜬다
+    const sheet = top.querySelector('.sheet') || top;
+    const f = [...sheet.querySelectorAll(FOCUSABLE)].filter(x => x.offsetParent !== null || x === document.activeElement); if (!f.length) return;
+    const first = f[0], last = f[f.length - 1], cur = document.activeElement;
+    if (!sheet.contains(cur)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+    if (e.shiftKey && cur === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && cur === last) { e.preventDefault(); first.focus(); }
+  });
   function fillForm(form, obj) { [...form.elements].forEach(el => { if (el.name && el.type !== 'hidden' || el.name === 'id') el.value = obj[el.name] ?? ''; }); }
   function readForm(form) { const o = {}; [...form.elements].forEach(el => { if (el.name) o[el.name] = el.value.trim(); }); return o; }
   function setBusy(form, busy) { const b = form.querySelector('button[type=submit]'); b.disabled = busy; b.textContent = busy ? '저장 중…' : '저장'; }
@@ -2333,7 +2416,8 @@
   }
 
   /* ── 41망 첨부: + 토글 → 사진·카메라·파일. 한 번에 100MB·10개. 사진은 원본(2048px) + 썸네일(480px) 두 장으로 올린다 ── */
-  CHAT.pending = []; CHAT.fileMax = (Number(CFG.fileMaxMB) || 100) * 1024 * 1024; CHAT.sendMax = 100 * 1024 * 1024; CHAT.filesPerMsg = 10; CHAT.parallel = 3;
+  CHAT.pending = []; CHAT.fileMax = (Number(CFG.fileMaxMB) || 100) * 1024 * 1024; CHAT.sendMax = 100 * 1024 * 1024; CHAT.filesPerMsg = 10; CHAT.parallel = 3;   // 파일당 한도는 config.js 의 fileMaxMB (Supabase 무료 = 50)
+  { const el = document.getElementById('attHelpMax'); if (el) el.textContent = `파일당 ${Math.round(CHAT.fileMax / 1048576)}MB · 한 번에 ${CHAT.filesPerMsg}개까지.`; }
   const isImgFile = f => /^image\//i.test(f.type || '') || /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(f.name || '');
   const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? Math.round(n / 1024) + 'KB' : (n || 0) + 'B';
   function chatPick(kind) { document.getElementById(kind === 'image' ? 'chatFileImg' : kind === 'camera' ? 'chatFileCam' : 'chatFileAny').click(); }
@@ -2522,12 +2606,13 @@
   document.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse') { if (!e.target.closest('#ctxMenu')) closeCtx(); return; }
     const msg = e.target.closest('#chatList .chat-msg'); if (!msg) { if (!e.target.closest('#ctxMenu')) closeCtx(); return; }
-    const a = e.target.closest('[data-fi]'); const x = e.clientX, y = e.clientY;
+    const a = e.target.closest('[data-fi]'); const x = e.clientX, y = e.clientY; CTX.sx = x; CTX.sy = y;
     clearTimeout(CTX.timer); CTX.timer = setTimeout(() => { openCtx(x, y, msg.dataset.id, a ? Number(a.dataset.fi) : -1); if (navigator.vibrate) navigator.vibrate(10); CTX.pressed = true; }, 500);
   }, { passive: true });
-  ['pointerup', 'pointercancel', 'pointermove'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'pointermove' && CTX.timer && Math.hypot(e.movementX || 0, e.movementY || 0) < 3) return; clearTimeout(CTX.timer); CTX.timer = null; }, { passive: true }));
+  // 손가락이 8px 이상 움직이면(스크롤) 길게 누르기 취소. 터치는 movementX/Y 가 0 으로 오는 기기가 많아 시작점과 비교한다
+  ['pointerup', 'pointercancel', 'pointermove'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'pointermove' && CTX.timer && Math.hypot(e.clientX - (CTX.sx || 0), e.clientY - (CTX.sy || 0)) < 8) return; clearTimeout(CTX.timer); CTX.timer = null; }, { passive: true }));
   document.addEventListener('click', e => { if (CTX.pressed) { CTX.pressed = false; if (e.target.closest('#chatList .chat-msg a')) e.preventDefault(); } if (!e.target.closest('#ctxMenu')) closeCtx(); }, true);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtx(); });
+  // Esc 는 아래 공통 keydown 처리기가 맡는다(우클릭 메뉴가 열려 있으면 메뉴만 닫고 톡방은 유지)
   document.getElementById('chatList')?.addEventListener('scroll', closeCtx, { passive: true });
 
 
@@ -2729,7 +2814,15 @@
   }
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { const sub = document.querySelector('#imgEditModal.open') || document.querySelector('#attachModal.open'); if (sub) { sub.classList.remove('open'); return; } if (history.state && history.state.overlay) { history.back(); } else { closeOverlaysDirect(); } return; }
+    if (e.key === 'Escape') {
+      // 가장 위에 있는 것 하나만 닫는다: 우클릭 메뉴 → 답장 표시줄 → 사진 편집·첨부 시트 → 열린 창(시트·팝오버) → 드롭다운
+      if (document.querySelector('#ctxMenu.open')) { closeCtx(); return; }
+      if (CHAT.replyTo && document.activeElement === document.getElementById('chatText')) { CHAT.replyTo = null; renderReplyBar(); return; }
+      const sub = document.querySelector('#imgEditModal.open') || document.querySelector('#attachModal.open'); if (sub) { sub.classList.remove('open'); return; }
+      if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('qin')) return;   // 검색창은 자기 Esc(지우기)만
+      if (document.querySelector('.sheet-bg.open, .pop.open')) { if (history.state && history.state.overlay) history.back(); else closeOverlaysDirect(); }
+      else closeOverlaysDirect();
+      return; }
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
@@ -2773,7 +2866,7 @@
     html += `</div></div>`;
     if (mobile) {
       const sel = state.calSelected; const ts = sel ? (byDate[sel] || []) : []; const sd = sel ? new Date(sel + 'T00:00:00') : null;
-      html += `<div class="cal-agenda"><div class="agenda-head"><b>${sd ? `${sd.getMonth()+1}월 ${sd.getDate()}일 ${DOW[sd.getDay()]}요일` : '날짜를 선택하세요'}</b><span>${sel ? ts.length + '건' : ''}</span>${sel ? `<button type="button" class="agenda-add" onclick="openTaskForm(null,'${scope}',{ due: '${sel}' })">+ 이날 업무</button>` : ''}</div>`;
+      html += `<div class="cal-agenda"><div class="agenda-head"><b>${sd ? `${sd.getMonth()+1}월 ${sd.getDate()}일 ${DOW[sd.getDay()]}요일` : '날짜를 선택하세요'}</b><span>${sel ? ts.length + '건' : ''}</span>${sel ? `<button type="button" class="add" onclick="openTaskForm(null,'${scope}',{ due: '${sel}' })">+ 이날 기한 업무</button>` : ''}</div>`;
       html += ts.length ? `<div class="task-list">${taskCards(ts, scope)}</div>` : `<div class="empty">이날 기한인 업무가 없어요</div>`;
       html += `</div>`;
     }
@@ -2798,7 +2891,7 @@
     if (tab === 'schedule') state.page.schedule = 1;
     clearTimeout(qTimer); qTimer = setTimeout(() => render(tab), 120);
   }
-  function syncQFab() { const f = document.getElementById('qfabIn'); if (f) { f.value = Q[currentTab()] || ''; f.parentElement.classList.toggle('has', !!f.value); } requestAnimationFrame(measureFab); }
+  function syncQFab() { const f = document.getElementById('qfabIn'); if (f) { f.value = Q[currentTab()] || ''; f.parentElement.classList.toggle('has', !!f.value); f.parentElement.classList.toggle('hidden', currentTab() === 'personal' && !state.me); } requestAnimationFrame(measureFab); }   // 로그인 전 개인업무 탭에는 찾을 목록이 없으니 검색창도 숨긴다
   function measureFab() { const b = document.getElementById('fab'); if (b && b.offsetWidth) document.documentElement.style.setProperty('--fab-w', b.offsetWidth + 'px'); }   // 검색창을 + 버튼 왼쪽에 붙이기 위한 폭
 
   /* ── 넓게 보기 ── */
@@ -2859,7 +2952,7 @@
       b.querySelector('.btn.primary').textContent = '브라우저로 열기';
     } else {
       b.querySelector('.txt b').textContent = 'SAIL:41 홈 화면에 추가';
-      b.querySelector('.txt span').textContent = isSafariIOS ? '아래 공유 버튼 → 홈 화면에 추가. 앱처럼 열려요' : isChromeIOS ? '주소창 오른쪽 공유 → 홈 화면에 추가' : (browserName ? browserName + ' · ' : '') + '앱처럼 바로 열 수 있어요';
+      b.querySelector('.txt span').textContent = isSafariIOS ? '아래 공유 버튼 → 홈 화면에 추가. 설치 후 처음 한 번 PIN을 다시 넣어요' : isChromeIOS ? '주소창 오른쪽 공유 → 홈 화면에 추가. 처음 한 번 PIN을 다시 넣어요' : (browserName ? browserName + ' · ' : '') + '앱처럼 바로 열 수 있어요';
       b.querySelector('.btn.primary').textContent = deferredInstall ? '설치하기' : isIOS ? '방법 보기' : '추가하기';
     }
     b.classList.add('open'); document.body.classList.add('a2hs-open');
@@ -2906,7 +2999,7 @@
     showTab(h.tab); if (!(history.state && history.state.app)) initHistory(); else updateHash();
     await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true), refreshChat(true)]);
     const visits = (Number(lsGet('ictc.visits')) || 0) + 1; lsSet('ictc.visits', visits); updateInstallBtn(); updateAdminUI();
-    if (!lsGet('ictc.hint.v1')) { lsSet('ictc.hint.v1', 1); setTimeout(() => toast('누구나 추가·수정할 수 있어요', 4000), 600); setTimeout(showTabTip, 1400); }
+    if (!lsGet('ictc.hint.v2')) { lsSet('ictc.hint.v2', 1); lsSet('ictc.hint.v1', 1); setTimeout(() => toast('처음이세요? 누구나 추가·수정할 수 있어요.', 7000, openHelp, '사용 안내 보기'), 600); setTimeout(showTabTip, 1400); }
     if (location.hash === '#a2hs') { setTimeout(installApp, 600); }                       // 인앱 브라우저에서 '브라우저로 열기' 뒤 돌아온 경우
     else if (visits >= 2 || isInApp) setTimeout(showA2hs, isInApp ? 1500 : 2500);        // 설치 카드는 두 번째 방문부터. 카톡·네이버 앱 안에서는 첫 방문에도(바깥 브라우저로 안내)
   }
@@ -2919,7 +3012,8 @@
     setInterval(sync, every);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   }
-  document.querySelectorAll('#menu button[data-ico]').forEach(b => b.insertAdjacentHTML('afterbegin', I[b.dataset.ico] || ''));
+  document.querySelectorAll('#menu button[data-ico]').forEach(b => { b.setAttribute('role', 'menuitem'); b.insertAdjacentHTML('afterbegin', I[b.dataset.ico] || ''); });
+  document.querySelectorAll('#menu hr').forEach(h => h.setAttribute('role', 'separator'));
   renderPersonal();
   boot();
 </script>

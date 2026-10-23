@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.3: 첨부 100MB · v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -39,6 +39,7 @@ create table if not exists public.ictc_items_deleted (
   reason      text not null default 'delete'
 );
 create index if not exists ictc_items_deleted_deleted_at_idx on public.ictc_items_deleted (deleted_at);
+create index if not exists ictc_items_deleted_id_idx on public.ictc_items_deleted (id);   -- 복구 때 연동 짝(일정 ↔ sch- 카드) 찾기
 
 -- 대시보드 목록
 create table if not exists public.ictc_boards (
@@ -90,7 +91,7 @@ $$;
 -- PIN 틀릴 때마다 0.8초 지연 (무차별 대입 완화). 함수 안의 raise 는 트랜잭션을 롤백하므로
 -- 실패 횟수를 테이블에 남기는 방식은 Supabase(자율 트랜잭션 없음)에서 동작하지 않는다. 지연은 롤백과 무관하게 적용된다.
 create or replace function public.ictc_fail_delay()
-returns void language sql security definer as $$ select pg_sleep(0.8); $$;
+returns void language sql security definer set search_path = public, extensions as $$ select pg_sleep(0.8); $$;
 
 create or replace function public.ictc_require_view(p_pin text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
@@ -110,6 +111,15 @@ begin
     perform public.ictc_fail_delay();
     raise exception 'PIN_INVALID';
   end if;
+end $$;
+
+-- ---------- 항목 검사 (내부 전용) ----------
+-- 화면은 제목 100자·메모 500자·상세 1000자·톡방 글 600자·첨부 10개로 제한하지만 서버도 한 행 64KB·id 100자를 넘기지 않게 막는다.
+create or replace function public.ictc_check_item(p_item jsonb)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if p_item is null or jsonb_typeof(p_item) <> 'object' or coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
+  if length(p_item->>'id') > 100 or pg_column_size(p_item) > 65536 then raise exception 'ITEM_TOO_LARGE'; end if;
 end $$;
 
 -- ---------- 삭제 전 사본 보관 (내부 전용) ----------
@@ -139,7 +149,8 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_view(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
-  if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
+  perform public.ictc_check_item(p_item);
+  if not exists (select 1 from public.ictc_boards where id = coalesce(p_board, 'main')) then raise exception 'BOARD_NOT_FOUND'; end if;   -- 지워진 대시보드에 보이지 않는 행이 쌓이지 않게
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', p_kind, coalesce(p_board, 'main'), p_item, now())
   on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now()
@@ -151,8 +162,14 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_view(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  if coalesce(p_id, '') = '' then raise exception 'ID_REQUIRED'; end if;   -- id 없이 부르면 ictc_trash 가 전체를 복사하므로 막는다
   perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), p_id, 'delete');
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
+  -- 일정의 연동 주요업무 카드(id 'sch-'||일정id)는 같은 트랜잭션에서 함께 지운다 (화면이 따로 지우던 것을 서버가 보장)
+  if p_kind = 'schedule' then
+    perform public.ictc_trash('tasks', coalesce(p_board, 'main'), 'sch-' || p_id, 'delete');
+    delete from public.ictc_items where id = 'sch-' || p_id and kind = 'tasks' and board = coalesce(p_board, 'main');
+  end if;
 end $$;
 
 create or replace function public.ictc_replace(p_pin text, p_kind text, p_items jsonb, p_board text default 'main')
@@ -160,11 +177,19 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_pin);
   if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' then raise exception 'ITEMS_REQUIRED'; end if;
+  if jsonb_array_length(p_items) > 10000 then raise exception 'ITEM_TOO_LARGE'; end if;
+  if exists (select 1 from jsonb_array_elements(p_items) x where jsonb_typeof(x) <> 'object') then raise exception 'ITEMS_REQUIRED'; end if;
+  if exists (select 1 from jsonb_array_elements(p_items) x where length(coalesce(x->>'id', '')) > 100 or pg_column_size(x) > 65536) then raise exception 'ITEM_TOO_LARGE'; end if;
+  if not exists (select 1 from public.ictc_boards where id = coalesce(p_board, 'main')) then raise exception 'BOARD_NOT_FOUND'; end if;
   perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), null, 'replace');
   delete from public.ictc_items where kind = p_kind and board = coalesce(p_board, 'main');
+  -- 같은 id 가 여러 번 나오면 마지막 것만. 다른 종류·대시보드에 이미 있는 id 는 건너뛴다(덮어쓰지 않음)
   insert into public.ictc_items (id, kind, board, data, updated_at)
-  select coalesce(x->>'id', gen_random_uuid()::text), p_kind, coalesce(p_board, 'main'), x, now()
-  from jsonb_array_elements(p_items) as x;
+  select distinct on (t.id) t.id, p_kind, coalesce(p_board, 'main'), t.x, now()
+  from (select coalesce(e.x->>'id', gen_random_uuid()::text) as id, e.x, e.ord from jsonb_array_elements(p_items) with ordinality as e(x, ord)) t
+  order by t.id, t.ord desc
+  on conflict (id) do nothing;
 end $$;
 
 -- ---------- 대시보드 ----------
@@ -179,9 +204,10 @@ create or replace function public.ictc_board_add(p_pin text, p_id text, p_name t
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_pin);
+  if length(trim(coalesce(p_id, ''))) = 0 or length(p_id) > 64 then raise exception 'ID_REQUIRED'; end if;
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
   if exists (select 1 from public.ictc_boards where id = p_id) then raise exception 'BOARD_EXISTS'; end if;
-  insert into public.ictc_boards (id, name) values (p_id, trim(p_name));
+  insert into public.ictc_boards (id, name) values (p_id, left(trim(p_name), 60));
 end $$;
 
 create or replace function public.ictc_board_rename(p_pin text, p_id text, p_name text)
@@ -189,7 +215,8 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_pin);
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
-  update public.ictc_boards set name = trim(p_name) where id = p_id;
+  update public.ictc_boards set name = left(trim(p_name), 60) where id = p_id;
+  if not found then raise exception 'BOARD_NOT_FOUND'; end if;
 end $$;
 
 create or replace function public.ictc_board_delete(p_pin text, p_id text)
@@ -221,12 +248,12 @@ create or replace function public.ictc_user_register(p_view_pin text, p_id text,
 returns text language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_view_pin);
-  if length(coalesce(p_id, '')) < 4 then raise exception 'USER_ID_INVALID'; end if;
+  if length(coalesce(p_id, '')) < 4 or length(p_id) > 20 then raise exception 'USER_ID_INVALID'; end if;
   if length(trim(coalesce(p_name, ''))) = 0 then raise exception 'NAME_REQUIRED'; end if;
   if length(trim(coalesce(p_pin, ''))) < 4 then raise exception 'PIN_TOO_SHORT'; end if;   -- v4: 비밀번호 4자리
   if exists (select 1 from public.ictc_users where id = p_id) then raise exception 'USER_EXISTS'; end if;
-  insert into public.ictc_users (id, name, pin_hash) values (p_id, trim(p_name), crypt(p_pin, gen_salt('bf')));
-  return trim(p_name);
+  insert into public.ictc_users (id, name, pin_hash) values (p_id, left(trim(p_name), 20), crypt(p_pin, gen_salt('bf')));
+  return left(trim(p_name), 20);
 end $$;
 
 create or replace function public.ictc_user_login(p_id text, p_pin text)
@@ -270,7 +297,7 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_edit_pin);
   if length(trim(coalesce(p_name, ''))) < 2 then raise exception 'NAME_REQUIRED'; end if;
-  update public.ictc_users set name = trim(p_name) where id = p_id;
+  update public.ictc_users set name = left(trim(p_name), 20) where id = p_id;
   if not found then raise exception 'USER_NOT_FOUND'; end if;
 end $$;
 
@@ -286,7 +313,7 @@ create or replace function public.ictc_personal_save(p_id text, p_pin text, p_it
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
-  if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
+  perform public.ictc_check_item(p_item);
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', 'personal', p_id, p_item, now())
   on conflict (id) do update set data = excluded.data, updated_at = now()
@@ -297,6 +324,7 @@ create or replace function public.ictc_personal_delete(p_id text, p_pin text, p_
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_user_check(p_id, p_pin);
+  if coalesce(p_item_id, '') = '' then raise exception 'ID_REQUIRED'; end if;
   perform public.ictc_trash('personal', p_id, p_item_id, 'personal_delete');
   delete from public.ictc_items where id = p_item_id and kind = 'personal' and board = p_id;
 end $$;
@@ -331,23 +359,39 @@ returns table (seq bigint, id text, kind text, board text, data jsonb, updated_a
 language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
+  delete from public.ictc_items_deleted x where x.deleted_at < now() - interval '30 days';   -- 삭제가 한동안 없어도 목록을 열 때 정리 (출력 컬럼명과 겹치므로 별칭 필수)
   return query select d.seq, d.id, d.kind, d.board, d.data, d.updated_at, d.deleted_at, d.reason from public.ictc_items_deleted d
     where (p_kind is null or d.kind = p_kind) and (p_board is null or d.board = p_board)
     order by d.deleted_at desc, d.seq desc limit 500;
 end $$;
 
+-- 일정을 복구하면 함께 지워진 연동 주요업무 카드('sch-'||일정id)도, 연동 카드를 복구하면 그 일정도 보관본이 있으면 함께 되살린다.
 create or replace function public.ictc_restore(p_edit_pin text, p_seq bigint)
 returns void language plpgsql security definer set search_path = public, extensions as $$
-declare d record;
+declare d record; pseq bigint;
 begin
   perform public.ictc_require_edit(p_edit_pin);
   select * into d from public.ictc_items_deleted where seq = p_seq;
   if not found then raise exception 'DELETED_NOT_FOUND'; end if;
   if d.kind = 'personal' and not exists (select 1 from public.ictc_users where id = d.board) then raise exception 'USER_NOT_FOUND'; end if;
+  if d.kind in ('schedule', 'tasks') and not exists (select 1 from public.ictc_boards where id = d.board) then raise exception 'BOARD_NOT_FOUND'; end if;
+  if d.kind = 'chat' and not exists (select 1 from public.ictc_chat_rooms where id = d.board) then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (d.id, d.kind, d.board, d.data, now())
-  on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now();
+  on conflict (id) do update set data = excluded.data, board = excluded.board, updated_at = now()
+  where public.ictc_items.kind = excluded.kind;   -- 같은 id 가 다른 종류로 있으면 건드리지 않음
   delete from public.ictc_items_deleted where seq = p_seq;
+  if d.kind = 'schedule' then
+    select x.seq into pseq from public.ictc_items_deleted x where x.kind = 'tasks' and x.board = d.board and x.id = 'sch-' || d.id order by x.deleted_at desc, x.seq desc limit 1;
+  elsif d.kind = 'tasks' and d.id like 'sch-%' then
+    select x.seq into pseq from public.ictc_items_deleted x where x.kind = 'schedule' and x.board = d.board and x.id = substr(d.id, 5) order by x.deleted_at desc, x.seq desc limit 1;
+  end if;
+  if pseq is not null and not exists (select 1 from public.ictc_items i join public.ictc_items_deleted x on x.id = i.id where x.seq = pseq) then
+    insert into public.ictc_items (id, kind, board, data, updated_at)
+    select x.id, x.kind, x.board, x.data, now() from public.ictc_items_deleted x where x.seq = pseq
+    on conflict (id) do nothing;
+    delete from public.ictc_items_deleted where seq = pseq;
+  end if;
 end $$;
 
 -- ---------- 관리 ----------
@@ -435,7 +479,13 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_view(p_pin);
   perform public.ictc_chat_check(p_room, p_code);
-  if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
+  perform public.ictc_check_item(p_item);
+  -- 화면의 '글 삭제'는 {deleted:true} 자리표시로 덮어쓰는 방식이므로, 원문은 이때 휴지통(30일)에 남긴다
+  if p_item->'deleted' = 'true'::jsonb then
+    insert into public.ictc_items_deleted (id, kind, board, data, updated_at, reason)
+    select i.id, i.kind, i.board, i.data, i.updated_at, 'delete' from public.ictc_items i
+     where i.id = p_item->>'id' and i.kind = 'chat' and i.board = p_room and coalesce(i.data->'deleted', 'false'::jsonb) <> 'true'::jsonb;
+  end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', 'chat', p_room, p_item, now())
   on conflict (id) do update set data = excluded.data, updated_at = now()
@@ -450,6 +500,7 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_view(p_pin);
   perform public.ictc_chat_check(p_room, p_code);
+  if coalesce(p_id, '') = '' then raise exception 'ID_REQUIRED'; end if;
   perform public.ictc_trash('chat', p_room, p_id, 'delete');
   delete from public.ictc_items where id = p_id and kind = 'chat' and board = p_room;
 end $$;
@@ -468,7 +519,7 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_edit_pin);
   if length(trim(coalesce(p_name, ''))) < 1 then raise exception 'NAME_REQUIRED'; end if;
-  update public.ictc_chat_rooms set name = trim(p_name) where id = p_room;
+  update public.ictc_chat_rooms set name = left(trim(p_name), 60) where id = p_room;
   if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
 end $$;
 create or replace function public.ictc_chat_room_add(p_edit_pin text, p_id text, p_name text, p_code text)
@@ -476,10 +527,11 @@ returns void language plpgsql security definer set search_path = public, extensi
 begin
   perform public.ictc_require_edit(p_edit_pin);
   if length(trim(coalesce(p_id, ''))) < 1 or length(trim(coalesce(p_name, ''))) < 1 then raise exception 'NAME_REQUIRED'; end if;
+  if length(trim(p_id)) > 64 then raise exception 'ID_REQUIRED'; end if;
   if length(trim(coalesce(p_code, ''))) < 4 then raise exception 'CHAT_CODE_TOO_SHORT'; end if;
   if exists (select 1 from public.ictc_chat_rooms where id = trim(p_id)) then raise exception 'CHAT_ROOM_EXISTS'; end if;
   insert into public.ictc_chat_rooms (id, name, code_hash, sort)
-  values (trim(p_id), trim(p_name), crypt(trim(p_code), gen_salt('bf')), coalesce((select max(sort) from public.ictc_chat_rooms), 0) + 1);
+  values (trim(p_id), left(trim(p_name), 60), crypt(trim(p_code), gen_salt('bf')), coalesce((select max(sort) from public.ictc_chat_rooms), 0) + 1);
 end $$;
 create or replace function public.ictc_chat_room_delete(p_edit_pin text, p_room text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
@@ -506,8 +558,9 @@ begin
             'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/octet-stream'])
     on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
     execute 'drop policy if exists "sail41 chat upload" on storage.objects';
+    -- 경로는 chat/<톡방id>/<난수>.<확장자> 세 단계만 (화면 chatUpload 의 key 형식과 같아야 함). 수정·삭제 정책은 없으므로 anon 은 올린 파일을 바꾸거나 지울 수 없다
     execute $p$create policy "sail41 chat upload" on storage.objects for insert to anon, authenticated
-      with check (bucket_id = 'sail41' and (storage.foldername(name))[1] = 'chat')$p$;
+      with check (bucket_id = 'sail41' and (storage.foldername(name))[1] = 'chat' and name ~ '^chat/[A-Za-z0-9_.%-]{1,64}/[A-Za-z0-9_.-]{1,80}$')$p$;
     execute 'drop policy if exists "sail41 public read" on storage.objects';
     execute $p$create policy "sail41 public read" on storage.objects for select to anon, authenticated using (bucket_id = 'sail41')$p$;
   end if;
@@ -520,7 +573,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

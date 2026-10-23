@@ -14,6 +14,11 @@ if not defined PY (
   pause
   exit /b 1
 )
+if not exist "ictc_server.py" (
+  echo [오류] 이 폴더에 ictc_server.py 가 없습니다. ZIP 을 전부 풀고 start.bat 을 그 폴더에서 실행하세요.
+  pause
+  exit /b 1
+)
 if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 if not exist "%DATA_DIR%" (
   echo [오류] 데이터 폴더를 만들 수 없습니다: %DATA_DIR%  ^(D 드라이브가 있는지 확인^)

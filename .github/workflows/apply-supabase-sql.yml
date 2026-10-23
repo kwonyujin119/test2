@@ -4,6 +4,8 @@
 #   값  : Supabase 대시보드 상단 [Connect] → Direct/Connection string → Type URI, Method "Session pooler"
 #         화면에 표시된 주소를 그대로 복사하고 [YOUR-PASSWORD] 만 DB 비밀번호로 바꾼다 (리전·호스트는 프로젝트마다 다름)
 # 수동 실행: Actions 탭 → "Apply Supabase SQL" → Run workflow
+# 순서: (1) 빈 PostgreSQL 16 에 두 번 실행해 문법·멱등성을 먼저 확인 → (2) 통과하면 운영 DB 에 적용 → (3) 결과 요약
+#       (1) 이 실패하면 운영 DB 는 건드리지 않는다.
 name: Apply Supabase SQL
 
 on:
@@ -17,7 +19,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    name: 빈 DB 에서 문법·멱등성 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Supabase 와 같은 구조로 준비 (anon·authenticated 역할, extensions 스키마의 pgcrypto)
+        env:
+          PGURL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -c "create role anon nologin; create role authenticated nologin;"
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -c "create schema extensions; create extension pgcrypto with schema extensions;"
+      - name: supabase.sql 두 번 실행
+        env:
+          PGURL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          for i in 1 2; do psql "$PGURL" -v ON_ERROR_STOP=1 -q -f server/supabase.sql; done
+          psql "$PGURL" -At -c "select 'functions: ' || count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%';"
+          nosp=$(psql "$PGURL" -At -c "select coalesce(string_agg(p.proname, ','), '') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%' and not exists (select 1 from unnest(coalesce(p.proconfig,'{}')) c where c like 'search_path=%extensions%')")
+          if [ -n "$nosp" ]; then echo "::error::search_path 가 없는 함수: $nosp (실서버에서 gen_salt 를 못 찾음)"; exit 1; fi
+          echo "문법·멱등성·search_path 검사 통과" >> "$GITHUB_STEP_SUMMARY"
+      - name: 검사 실패 안내
+        if: failure()
+        run: |
+          echo "::error::supabase.sql 이 빈 DB 에서 실패했습니다. 운영 DB 에는 적용하지 않았습니다. 데이터·서버 에이전트에 보고하세요."
+          { echo "## supabase.sql 사전 검사 실패"; echo "운영 DB 는 건드리지 않았습니다. 위 로그의 ERROR 줄을 데이터·서버 에이전트(불씨)에 전달하세요."; } >> "$GITHUB_STEP_SUMMARY"
+
   apply:
+    name: 운영 DB 에 적용
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -29,6 +68,7 @@ jobs:
         run: |
           if [ -z "$PGURL" ]; then
             echo "::error::SUPABASE_DB_URL secret 이 없습니다. 저장소 Settings → Secrets and variables → Actions 에 등록하세요."
+            echo "## 적용 안 됨: SUPABASE_DB_URL secret 없음" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           case "$PGURL" in
@@ -42,6 +82,7 @@ jobs:
           PGCONNECT_TIMEOUT: '20'
         run: |
           psql --version
+          # 접속 문자열은 로그에 찍지 않는다 (psql 오류 메시지에도 비밀번호는 포함되지 않음)
           psql "$PGURL" -v ON_ERROR_STOP=1 -q -f server/supabase.sql
           echo "적용 완료: $(git log -1 --format='%h %s' -- server/supabase.sql)"
 
@@ -49,20 +90,31 @@ jobs:
         if: failure()
         run: |
           echo "::error::SQL 적용에 실패했습니다. 위 로그의 마지막 ERROR 줄을 확인하세요."
-          echo "흔한 원인:"
-          echo "  1) password authentication failed  → Secret 의 비밀번호 오타. Supabase Project Settings → Database → Reset database password 후 Secret 갱신"
-          echo "  2) could not translate host name / Network is unreachable → Direct connection 주소를 씀. Connect → Session pooler 주소로 교체"
-          echo "  3) Tenant or user not found → 주소의 postgres.<ref> 부분이 다른 프로젝트. Connect 창에서 다시 복사"
-          echo "  4) syntax error → server/supabase.sql 문법 오류. 데이터·서버 에이전트에 보고"
-          echo "  5) cannot change return type / name of input parameter → 함수 시그니처가 바뀌었는데 drop function if exists 가 없음. 데이터·서버 에이전트에 보고"
-          echo "  6) timeout expired / Connection timed out → Supabase 프로젝트가 일시 중지(Paused)됐거나 네트워크 지연. 대시보드에서 Restore 후 Actions → Run workflow 로 재실행"
-          echo "실패해도 이전 함수는 그대로 남아 있어 보드는 계속 동작합니다. 원인을 고친 뒤 Actions → Apply Supabase SQL → Run workflow 로 다시 적용하세요."
+          {
+            echo "## Supabase SQL 적용 실패"
+            echo "실패해도 이전 함수는 그대로 남아 있어 보드는 계속 동작합니다. 원인을 고친 뒤 Actions → Apply Supabase SQL → Run workflow 로 다시 적용하세요."
+            echo ""
+            echo "| 로그의 오류 | 조치 |"
+            echo "|---|---|"
+            echo "| password authentication failed | Secret 의 비밀번호 오타. Supabase Project Settings → Database → Reset database password 후 Secret 갱신 |"
+            echo "| could not translate host name / Network is unreachable | Direct connection 주소를 씀. Connect → Session pooler 주소로 교체 |"
+            echo "| Tenant or user not found | 주소의 postgres.<ref> 부분이 다른 프로젝트. Connect 창에서 다시 복사 |"
+            echo "| timeout expired / Connection timed out | 프로젝트가 일시 중지(Paused)됐거나 네트워크 지연. 대시보드에서 Restore 후 Run workflow |"
+            echo "| cannot change return type / name of input parameter | 함수 시그니처가 바뀌었는데 drop function if exists 가 없음. 데이터·서버 에이전트에 보고 |"
+            echo "| 그 밖의 ERROR | 운영 DB 에만 있는 상태(예: 다른 종류의 기존 행) 와 충돌. ERROR 줄 전체를 데이터·서버 에이전트에 보고 |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 적용 결과 확인
         env:
           PGURL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          psql "$PGURL" -At -c "select 'functions: ' || count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%';"
-          psql "$PGURL" -At -c "select 'boards: ' || count(*) from public.ictc_boards;"
-          psql "$PGURL" -At -c "select 'items: ' || count(*) || '  deleted(trash, 30d): ' || (select count(*) from public.ictc_items_deleted) from public.ictc_items;"
-          psql "$PGURL" -At -c "select 'rls on all ictc tables: ' || bool_and(c.relrowsecurity) || ', policies(must be 0): ' || (select count(*) from pg_policies where schemaname='public' and tablename like 'ictc%') from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname like 'ictc%' and c.relkind='r';"
+          {
+            echo "## Supabase SQL 적용 완료 ($(git log -1 --format='%h' -- server/supabase.sql))"
+            echo '```'
+            psql "$PGURL" -At -c "select 'functions: ' || count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\_%';"
+            psql "$PGURL" -At -c "select 'boards: ' || count(*) from public.ictc_boards;"
+            psql "$PGURL" -At -c "select 'items: ' || count(*) || '  deleted(trash, 30d): ' || (select count(*) from public.ictc_items_deleted) from public.ictc_items;"
+            psql "$PGURL" -At -c "select 'rls on all ictc tables: ' || bool_and(c.relrowsecurity) || ', policies(must be 0): ' || (select count(*) from pg_policies where schemaname='public' and tablename like 'ictc%') from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname like 'ictc%' and c.relkind='r';"
+            psql "$PGURL" -At -c "select 'storage bucket sail41: ' || coalesce((select 'ok, ' || file_size_limit/1048576 || 'MB' from storage.buckets where id='sail41'), 'MISSING') || ', upload policy: ' || (select count(*) from pg_policies where schemaname='storage' and policyname like 'sail41%');" || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

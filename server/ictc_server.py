@@ -8,9 +8,10 @@ SAIL:41 (지휘역량강화센터 일정·업무 보드) 로컬 서버 (Python 3
   site\            웹앱 화면 (index.html, config.js, data\, checklist\, assets\)
 
 데이터 폴더 (start.bat 이 자동 생성):  D:\일정표,주요업무\
-  ictc.db          SQLite 데이터베이스 - 전체 데이터 (이 파일만 백업하면 됨)
-                   삭제한 항목은 DB 안의 items_deleted 표에 30일 보관 (/api/deleted_list, /api/restore, 편집 PIN)
-  backups\         기동할 때마다 날짜별 사본 자동 생성 (최근 7개 보관)
+  ictc.db          SQLite 데이터베이스 - 글·일정·업무·사용자 전체 (백업 대상 1)
+                   삭제한 항목은 DB 안의 items_deleted 표에 30일 보관 (화면 ⋮ → 휴지통, 또는 /api/deleted_list, /api/restore, 편집 PIN)
+  files\           41망 첨부파일 원본 (백업 대상 2. DB 만 복원하면 첨부 링크가 깨진다)
+  backups\         기동할 때마다 날짜별 DB 사본 자동 생성 (최근 7개 보관)
   pin.txt          편집 PIN (처음 실행 시 1234 로 생성, 메모장으로 수정)
   view_pin.txt     조회 PIN (처음 실행 시 0000 으로 생성). 내용을 비우면 누구나 조회 가능
 
@@ -18,17 +19,27 @@ SAIL:41 (지휘역량강화센터 일정·업무 보드) 로컬 서버 (Python 3
 접속:  본인  http://localhost:8080
        팀원  http://<이 PC의 IP>:8080
 """
-import argparse, glob, hashlib, hmac, json, mimetypes, os, re, secrets, socket, sqlite3, sys, threading, time
+import argparse, glob, hashlib, hmac, json, mimetypes, os, re, secrets, socket, sqlite3, sys, threading, time, traceback
 from collections import deque
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.3'
+VERSION = '5.4'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
+ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
+BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
+# 업로드 허용 형식 (supabase.sql 의 sail41 버킷 allowed_mime_types 와 동일). 그 밖의 형식은 FILE_TYPE
+FILE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain', 'text/csv',
+              'application/zip', 'application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/vnd.hancom.hwpx', 'application/x-hwpx',
+              'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/octet-stream'}
+# 브라우저 안에서 바로 열어도 안전한 형식. 나머지(html·svg·js 등 스크립트 실행 가능 형식 포함)는 octet-stream + 내려받기로만 준다
+INLINE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain', 'text/csv'}
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -92,6 +103,13 @@ def check_hash(pin, stored):
     return hmac.compare_digest(hash_pin(pin, salt), stored)
 
 
+def check_item(item):
+    """항목 한 건 검사 (supabase.sql ictc_check_item 과 동일): id 필수·100자 이하, 전체 64KB 이하"""
+    if not isinstance(item, dict) or not item.get('id'): raise ApiError('ID_REQUIRED')
+    if len(str(item['id'])) > 100 or len(json.dumps(item, ensure_ascii=False).encode('utf-8')) > ITEM_MAX: raise ApiError('ITEM_TOO_LARGE', 413)
+    return item
+
+
 def backup_db(path):
     """기동 시 데이터 폴더의 backups/ 에 날짜별 사본을 남기고 오래된 것은 지운다."""
     if not os.path.exists(path): return
@@ -135,7 +153,7 @@ class DB:
         con.commit(); con.close()
 
     def _con(self):
-        return sqlite3.connect(self.path, check_same_thread=False)
+        return sqlite3.connect(self.path, timeout=10, check_same_thread=False)   # 백업 도구 등 외부 접근과 겹쳐도 10초 대기
 
     @staticmethod
     def now():
@@ -155,11 +173,22 @@ class DB:
         return [{'data': json.loads(d), 'updated_at': u} for d, u in rows]
 
     def save(self, kind, board, item):
+        check_item(item)
         def go(c):
+            if kind in KINDS:
+                if not c.execute('select 1 from boards where id=?', (board,)).fetchone(): raise ApiError('BOARD_NOT_FOUND', 404)
+                # 같은 id 의 개인업무·톡방 행은 덮어쓰지 않음 (supabase.sql ictc_save 와 동일)
+                guard = "items.kind in ('schedule','tasks')"
+            else:
+                # 개인업무·톡방 글은 같은 사용자·톡방의 행만 갱신 (ictc_personal_save / ictc_chat_save 와 동일)
+                guard = 'items.kind=excluded.kind and items.board=excluded.board'
+            if kind == 'chat' and item.get('deleted') is True:   # 화면의 '글 삭제'는 자리표시 덮어쓰기 → 원문을 휴지통에 남긴다
+                c.execute('''insert into items_deleted(id, kind, board, data, updated_at, deleted_at, reason)
+                    select id, kind, board, data, updated_at, ?, 'delete' from items where id=? and kind='chat' and board=? and json_extract(data, '$.deleted') is not 1''',
+                          (self.now(), item['id'], board))
             c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
                 on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at
-                where items.kind in ('schedule','tasks','chat')''',
-                      (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now()))   # 같은 id 의 개인업무 행은 덮어쓰지 않음
+                where ''' + guard, (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now()))
             if kind == 'chat':   # 톡방마다 최근 300개만 보관 (supabase.sql ictc_chat_save 와 동일)
                 c.execute('''delete from items where kind='chat' and board=? and id not in
                              (select id from items where kind='chat' and board=? order by updated_at desc limit 300)''', (board, board))
@@ -216,19 +245,29 @@ class DB:
         c.execute('delete from items_deleted where deleted_at < ?', (cutoff,))
 
     def delete(self, kind, board, id_, reason='delete'):
+        if not id_: raise ApiError('ID_REQUIRED')   # id 없이 부르면 _trash 가 전체를 복사하므로 막는다
         def fn(c):
             self._trash(c, kind, board, id_, reason)
             c.execute('delete from items where id=? and kind=? and board=?', (id_, kind, board))
+            if kind == 'schedule':   # 일정의 연동 주요업무 카드('sch-'+일정id)도 함께 (supabase.sql ictc_delete 와 동일)
+                self._trash(c, 'tasks', board, 'sch-' + id_, reason)
+                c.execute("delete from items where id=? and kind='tasks' and board=?", ('sch-' + id_, board))
         self._run(fn)
 
     def replace(self, kind, board, items):
+        if not isinstance(items, list) or len(items) > 10000: raise ApiError('ITEMS_REQUIRED' if not isinstance(items, list) else 'ITEM_TOO_LARGE', 413)
+        for x in items:
+            if not isinstance(x, dict): raise ApiError('ITEMS_REQUIRED')
+            x.setdefault('id', f'{int(time.time()*1000):x}{os.urandom(3).hex()}'); check_item(x)
         now = self.now()
         def fn(c):
+            if not c.execute('select 1 from boards where id=?', (board,)).fetchone(): raise ApiError('BOARD_NOT_FOUND', 404)
             self._trash(c, kind, board, None, 'replace')
             c.execute('delete from items where kind=? and board=?', (kind, board))
-            for x in items:
-                x.setdefault('id', f'{int(time.time()*1000):x}{os.urandom(3).hex()}')
-                c.execute('insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)', (x['id'], kind, board, json.dumps(x, ensure_ascii=False), now))
+            for x in items:   # 같은 id 가 여러 번이면 마지막 것. 다른 종류·대시보드에 있는 id 는 건너뜀 (ictc_replace 와 동일)
+                c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
+                    on conflict(id) do update set data=excluded.data, updated_at=excluded.updated_at where items.kind=? and items.board=?''',
+                          (x['id'], kind, board, json.dumps(x, ensure_ascii=False), now, kind, board))
         self._run(fn)
 
     # ----- 대시보드 -----
@@ -237,15 +276,18 @@ class DB:
         return [{'id': i, 'name': n} for i, n in rows]
 
     def board_add(self, id_, name):
+        if not id_.strip() or len(id_) > 64: raise ApiError('ID_REQUIRED')
         if not name.strip(): raise ApiError('NAME_REQUIRED')
         def fn(c):
             if c.execute('select 1 from boards where id=?', (id_,)).fetchone(): raise ApiError('BOARD_EXISTS')
-            c.execute('insert into boards(id, name, created_at) values(?,?,?)', (id_, name.strip(), self.now()))
+            c.execute('insert into boards(id, name, created_at) values(?,?,?)', (id_, name.strip()[:60], self.now()))
         self._run(fn)
 
     def board_rename(self, id_, name):
         if not name.strip(): raise ApiError('NAME_REQUIRED')
-        self._run(lambda c: c.execute('update boards set name=? where id=?', (name.strip(), id_)))
+        def fn(c):
+            if c.execute('update boards set name=? where id=?', (name.strip()[:60], id_)).rowcount == 0: raise ApiError('BOARD_NOT_FOUND', 404)
+        self._run(fn)
 
     def board_delete(self, id_):
         if id_ == 'main': raise ApiError('BOARD_PROTECTED')
@@ -279,23 +321,26 @@ class DB:
         return row[1]
 
     def user_register(self, id_, name, pin):
-        if len(id_ or '') < 4: raise ApiError('USER_ID_INVALID')
+        if not 4 <= len(id_ or '') <= 20: raise ApiError('USER_ID_INVALID')
         if not (name or '').strip(): raise ApiError('NAME_REQUIRED')
         if len((pin or '').strip()) < 4: raise ApiError('PIN_TOO_SHORT')
+        name = name.strip()[:20]
         def fn(c):
             if c.execute('select 1 from users where id=?', (id_,)).fetchone(): raise ApiError('USER_EXISTS')
-            c.execute('insert into users(id, name, pin_hash, created_at) values(?,?,?,?)', (id_, name.strip(), hash_pin(pin), self.now()))
-        self._run(fn); return name.strip()
+            c.execute('insert into users(id, name, pin_hash, created_at) values(?,?,?,?)', (id_, name, hash_pin(pin), self.now()))
+        self._run(fn); return name
 
     def user_set_pin(self, id_, new):
         # v4: 비밀번호(4자리)와 이름은 별개
         if len((new or '').strip()) < 4: raise ApiError('PIN_TOO_SHORT')
-        self._run(lambda c: c.execute('update users set pin_hash=? where id=?', (hash_pin(new.strip()), id_)))
+        def go(c):
+            if c.execute('update users set pin_hash=? where id=?', (hash_pin(new.strip()), id_)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
+        self._run(go)
 
     def user_rename(self, id_, name):
         if len((name or '').strip()) < 2: raise ApiError('NAME_REQUIRED')
         def go(c):
-            if c.execute('update users set name=? where id=?', (name.strip(), id_)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
+            if c.execute('update users set name=? where id=?', (name.strip()[:20], id_)).rowcount == 0: raise ApiError('USER_NOT_FOUND', 404)
         self._run(go)
 
     def personal_list(self, id_):
@@ -309,19 +354,34 @@ class DB:
 
     # ----- 휴지통 (편집 PIN) -----
     def deleted_list(self, kind=None, board=None):
-        rows = self._run(lambda c: c.execute('''select seq, id, kind, board, data, updated_at, deleted_at, reason from items_deleted
-            where (? is null or kind=?) and (? is null or board=?) order by deleted_at desc, seq desc limit 500''', (kind, kind, board, board)).fetchall())
+        def go(c):
+            cutoff = datetime.fromtimestamp(time.time() - TRASH_DAYS * 86400, timezone.utc).isoformat().replace('+00:00', 'Z')
+            c.execute('delete from items_deleted where deleted_at < ?', (cutoff,))   # 삭제가 한동안 없어도 목록을 열 때 정리
+            return c.execute('''select seq, id, kind, board, data, updated_at, deleted_at, reason from items_deleted
+                where (? is null or kind=?) and (? is null or board=?) order by deleted_at desc, seq desc limit 500''', (kind, kind, board, board)).fetchall()
+        rows = self._run(go)
         return [{'seq': s, 'id': i, 'kind': k, 'board': b, 'data': json.loads(d), 'updated_at': u, 'deleted_at': dl, 'reason': r} for s, i, k, b, d, u, dl, r in rows]
 
     def restore(self, seq):
+        """보관본 복구. 일정 ↔ 연동 카드('sch-'+일정id)는 보관본이 있으면 짝도 함께 (supabase.sql ictc_restore 와 동일)"""
         def fn(c):
             row = c.execute('select id, kind, board, data from items_deleted where seq=?', (seq,)).fetchone()
             if not row: raise ApiError('DELETED_NOT_FOUND', 404)
             id_, kind, board, data = row
             if kind == 'personal' and not c.execute('select 1 from users where id=?', (board,)).fetchone(): raise ApiError('USER_NOT_FOUND', 404)
+            if kind in KINDS and not c.execute('select 1 from boards where id=?', (board,)).fetchone(): raise ApiError('BOARD_NOT_FOUND', 404)
+            if kind == 'chat' and not c.execute('select 1 from chat_rooms where id=?', (board,)).fetchone(): raise ApiError('CHAT_ROOM_NOT_FOUND', 404)
             c.execute('''insert into items(id, kind, board, data, updated_at) values(?,?,?,?,?)
-                on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at''', (id_, kind, board, data, self.now()))
+                on conflict(id) do update set data=excluded.data, board=excluded.board, updated_at=excluded.updated_at where items.kind=excluded.kind''', (id_, kind, board, data, self.now()))
             c.execute('delete from items_deleted where seq=?', (seq,))
+            partner = None
+            if kind == 'schedule': partner = ('tasks', 'sch-' + id_)
+            elif kind == 'tasks' and id_.startswith('sch-'): partner = ('schedule', id_[4:])
+            if partner:
+                p = c.execute('select seq, id, kind, board, data from items_deleted where kind=? and board=? and id=? order by deleted_at desc, seq desc limit 1', (partner[0], board, partner[1])).fetchone()
+                if p and not c.execute('select 1 from items where id=?', (p[1],)).fetchone():
+                    c.execute('insert or ignore into items(id, kind, board, data, updated_at) values(?,?,?,?,?)', (p[1], p[2], p[3], p[4], self.now()))
+                    c.execute('delete from items_deleted where seq=?', (p[0],))
         self._run(fn)
 
 
@@ -345,9 +405,21 @@ def make_handler(db, static_dir, pin_path, poll):
             self.end_headers(); self.wfile.write(body)
 
         def end_headers(self):
-            if not self.path.startswith('/api/'):
+            if not self.path.startswith(('/api/', '/files/')):
                 self.send_header('Cache-Control', 'no-cache')
             super().end_headers()
+
+        def list_directory(self, path):   # 폴더 목록은 보여 주지 않음
+            self.send_error(404); return None
+
+        def _drain(self, n):
+            """오류 응답 전에 작은 본문은 읽어 버린다 (안 읽으면 브라우저가 응답 대신 연결 끊김으로 보는 경우가 있음)"""
+            if 0 < n <= 8 * 1024 * 1024:
+                left = n
+                while left > 0:
+                    chunk = self.rfile.read(min(1 << 20, left))
+                    if not chunk: break
+                    left -= len(chunk)
 
         def _edit_pin(self): return read_pin(pin_path)
         def _view_pin(self): return read_pin(view_pin_path(pin_path), '0000', '조회')
@@ -383,13 +455,19 @@ def make_handler(db, static_dir, pin_path, poll):
                 self.send_header('Cache-Control', 'no-store'); self.send_header('Content-Length', str(len(body)))
                 self.end_headers(); self.wfile.write(body); return
             if u.path.startswith('/files/'):
+                # 파일은 URL 의 난수 id 로만 찾는다 (이름 부분은 무시 → 경로 탐색 불가). 받다 만 .part 는 제외
                 m = re.match(r'^/files/([0-9a-f]{24,40})/', u.path)
                 fdir = os.path.join(os.path.dirname(db.path), 'files')
-                path = m and glob.glob(os.path.join(fdir, m.group(1) + '-*'))
+                path = m and [f for f in glob.glob(os.path.join(fdir, m.group(1) + '-*')) if not f.endswith('.part')]
                 if not path: self.send_error(404); return
                 name = os.path.basename(path[0]).split('-', 1)[1]; size = os.path.getsize(path[0])
-                ctype = mimetypes.guess_type(name)[0] or 'application/octet-stream'
-                self.send_response(200); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(size))
+                ctype = (mimetypes.guess_type(name)[0] or 'application/octet-stream').lower()
+                self.send_response(200); self.send_header('Content-Length', str(size))
+                if ctype in INLINE_TYPES:   # 사진·PDF·텍스트만 브라우저에서 바로 열기
+                    self.send_header('Content-Type', ctype + ('; charset=utf-8' if ctype.startswith('text/') else ''))
+                else:   # html·svg 등은 이 서버 origin 에서 스크립트가 실행될 수 있으므로 내려받기로만
+                    self.send_header('Content-Type', 'application/octet-stream')
+                    self.send_header('Content-Disposition', "attachment; filename*=UTF-8''" + quote(name))
                 self.send_header('Cache-Control', 'public, max-age=31536000, immutable'); self.send_header('X-Content-Type-Options', 'nosniff')
                 self.end_headers()
                 with open(path[0], 'rb') as fh:   # 1MB 씩 스트리밍
@@ -422,25 +500,37 @@ def make_handler(db, static_dir, pin_path, poll):
                 if not u.path.startswith('/api/'): raise ApiError('NOT_FOUND', 404)
                 if u.path == '/api/upload':   # 41망 첨부: 조회 PIN + 톡방 입장코드 확인 뒤 files/ 에 저장
                     q = parse_qs(u.query); room = (q.get('room') or [''])[0]; code = (q.get('code') or [''])[0]
-                    self.require_view(self.headers.get('X-Pin')); throttle.check(self._ip())
-                    try: db.chat_check(room, code)
-                    except ApiError as e:
-                        if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
-                        raise
                     n = int(self.headers.get('Content-Length') or 0)
-                    if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)
-                    name = re.sub(r'[^\w.\-가-힣 ()]+', '_', (q.get('name') or ['file'])[0])[:80] or 'file'
+                    try:
+                        self.require_view(self.headers.get('X-Pin')); throttle.check(self._ip())
+                        try: db.chat_check(room, code)
+                        except ApiError as e:
+                            if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
+                            raise
+                        if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)   # 헤더로 1차 거부. 실제 받은 양은 아래에서 다시 확인
+                        ctype = (self.headers.get('Content-Type') or mimetypes.guess_type((q.get('name') or ['file'])[0])[0] or 'application/octet-stream').split(';')[0].strip().lower()
+                        if ctype not in FILE_TYPES: raise ApiError('FILE_TYPE', 415)
+                    except ApiError:
+                        self._drain(n); raise
+                    name = re.sub(r'[^\w.\-가-힣 ()]+', '_', (q.get('name') or ['file'])[0]).strip(' .')[:80] or 'file'
                     fid = secrets.token_hex(12); fdir = os.path.join(os.path.dirname(db.path), 'files'); os.makedirs(fdir, exist_ok=True)
-                    with open(os.path.join(fdir, f'{fid}-{name}'), 'wb') as f:   # 큰 파일은 1MB 씩 나눠 받아 메모리를 아낀다
-                        left = n
-                        while left > 0:
-                            chunk = self.rfile.read(min(1 << 20, left))
+                    final = os.path.join(fdir, f'{fid}-{name}'); part = final + '.part'; got = 0
+                    with open(part, 'wb') as f:   # 큰 파일은 1MB 씩 나눠 받아 메모리를 아낀다. 다 받기 전에는 .part 라 /files/ 로 안 보인다
+                        while got < n:
+                            chunk = self.rfile.read(min(1 << 20, n - got))
                             if not chunk: break
-                            f.write(chunk); left -= len(chunk)
-                    return self._json(200, {'url': f'/files/{fid}/{name}', 'name': name, 'size': n, 'type': self.headers.get('Content-Type') or mimetypes.guess_type(name)[0] or 'application/octet-stream'})
+                            f.write(chunk); got += len(chunk)
+                    if got != n:   # 중간에 끊긴 업로드는 버린다 (잘린 파일을 성공으로 돌려주지 않음)
+                        try: os.remove(part)
+                        except OSError: pass
+                        raise ApiError('UPLOAD_FAILED', 400)
+                    os.replace(part, final)
+                    return self._json(200, {'url': f'/files/{fid}/{name}', 'name': name, 'size': n, 'type': ctype})
+                n = int(self.headers.get('Content-Length') or 0)
+                if n > BODY_MAX: self._drain(0); raise ApiError('ITEM_TOO_LARGE', 413)
                 try:
-                    n = int(self.headers.get('Content-Length') or 0)
                     b = json.loads(self.rfile.read(n) or b'{}')
+                    if not isinstance(b, dict): raise ValueError
                 except Exception:
                     raise ApiError('JSON_INVALID')
                 fn = u.path[5:]
@@ -450,15 +540,11 @@ def make_handler(db, static_dir, pin_path, poll):
                     else: self.require_view(b.get('pin'))      # 일정·주요업무 수정은 조회 PIN 으로 누구나
                     if kind not in KINDS: raise ApiError('KIND_INVALID')
                     if fn == 'save':
-                        item = b.get('item') or {}
-                        if not item.get('id'): raise ApiError('ID_REQUIRED')
-                        db.save(kind, board, item)
+                        db.save(kind, board, check_item(b.get('item')))
                     elif fn == 'delete':
-                        db.delete(kind, board, str(b.get('id', '')))
+                        db.delete(kind, board, str(b.get('id') or ''))
                     else:
-                        items = b.get('items')
-                        if not isinstance(items, list): raise ApiError('ITEMS_REQUIRED')
-                        db.replace(kind, board, items)
+                        db.replace(kind, board, b.get('items'))
                     return self._json(204)
                 if fn == 'board_add':
                     self.require_edit(b.get('pin')); db.board_add(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
@@ -485,10 +571,8 @@ def make_handler(db, static_dir, pin_path, poll):
                     if fn == 'chat_join': return self._json(200, {'name': db.chat_room_name(room)})
                     if fn == 'chat_list': return self._json(200, db.list('chat', room))
                     if fn == 'chat_save':
-                        item = b.get('item') or {}
-                        if not item.get('id'): raise ApiError('ID_REQUIRED')
-                        db.save('chat', room, item); return self._json(204)
-                    db.delete('chat', room, str(b.get('id', ''))); return self._json(204)
+                        db.save('chat', room, check_item(b.get('item'))); return self._json(204)
+                    db.delete('chat', room, str(b.get('id') or '')); return self._json(204)
                 if fn == 'chat_set_code':
                     self.require_edit(b.get('pin')); db.chat_set_code(str(b.get('room', '')), str(b.get('new_code', ''))); return self._json(204)
                 if fn == 'chat_room_rename':
@@ -516,17 +600,17 @@ def make_handler(db, static_dir, pin_path, poll):
                     uid = str(b.get('id', '')); self.user_check(uid, str(b.get('user_pin', '')))
                     if fn == 'personal_list': return self._json(200, db.personal_list(uid))
                     if fn == 'personal_save':
-                        item = b.get('item') or {}
-                        if not item.get('id'): raise ApiError('ID_REQUIRED')
-                        db.personal_save(uid, item)
+                        db.personal_save(uid, check_item(b.get('item')))
                     else:
-                        db.personal_delete(uid, str(b.get('item_id', '')))
+                        db.personal_delete(uid, str(b.get('item_id') or ''))
                     return self._json(204)
                 raise ApiError('NOT_FOUND', 404)
             except ApiError as e:
                 return self._json(e.status, {'message': e.code})
-            except Exception as e:
-                return self._json(500, {'message': str(e)})
+            except Exception:
+                # 예외 원문(경로·SQL 등)은 화면에 보내지 않고 콘솔에만 남긴다. 화면에는 코드 문자열만
+                sys.stderr.write('[오류] %s %s\n%s' % (time.strftime('%H:%M:%S'), self.path, traceback.format_exc())); sys.stderr.flush()
+                return self._json(500, {'message': 'SERVER_ERROR'})
 
     return Handler
 
@@ -548,6 +632,9 @@ def lan_ips():
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):   # Windows 에서 출력이 파일로 보내지면 cp949 가 되어 일부 글자가 예외를 내므로 대체 문자로
+        try: stream.reconfigure(errors='replace')
+        except Exception: pass
     ap = argparse.ArgumentParser(description='SAIL:41 일정·업무 보드 로컬 서버')
     ap.add_argument('--port', type=int, default=8080)
     ap.add_argument('--db', default=os.path.join(HERE, 'ictc.db'))

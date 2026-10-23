@@ -30,7 +30,32 @@ if [[ " $* " != *" --no-sql "* ]]; then
     [ "$reg" = "검증" ] && echo "  개인업무 등록(pgcrypto) ok" || { echo "  개인업무 등록 실패: $reg"; ok=0; }
     [ "$($PS -d ictc_verify -At -c "select ictc_user_login('9999','1234')" 2>&1)" = "검증" ] && echo "  개인업무 로그인 ok" || { echo "  개인업무 로그인 실패"; ok=0; }
     short=$($PS -d ictc_verify -At -c "select ictc_user_set_pin('9999','1234','12')" 2>&1); [[ "$short" == *PIN_TOO_SHORT* ]] && echo "  4자리 미만 비밀번호 거부 ok" || { echo "  4자리 미만 비밀번호가 허용됨: $short"; ok=0; }
+    # --- v6.4 추가 검사 ---
+    nosp=$($PS -d ictc_verify -At -c "select string_agg(p.proname, ',') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\\_%' and not exists (select 1 from unnest(coalesce(p.proconfig,'{}')) c where c like 'search_path=%extensions%')")
+    [ -z "$nosp" ] && echo "  모든 함수 search_path=public, extensions ok" || { echo "  search_path 누락 함수: $nosp"; ok=0; }
+    internal=$($PS -d ictc_verify -At -c "select bool_or(has_function_privilege('anon', p.oid, 'execute')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('ictc_fail_delay','ictc_check_pin','ictc_check_view_pin','ictc_user_check','ictc_require_view','ictc_require_edit','ictc_trash','ictc_chat_check','ictc_check_item')")
+    [ "$internal" = "f" ] && echo "  내부 함수 anon 실행 거부 ok" || { echo "  내부 함수를 anon 이 실행할 수 있음: $internal"; ok=0; }
+    big=$($PS -d ictc_verify -At -c "select ictc_save('0000','schedule', jsonb_build_object('id','big','title',repeat('x',70000)))" 2>&1); [[ "$big" == *ITEM_TOO_LARGE* ]] && echo "  64KB 초과 항목 거부 ok" || { echo "  큰 항목이 저장됨: $big"; ok=0; }
+    nob=$($PS -d ictc_verify -At -c "select ictc_save('0000','schedule', '{\"id\":\"x1\",\"title\":\"t\"}'::jsonb, 'no-such-board')" 2>&1); [[ "$nob" == *BOARD_NOT_FOUND* ]] && echo "  없는 대시보드 저장 거부 ok" || { echo "  없는 대시보드에 저장됨: $nob"; ok=0; }
+    $PS -d ictc_verify -q -c "select ictc_save('0000','schedule','{\"id\":\"s1\",\"title\":\"일정\",\"tags\":[\"주요업무\"]}'::jsonb); select ictc_save('0000','tasks','{\"id\":\"sch-s1\",\"title\":\"일정\",\"fromSchedule\":\"s1\"}'::jsonb); select ictc_delete('0000','schedule','s1');" >/dev/null 2>&1
+    left=$($PS -d ictc_verify -At -c "select count(*) from ictc_items where id in ('s1','sch-s1')"); trashed=$($PS -d ictc_verify -At -c "select count(*) from ictc_deleted_list('1234') where id in ('s1','sch-s1')")
+    [ "$left$trashed" = "02" ] && echo "  일정 삭제 → 연동 카드 함께 휴지통 ok" || { echo "  연동 카드 삭제 불일치: 남은 $left, 휴지통 $trashed"; ok=0; }
+    seq=$($PS -d ictc_verify -At -c "select seq from ictc_deleted_list('1234','schedule') where id='s1' limit 1"); $PS -d ictc_verify -q -c "select ictc_restore('1234', $seq)" >/dev/null 2>&1
+    back=$($PS -d ictc_verify -At -c "select count(*) from ictc_items where id in ('s1','sch-s1')"); [ "$back" = "2" ] && echo "  일정 복구 → 연동 카드 함께 복구 ok" || { echo "  복구 불일치: $back"; ok=0; }
+    $PS -d ictc_verify -q -c "select ictc_chat_save('0000','ictc','5948','{\"id\":\"m1\",\"text\":\"원문\",\"name\":\"a\"}'::jsonb); select ictc_chat_save('0000','ictc','5948','{\"id\":\"m1\",\"deleted\":true,\"text\":\"\",\"name\":\"a\"}'::jsonb);" >/dev/null 2>&1
+    ctr=$($PS -d ictc_verify -At -c "select data->>'text' from ictc_deleted_list('1234','chat','ictc') where id='m1'"); [ "$ctr" = "원문" ] && echo "  41망 삭제 글 원문 휴지통 보관 ok" || { echo "  41망 삭제 글이 휴지통에 없음: '$ctr'"; ok=0; }
+    dup=$($PS -d ictc_verify -At -c "select ictc_replace('1234','tasks','[{\"id\":\"d1\",\"title\":\"a\"},{\"id\":\"d1\",\"title\":\"b\"}]'::jsonb)" 2>&1); [ -z "$dup" ] && echo "  JSON 가져오기 중복 id 허용(마지막 것) ok" || { echo "  중복 id 가져오기 실패: $dup"; ok=0; }
     echo "  함수 $fn 개, 2회 실행 완료"
+    # --- v1(최초 커밋) → 현재 순서로 적용해 PIN·데이터가 보존되는지 ---
+    if git cat-file -e e76564c:server/supabase.sql 2>/dev/null; then
+      $PS -c "drop database if exists ictc_migrate" >/dev/null 2>&1; $PS -c "create database ictc_migrate" >/dev/null
+      $PS -d ictc_migrate -c "create schema if not exists extensions; create extension if not exists pgcrypto with schema extensions;" >/dev/null
+      git show e76564c:server/supabase.sql | $PS -d ictc_migrate -v ON_ERROR_STOP=1 -f - >/dev/null 2>&1 || { echo "  v1 적용 실패"; ok=0; }
+      $PS -d ictc_migrate -q -c "select ictc_set_pin('1234','9876'); select ictc_save('9876','schedule','{\"id\":\"old1\",\"title\":\"옛 일정\"}'::jsonb);" >/dev/null 2>&1
+      $PS -d ictc_migrate -v ON_ERROR_STOP=1 -f server/supabase.sql >/tmp/verify_mig.log 2>&1 || { echo "  v1→현재 적용 실패:"; grep -v NOTICE /tmp/verify_mig.log | tail -3; ok=0; }
+      kept=$($PS -d ictc_migrate -At -c "select (select value from ictc_settings where key='edit_pin') || '/' || (select count(*) from ictc_items where id='old1' and board='main') || '/' || (select data->>'title' from ictc_list('0000','schedule') limit 1)")
+      [ "$kept" = "9876/1/옛 일정" ] && echo "  v1→현재 마이그레이션: 편집 PIN·데이터 보존 ok" || { echo "  마이그레이션 보존 실패: $kept"; ok=0; }
+    fi
     su postgres -c "$PGBIN/pg_ctl -D $PGD/data stop >/dev/null 2>&1"
   else echo "  (PostgreSQL 없음, 건너뜀)"; fi
 fi
