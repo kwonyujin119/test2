@@ -8,6 +8,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); const P = await ctx.newPage();
   P.on('pageerror', e => errors.push(e.message));
+  process.on('unhandledRejection', async e => { try { await P.screenshot({ path: `${OUT}/e2e-${MODE}-FAIL.png` }); } catch (_) {} console.error(String(e && e.message || e).split('\n')[0]); process.exit(1); });   // 실패 지점 화면을 남긴다
   P.on('console', m => { if (m.type() === 'error' && !/net::ERR|404|40[03]|favicon/.test(m.text())) errors.push('console: ' + m.text()); });
   await P.goto(URL, { waitUntil: 'networkidle' }); await P.waitForTimeout(400);
   if (shared) { r.lock = await P.locator('#lock.open').count(); await P.fill('#viewPinInput', '0000'); await P.click('#lock button[type=submit]'); await P.waitForTimeout(800); }
@@ -70,15 +71,29 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.chatMine = await P.locator('#chatList .chat-msg.mine .chat-bubble', { hasText: 'E2E 41망 첫 글' }).count();
   r.chatWho = await P.locator('#chatWho b').innerText().catch(() => '');
   // 첨부: + 토글 → 사진·파일 선택 → 대기 칩 2개 → 보내기 → 이미지·파일 카드
-  await P.click('#chatPlus'); await P.waitForTimeout(200); r.chatAttachOpen = await P.locator('#chatAttach.open').count();
-  await P.setInputFiles('#chatFileImg', require('path').join(__dirname, 'fixtures', 'pixel.png')); await P.waitForTimeout(400);
+  await P.click('#chatPlus'); await P.waitForTimeout(400); r.chatAttachOpen = await P.locator('#attachModal.open').count();
+  await P.setInputFiles('#chatFileImg', require('path').join(__dirname, 'fixtures', 'pixel.png')); await P.waitForTimeout(600);
   await P.setInputFiles('#chatFileAny', require('path').join(__dirname, 'fixtures', 'note.txt')); await P.waitForTimeout(400);
-  r.chatPending = await P.locator('#chatPending .pend').count();
-  await P.click('#chatSend'); await P.waitForTimeout(1800);
+  r.chatPending = await P.locator('#chatPending .pend').count(); r.chatStrip = await P.locator('#attachStrip .att-item .num').allInnerTexts();
+  await P.click('#attachSendBtn'); await P.waitForTimeout(2200);
   r.chatImg = await P.locator('#chatList .chat-msg.mine .chat-img img').count();
   r.chatImgLoaded = await P.locator('#chatList .chat-msg.mine .chat-img img').first().evaluate(i => i.complete && i.naturalWidth > 0).catch(() => false);
   r.chatFileCard = await P.locator('#chatList .chat-msg.mine .chat-file .fn', { hasText: 'note.txt' }).count();
   r.chatPendingCleared = await P.locator('#chatPending .pend').count();
+  r.chatThumb = await P.locator('#chatList .chat-msg.mine .chat-img img').first().getAttribute('src').then(v => /thumb|data:|\/files\//.test(v || '') || (v || '').includes('/chat/'));
+  // 우클릭 메뉴: 사진에서 → 답장·이미지 복사·글 복사·공유·사진 저장·삭제. 답장 → 인용 말풍선. 삭제 → (삭제된 메시지)
+  await P.locator('#chatList .chat-msg.mine .chat-img').first().click({ button: 'right' }); await P.waitForTimeout(250);
+  r.ctxItems = await P.locator('#ctxMenu.open button').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').trim()));
+  await P.locator('#ctxMenu button', { hasText: '답장' }).click(); await P.waitForTimeout(200); r.replyBar = await P.locator('#chatReplyBar').isVisible();
+  await P.fill('#chatText', 'E2E 답장'); await P.click('#chatSend'); await P.waitForTimeout(900);
+  r.replyQuote = await P.locator('#chatList .chat-msg.mine .chat-quote').count();
+  await P.locator('#chatList .chat-msg.mine .chat-bubble', { hasText: 'E2E 답장' }).click({ button: 'right' }); await P.waitForTimeout(250);
+  await P.locator('#ctxMenu button', { hasText: '삭제' }).click(); await P.waitForTimeout(900);
+  r.deletedPh = await P.locator('#chatList .chat-bubble.deleted', { hasText: '(삭제된 메시지)' }).count();
+  // Ctrl+V: 클립보드의 캡처 이미지를 첨부로
+  await P.evaluate(async () => { const b = await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')).blob(); const dt = new DataTransfer(); dt.items.add(new File([b], 'image.png', { type: 'image/png' })); document.getElementById('chatText').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); });
+  await P.waitForTimeout(700); r.pasteAttached = await P.locator('#chatPending .pend .pend-name').first().innerText().then(t => t.startsWith('캡처-'));
+  await P.evaluate(() => { CHAT.pending = []; renderPending(); });
   await P.screenshot({ path: `${OUT}/e2e-${MODE}-chat.png` });
   await P.click('#chatModal .chat-back'); await P.waitForTimeout(300); r.chatRoomLast = await P.locator('#chatList .room-row', { hasText: '지휘역량강화센터' }).locator('.room-last').innerText();
   await P.click('#chatModal .chat-close'); await P.waitForTimeout(400); r.chatBadgeHidden = await P.locator('#chatBadge').isHidden();
@@ -137,15 +152,15 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
     await Q.click('#chatBtn'); await Q.waitForTimeout(700);
     await Q.locator('#chatList .room-row', { hasText: '지휘역량강화센터' }).locator('.room-ico').click(); await Q.waitForTimeout(900);
     r.chatOtherSees = await Q.locator('#chatList .chat-msg:not(.mine) .chat-bubble', { hasText: 'E2E 41망 첫 글' }).count();
-    r.chatOtherName = await Q.locator('#chatList .chat-name', { hasText: '테스터' }).count();
+    r.chatOtherName = await Q.locator('#chatList .chat-name', { hasText: '테스터' }).count() > 0;
     r.chatOtherImg = await Q.locator('#chatList .chat-img img').first().evaluate(i => i.complete && i.naturalWidth > 0).catch(() => false);
     await Q.screenshot({ path: `${OUT}/e2e-${MODE}-chat-mobile.png` });
     await Q.click('#chatModal .chat-close'); await Q.waitForTimeout(300);
   }
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalDefaultName: '직원 1234', personalSaved: 1, wideOn: true, wideBar: true, wideOff: true, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatRoomLast: '테스터: 📷 사진', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: 1, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalDefaultName: '직원 1234', personalSaved: 1, wideOn: true, wideBar: true, wideOff: true, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatStrip: ['1', '2'], chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatThumb: true, ctxItems: ['답장', '이미지 복사', '글 복사 글 없는 메시지', '공유', '사진 저장', '삭제'], replyBar: true, replyQuote: 1, deletedPh: 1, pasteAttached: true, chatRoomLast: '테스터: (삭제된 메시지)', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
+  if (shared) Object.assign(expect, { chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: true, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

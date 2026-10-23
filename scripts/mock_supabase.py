@@ -30,7 +30,7 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith('/storage/v1/object/sail41/'):   # Storage 업로드 흉내: chat/ 경로만, 10MB 제한
             key=self.path.split('/storage/v1/object/sail41/',1)[1]; n=int(self.headers.get('Content-Length',0))
             if not key.startswith('chat/'): return self._send(400, b'{"message":"new row violates row-level security policy"}')
-            if n>10485760: return self._send(413, b'{"message":"Payload too large"}')
+            if n>104857600: return self._send(413, b'{"message":"Payload too large"}')
             FILES[key]={'type':self.headers.get('Content-Type','application/octet-stream'),'data':self.rfile.read(n)}
             return self._send(200, json.dumps({'Key':'sail41/'+key}).encode())
         n=int(self.headers.get('Content-Length',0)); b=json.loads(self.rfile.read(n) or b'{}'); fn=self.path.rsplit('/',1)[-1]

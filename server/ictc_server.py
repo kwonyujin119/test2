@@ -27,8 +27,8 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.2'
-FILE_MAX = 10 * 1024 * 1024   # 41망 첨부파일 최대 10MB (DB 폴더 옆 files/ 에 저장)
+VERSION = '5.3'
+FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -387,11 +387,17 @@ def make_handler(db, static_dir, pin_path, poll):
                 fdir = os.path.join(os.path.dirname(db.path), 'files')
                 path = m and glob.glob(os.path.join(fdir, m.group(1) + '-*'))
                 if not path: self.send_error(404); return
-                data = open(path[0], 'rb').read(); name = os.path.basename(path[0]).split('-', 1)[1]
+                name = os.path.basename(path[0]).split('-', 1)[1]; size = os.path.getsize(path[0])
                 ctype = mimetypes.guess_type(name)[0] or 'application/octet-stream'
-                self.send_response(200); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(data)))
+                self.send_response(200); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(size))
                 self.send_header('Cache-Control', 'public, max-age=31536000, immutable'); self.send_header('X-Content-Type-Options', 'nosniff')
-                self.end_headers(); self.wfile.write(data); return
+                self.end_headers()
+                with open(path[0], 'rb') as fh:   # 1MB 씩 스트리밍
+                    while True:
+                        chunk = fh.read(1 << 20)
+                        if not chunk: break
+                        self.wfile.write(chunk)
+                return
             if not u.path.startswith('/api/'):
                 return super().do_GET()
             try:
@@ -425,7 +431,12 @@ def make_handler(db, static_dir, pin_path, poll):
                     if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)
                     name = re.sub(r'[^\w.\-가-힣 ()]+', '_', (q.get('name') or ['file'])[0])[:80] or 'file'
                     fid = secrets.token_hex(12); fdir = os.path.join(os.path.dirname(db.path), 'files'); os.makedirs(fdir, exist_ok=True)
-                    with open(os.path.join(fdir, f'{fid}-{name}'), 'wb') as f: f.write(self.rfile.read(n))
+                    with open(os.path.join(fdir, f'{fid}-{name}'), 'wb') as f:   # 큰 파일은 1MB 씩 나눠 받아 메모리를 아낀다
+                        left = n
+                        while left > 0:
+                            chunk = self.rfile.read(min(1 << 20, left))
+                            if not chunk: break
+                            f.write(chunk); left -= len(chunk)
                     return self._json(200, {'url': f'/files/{fid}/{name}', 'name': name, 'size': n, 'type': self.headers.get('Content-Type') or mimetypes.guess_type(name)[0] or 'application/octet-stream'})
                 try:
                     n = int(self.headers.get('Content-Length') or 0)

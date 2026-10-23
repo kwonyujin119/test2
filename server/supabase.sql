@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.2: 개인업무 이름 본인 변경 · v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.3: 첨부 100MB · v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -492,13 +492,13 @@ begin
 end $$;
 
 -- ---------- 41망 첨부파일 저장소 (Supabase Storage, v6.1) ----------
--- 버킷 sail41 (공개 읽기, 파일당 10MB). 업로드는 anon 키로 chat/ 경로에만, 허용 형식 제한.
+-- 버킷 sail41 (공개 읽기, 파일당 100MB 설정. 단 Supabase 무료 요금제는 프로젝트 전체 상한이 파일당 50MB 라 그 이상은 거부됨). 업로드는 anon 키로 chat/ 경로에만, 허용 형식 제한.
 -- 로컬 PostgreSQL 에는 storage 스키마가 없으므로 있을 때만 실행한다.
 do $$
 begin
   if exists (select 1 from pg_namespace where nspname = 'storage') then
     insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-    values ('sail41', 'sail41', true, 10485760,
+    values ('sail41', 'sail41', true, 104857600,
       array['image/jpeg','image/png','image/gif','image/webp','image/heic','image/heif','application/pdf','text/plain','text/csv',
             'application/zip','application/x-hwp','application/haansofthwp','application/vnd.hancom.hwp','application/vnd.hancom.hwpx','application/x-hwpx',
             'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
