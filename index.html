@@ -30,6 +30,7 @@
     --shadow-lg: 0 12px 40px rgba(10,31,76,.16);
     --radius: 16px; --radius-sm: 12px;
     /* 일정 카테고리 색 (교육은 주색 남색과 겹치지 않게 청록) */
+    --c-ICTC: #123A8C; --c-ICTC-soft: #E3EAF8; --c-시민체험: #0F766E; --c-시민체험-soft: #D7F3EF;
     --c-교육: #0E7490; --c-교육-soft: #E0F2F7;
     --c-평가: #C42B38; --c-평가-soft: #FFEEF0;
     --c-회의: #6D4FD6; --c-회의-soft: #EFEBFF;
@@ -38,6 +39,7 @@
     --c-기타: #5B6472; --c-기타-soft: #f2f4f6;
     --c-주요업무: #8A6A00; --c-주요업무-soft: #FFF6D1;
     /* 업무 카테고리 색 */
+    --t-ICTC: #123A8C; --t-ICTC-soft: #E3EAF8; --t-시민체험: #0F766E; --t-시민체험-soft: #D7F3EF;
     --t-교육운영: #0E7490; --t-교육운영-soft: #E0F2F7;
     --t-행정: #6D4FD6; --t-행정-soft: #EFEBFF;
     --t-시설장비: #A34A05; --t-시설장비-soft: #FFF4E5;
@@ -57,10 +59,12 @@
       --done-bg: #12261C; --done-line: #1E4A31;
       --sat: #8FB0F5; --sun: #FF6B76;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+      --c-ICTC: #7FA6FF; --c-ICTC-soft: #1B2A52; --c-시민체험: #4FD1C5; --c-시민체험-soft: #0F3330;
       --c-교육: #38C4E0; --c-교육-soft: #0F3140; --c-평가: #FF6B76; --c-평가-soft: #3A1F2A;
       --c-회의: #A99BFF; --c-회의-soft: #27244A; --c-방문: #4CC38A; --c-방문-soft: #123226;
       --c-출장: #FFB347; --c-출장-soft: #3A2A12; --c-기타: #9AA4B8; --c-기타-soft: #263050;
       --c-주요업무: #F2CD55; --c-주요업무-soft: #3A2F0A;
+      --t-ICTC: #7FA6FF; --t-ICTC-soft: #1B2A52; --t-시민체험: #4FD1C5; --t-시민체험-soft: #0F3330;
       --t-교육운영: #38C4E0; --t-교육운영-soft: #0F3140; --t-행정: #A99BFF; --t-행정-soft: #27244A;
       --t-시설장비: #FFB347; --t-시설장비-soft: #3A2A12; --t-대외협력: #4CC38A; --t-대외협력-soft: #123226;
       --t-예산: #FF6B76; --t-예산-soft: #3A1F2A; --t-기타: #9AA4B8; --t-기타-soft: #263050;
@@ -241,6 +245,8 @@
   .event-sub .note { display: block; width: 100%; }
   .pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--cat-soft, var(--c-기타-soft)); color: var(--cat, var(--c-기타)); letter-spacing: 0; }
   .chevron { color: var(--text-3); flex-shrink: 0; margin-top: 3px; }
+  .cat-ICTC { --cat: var(--c-ICTC); --cat-soft: var(--c-ICTC-soft); }
+  .cat-시민체험 { --cat: var(--c-시민체험); --cat-soft: var(--c-시민체험-soft); }
   .cat-교육 { --cat: var(--c-교육); --cat-soft: var(--c-교육-soft); }
   .cat-평가 { --cat: var(--c-평가); --cat-soft: var(--c-평가-soft); }
   .cat-회의 { --cat: var(--c-회의); --cat-soft: var(--c-회의-soft); }
@@ -253,6 +259,8 @@
   .task-list .month-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
   .task-list .month-head .cnt { font-weight: 600; font-size: 12px; }
   .task-list .month-head:first-child { margin-top: 0; }
+  .tcat-ICTC { --cat: var(--t-ICTC); --cat-soft: var(--t-ICTC-soft); }
+  .tcat-시민체험 { --cat: var(--t-시민체험); --cat-soft: var(--t-시민체험-soft); }
   .tcat-교육운영 { --cat: var(--t-교육운영); --cat-soft: var(--t-교육운영-soft); }
   .tcat-행정 { --cat: var(--t-행정); --cat-soft: var(--t-행정-soft); }
   .tcat-시설장비 { --cat: var(--t-시설장비); --cat-soft: var(--t-시설장비-soft); }
@@ -1164,10 +1172,15 @@
   /* 상태는 색만이 아니라 아이콘으로도 구분 */
   const STATUS_ICON = { '예정': svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), '진행중': svg('<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5Z" fill="currentColor"/>'),
     '완료': svg('<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-6"/>'), '보류': svg('<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>') };
-  const CATEGORIES = ['교육', '평가', '회의', '방문', '출장', '주요업무', '기타'];
+  const CATEGORIES = ['주요업무', 'ICTC', '시민체험', '교육', '평가', '회의', '방문', '출장', '기타'];
+  // 화면 표시 우선순위: 1 주요업무 · 2 ICTC · 3 시민체험 · 4 나머지(기타 포함)
+  const TEAM_PRIO = { '주요업무': 0, 'ICTC': 1, '시민체험': 2 };
+  const prioOf = tags => Math.min(3, ...(tags || []).map(t => TEAM_PRIO[t] ?? 3));
+  const prioChips = chips => [...chips.filter(c => TEAM_PRIO[c.key] != null), ...zerosLast(chips.filter(c => TEAM_PRIO[c.key] == null))];
   const TASK_OF = id => 'sch-' + id;   // 일정 → 연동 주요업무 카드 id
   const LEGACY_CAT = { '실습': '교육', '점검': '기타', '행사': '기타' };
-  const TASK_CATEGORIES = ['교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
+  const TASK_CATEGORIES = ['ICTC', '시민체험', '교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
+  const taskPrio = t => t.fromSchedule ? 0 : (TEAM_PRIO[t.category] ?? 3);
   const STATUSES = ['예정', '진행중', '완료', '보류'];
   const STATUS_ORDER = { '진행중': 0, '예정': 1, '보류': 2, '완료': 3 };
   const LS = { items: 'ictc.items.v2', boards: 'ictc.boards.v1', users: 'ictc.users.v1', pin: 'ictc.pin', viewPin: 'ictc.viewPin', server: 'ictc.serverUrl', me: 'ictc.me', board: 'ictc.board', legacy: { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1' } };
@@ -1629,11 +1642,11 @@
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>
       <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>${wideBtn()}`;
     const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
-    renderChips(document.getElementById('scheduleFilters'), zerosLast(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
+    renderChips(document.getElementById('scheduleFilters'), prioChips(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
     document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
     if (typeof updateWideBar === 'function') updateWideBar();
-    const items = data.items.filter(i => state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+    const items = data.items.filter(i => state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));   // 일정표는 시간순 유지(우선순위는 칩·업무 카드에 적용)
     if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
       list.innerHTML = state.source.schedule === 'error' ? `<div class="empty"><div class="ico">${I.alert}</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('schedule')">다시 시도</button></div>`
@@ -1794,7 +1807,7 @@
   function toggleFilters(tab) { const box = document.getElementById(tab + 'FiltersBox'); const on = box.classList.toggle('expanded'); lsSet('ictc.filters.' + tab, on); }
   function moreLabel(tab, parts, fallback) { const el = document.getElementById(tab + 'MoreLabel'); if (el) el.innerHTML = parts.length ? parts.map(p => `<span class="on">${esc(p)}</span>`).join(' · ') : fallback; }
   ['tasks', 'personal'].forEach(t => { if (lsGet('ictc.filters.' + t)) document.getElementById(t + 'FiltersBox').classList.add('expanded'); });
-  function sortTasks(items) { return items.slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || (a.due || '9999').localeCompare(b.due || '9999')); }
+  function sortTasks(items) { return items.slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b) || (a.due || '9999').localeCompare(b.due || '9999')); }
 
   function renderTasks() {
     const data = state.tasks, list = document.getElementById('taskList'); if (!data) return;
@@ -1807,7 +1820,7 @@
     if (state.taskStatus !== '전체' && !counts[state.taskStatus]) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('tasksCatFilters'), zerosLast(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.taskCat, c => { state.taskCat = c; renderTasks(); });
+    renderChips(document.getElementById('tasksCatFilters'), prioChips(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.taskCat, c => { state.taskCat = c; renderTasks(); });
     const ownerCounts = {}; data.items.forEach(i => { const o = (i.owner || '').trim() || '미지정'; ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
     const owners = Object.keys(ownerCounts).sort((a, b) => ownerCounts[b] - ownerCounts[a] || a.localeCompare(b, 'ko'));
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
@@ -1841,7 +1854,7 @@
     if (state.pStatus !== '전체' && !counts[state.pStatus]) state.pStatus = '전체';
     renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('personalCatFilters'), zerosLast(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
+    renderChips(document.getElementById('personalCatFilters'), prioChips(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
     // 연도·월 (기한, 없으면 등록일 기준)
     const keyOf = t => (t.due || t.created || '').slice(0, 7);
     const yearOf = t => keyOf(t).slice(0, 4);
@@ -2578,7 +2591,7 @@
     const raw = xlCell(s); const n = xlNorm(raw);
     if (!n) return { cat: '기타', raw: '' };
     const exact = TASK_CATEGORIES.find(c => xlNorm(c) === n); if (exact) return { cat: exact, raw: '' };
-    const rules = [['교육운영', /교육|훈련|과정|강의|교관|실습|평가/], ['행정', /행정|서무|문서|인사|복무|보고|회의|계획/], ['시설장비', /시설|장비|장치|물품|시스템|점검|유지/], ['대외협력', /대외|협력|홍보|방문|교류|섭외/], ['예산', /예산|회계|계약|정산|구매|지출/]];
+    const rules = [['ICTC', /ictc|지휘역량|지휘/i], ['시민체험', /시민|체험/], ['교육운영', /교육|훈련|과정|강의|교관|실습|평가/], ['행정', /행정|서무|문서|인사|복무|보고|회의|계획/], ['시설장비', /시설|장비|장치|물품|시스템|점검|유지/], ['대외협력', /대외|협력|홍보|방문|교류|섭외/], ['예산', /예산|회계|계약|정산|구매|지출/]];
     const hit = rules.find(([, re]) => re.test(n));
     return { cat: hit ? hit[0] : '기타', raw: hit ? '' : raw };
   }
