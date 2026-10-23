@@ -8,6 +8,7 @@ for m in re.finditer(r'create or replace function public\.(ictc_\w+)\((.*?)\)\s*
     params=[p.strip().split()[0] for p in m.group(2).split(',') if p.strip()]
     SIGS[m.group(1)]=params
 EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}; TRASH=[]
+FILES={}
 ROOMS={'ictc':{'name':'지휘역량강화센터','code':'5948','sort':1},'edu-support':{'name':'교육지원과','code':'5914','sort':2},'edu-plan':{'name':'교육기획과','code':'5926','sort':3},'training':{'name':'훈련운영과','code':'5527','sort':4}}
 def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00','Z')
 class H(BaseHTTPRequestHandler):
@@ -18,9 +19,20 @@ class H(BaseHTTPRequestHandler):
         self.end_headers(); self.wfile.write(body)
     def err(self,code): self._send(400, json.dumps({'message':code}).encode())
     def do_OPTIONS(self): self._send(204)
-    def do_GET(self): self._send(403, b'{"message":"direct table access denied"}')
+    def do_GET(self):
+        if self.path.startswith('/storage/v1/object/public/sail41/'):
+            f=FILES.get(self.path.split('/storage/v1/object/public/sail41/',1)[1])
+            if not f: return self._send(404, b'{"message":"not found"}')
+            self.send_response(200); self.send_header('Content-Type', f['type']); self.send_header('Access-Control-Allow-Origin','*'); self.send_header('Content-Length', str(len(f['data']))); self.end_headers(); self.wfile.write(f['data']); return
+        self._send(403, b'{"message":"direct table access denied"}')
     def do_POST(self):
         if self.headers.get('apikey')!='test-anon': return self._send(401,b'{"message":"no key"}')
+        if self.path.startswith('/storage/v1/object/sail41/'):   # Storage 업로드 흉내: chat/ 경로만, 10MB 제한
+            key=self.path.split('/storage/v1/object/sail41/',1)[1]; n=int(self.headers.get('Content-Length',0))
+            if not key.startswith('chat/'): return self._send(400, b'{"message":"new row violates row-level security policy"}')
+            if n>10485760: return self._send(413, b'{"message":"Payload too large"}')
+            FILES[key]={'type':self.headers.get('Content-Type','application/octet-stream'),'data':self.rfile.read(n)}
+            return self._send(200, json.dumps({'Key':'sail41/'+key}).encode())
         n=int(self.headers.get('Content-Length',0)); b=json.loads(self.rfile.read(n) or b'{}'); fn=self.path.rsplit('/',1)[-1]
         if fn not in SIGS: return self._send(404, json.dumps({'message':f'function {fn} not found'}).encode())
         bad=[k for k in b if k not in SIGS[fn]]

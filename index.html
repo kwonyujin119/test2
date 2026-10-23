@@ -573,7 +573,8 @@
   .chat-who { margin-left: auto; font-size: 12.5px; color: var(--text-3); text-align: right; }
   .chat-who b { color: var(--text-2); }
   .chat-who .linklike { font-size: 12.5px; }
-  .chat-close { color: var(--text-3); width: 36px; height: 36px; flex-shrink: 0; }
+  .chat-close, .chat-admin { color: var(--text-3); width: 36px; height: 36px; flex-shrink: 0; }
+  .chat-admin:hover { background: var(--card-2); color: var(--primary); }
   .chat-close:hover { background: var(--card-2); }
   .chat-list { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); }
   .chat-day { display: flex; justify-content: center; margin: 10px 0 6px; }
@@ -605,12 +606,45 @@
   .room-row:not(.joined) .room-ico { background: var(--card-2); color: var(--text-3); }
   .room-add { border: 1.5px dashed var(--line); background: transparent; color: var(--text-3); border-radius: 14px; padding: 12px; font-weight: 700; font-size: 14px; }
   .chat-back { color: var(--text-2); width: 36px; height: 36px; flex-shrink: 0; margin-left: -6px; }
-  .chat-title-wrap { min-width: 0; } .chat-title-wrap h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chat-input { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); position: relative; }
+  .chat-title-wrap { flex: 1 1 0; min-width: 0; overflow: hidden; } .chat-title-wrap h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-head .chat-who { flex: 0 1 auto; max-width: 42%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 420px) { .chat-title-wrap .chat-sub { display: none; } .chat-head .chat-who { max-width: 34%; } .chat-head h2 { font-size: 17px; } }
+  .chat-input { display: flex; flex-direction: column; padding: 0 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); position: relative; }
+  .chat-input-row { display: flex; align-items: flex-end; gap: 8px; padding-top: 10px; position: relative; }
+  .chat-plus { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card-2); color: var(--text-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .2s; }
+  .chat-plus.on { transform: rotate(45deg); background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+  .chat-plus:disabled { opacity: .5; }
+  .chat-attach { display: none; gap: 10px; align-items: center; padding: 12px 2px 2px; flex-wrap: wrap; }
+  .chat-attach.open { display: flex; }
+  .chat-attach > button { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px; padding: 8px 0; border: 0; background: var(--card-2); border-radius: 14px; color: var(--text-2); font-size: 12px; font-weight: 700; transition: .15s; }
+  .chat-attach > button svg { width: 22px; height: 22px; color: var(--primary); }
+  .chat-attach > button:hover { background: var(--primary-soft); }
+  .chat-attach-hint { font-size: 11.5px; color: var(--text-3); margin-left: auto; }
+  @media (min-width: 1024px) { .chat-attach .mo-only-btn { display: none; } }
+  .chat-pending { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0 0; }
+  .chat-pending .pend { display: flex; align-items: center; gap: 6px; background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px 6px 4px 4px; font-size: 12.5px; max-width: 100%; }
+  .chat-pending img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; }
+  .chat-pending .pend-ico { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+  .chat-pending .pend-name { max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .chat-pending .pend-size { color: var(--text-3); }
+  .chat-pending button { border: 0; background: transparent; color: var(--text-3); font-size: 18px; width: 28px; height: 28px; border-radius: 50%; }
+  .chat-pending button:hover { background: var(--red-soft); color: var(--red); }
+  .chat-body { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
+  .chat-msg.mine .chat-body { align-items: flex-end; }
+  .chat-files { display: flex; flex-wrap: wrap; gap: 6px; max-width: 100%; }
+  .chat-msg.mine .chat-files { justify-content: flex-end; }
+  .chat-img { display: block; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); max-width: min(260px, 70vw); }
+  .chat-img img { display: block; max-width: 100%; max-height: 260px; min-width: 44px; min-height: 44px; object-fit: cover; }
+  .chat-file { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px; color: var(--text); text-decoration: none; max-width: min(300px, 80vw); box-shadow: var(--shadow); }
+  .chat-file svg { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
+  .chat-file .fn { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-file .fs { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+  .chat-file:hover { border-color: var(--primary); }
+  #chatSend.busy { opacity: .7; }
   .chat-input textarea { flex: 1; resize: none; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 14px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--card-2); color: var(--text); outline: none; max-height: 120px; }
   .chat-input textarea:focus { border-color: var(--primary); background: var(--card); }
   .chat-input .btn { width: 44px; height: 44px; min-width: 44px; flex: 0 0 44px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .chat-count { position: absolute; right: 66px; top: -18px; font-size: 11px; color: var(--text-3); }
+  .chat-count { position: absolute; right: 66px; top: -8px; font-size: 11px; color: var(--text-3); }
   @media (max-width: 1023px) { .chat-input textarea { font-size: 16px; } }
   @media (max-width: 639px) { .chat-who span { display: none; } .chat-head { gap: 8px; padding: 2px 14px 10px; } .chat-list { padding: 12px 14px; } }
   /* 엑셀 가져오기 */
@@ -788,8 +822,6 @@
   <button id="menuBoardRename" data-ico="pencil" onclick="renameBoard()"><span>대시보드 이름 변경</span></button>
   <button id="menuBoardDelete" data-ico="trash" class="danger" onclick="deleteBoard()"><span>이 대시보드 삭제</span></button>
   <hr class="admin-only">
-  <button id="menuPin" data-ico="key" style="display:none" onclick="changePin()"><span>관리자 PIN 입력</span></button>
-  <button id="menuAdminOff" data-ico="shieldOff" style="display:none" onclick="adminOff()"><span>관리자 모드 해제</span></button>
   <button id="menuViewPin" data-ico="eye" style="display:none" onclick="changeViewPin()"><span>팀 PIN 다시 입력</span></button>
   <button id="menuMyPin" data-ico="key" style="display:none" onclick="changeMyPin()"><span>내 비밀번호 변경</span></button>
   <button id="menuLogout" data-ico="logout" style="display:none" onclick="logout()"><span>개인업무 로그아웃</span></button>
@@ -798,6 +830,9 @@
   <button id="menuTrash" data-ico="trash" onclick="openTrash()"><span>휴지통</span></button>
   <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>홈 화면에 추가</span></button>
   <button id="menuReset" data-ico="refresh" onclick="resetToDefault(currentTab())"><span>기본값으로 복원</span></button>
+  <hr id="menuAdminHr">
+  <button id="menuPin" data-ico="key" style="display:none" onclick="changePin()"><span>관리자 로그인</span></button>
+  <button id="menuAdminOff" data-ico="shieldOff" style="display:none" onclick="adminOff()"><span>관리자 모드 해제</span></button>
 </div>
 
 <div class="dropdown" id="boardMenu"></div>
@@ -923,7 +958,14 @@
     <div class="handle"></div>
     <div class="chat-head" id="chatHead"><h2 id="chatTitle">41망</h2></div>
     <div class="chat-list" id="chatList" aria-live="polite"></div>
-    <div class="chat-input" id="chatInputBar" style="display:none"><textarea id="chatText" rows="1" maxlength="600" placeholder="팀에 전할 말을 적어요" oninput="chatInput(this)" onkeydown="chatKey(event)"></textarea><span class="chat-count" id="chatCount"></span><button type="button" class="btn primary" id="chatSend" onclick="chatSend()" aria-label="보내기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg></button></div>
+    <div class="chat-input" id="chatInputBar" style="display:none">
+      <div class="chat-attach" id="chatAttach"><button type="button" onclick="chatPick('image')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></svg><span>사진</span></button><button type="button" class="mo-only-btn" onclick="chatPick('camera')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>카메라</span></button><button type="button" onclick="chatPick('file')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L16 7"/></svg><span>파일</span></button><span class="chat-attach-hint">사진·파일 10MB 까지, 한 번에 5개</span></div>
+      <div class="chat-pending" id="chatPending" style="display:none"></div>
+      <div class="chat-input-row"><button type="button" class="chat-plus" id="chatPlus" aria-label="사진·파일 첨부" aria-expanded="false" onclick="chatToggleAttach()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><textarea id="chatText" rows="1" maxlength="600" placeholder="팀에 전할 말을 적어요" oninput="chatInput(this)" onkeydown="chatKey(event)"></textarea><span class="chat-count" id="chatCount"></span><button type="button" class="btn primary" id="chatSend" onclick="chatSend()" aria-label="보내기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg></button></div>
+      <input type="file" id="chatFileImg" accept="image/*" multiple hidden onchange="chatFilesChosen(this)">
+      <input type="file" id="chatFileCam" accept="image/*" capture="environment" hidden onchange="chatFilesChosen(this)">
+      <input type="file" id="chatFileAny" multiple hidden onchange="chatFilesChosen(this)">
+    </div>
   </div>
 </div>
 <div class="sheet-bg" id="trashModal" onclick="if(event.target===this)closeModal('trashModal')">
@@ -972,6 +1014,7 @@
     pin: svg('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>'),
     plus: svg('<path d="M12 5v14M5 12h14"/>'),
     close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+    file: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>'),
     cal: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
     list: svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" stroke-width="2.6"/>'),
     link: svg('<path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/>'),
@@ -1068,7 +1111,7 @@
   /* ── 오류 코드 → 메시지 ── */
   const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요합니다', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않습니다', PIN_INVALID: '관리자 PIN이 올바르지 않습니다',
     USER_NOT_FOUND: '등록되지 않은 번호예요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요',
-    USER_ID_INVALID: '뒤 4자리를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요', CHAT_CODE_TOO_SHORT: '입장코드는 4자리 이상', CHAT_ROOM_EXISTS: '이미 있는 톡방이에요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
+    USER_ID_INVALID: '뒤 4자리를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요', CHAT_CODE_TOO_SHORT: '입장코드는 4자리 이상', CHAT_ROOM_EXISTS: '이미 있는 톡방이에요', FILE_TOO_LARGE: '파일이 너무 커요 (10MB 까지)', FILE_TYPE: '올릴 수 없는 파일 형식이에요', UPLOAD_FAILED: '파일을 올리지 못했어요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요 (담당자: SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류',
     TOO_MANY_ATTEMPTS: '시도가 너무 많습니다. 10분 후 다시 하세요', DELETED_NOT_FOUND: '보관된 항목이 없어요' };
   class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
@@ -1119,6 +1162,15 @@
       chatRoomRename: (pin, room, name) => rpc('ictc_chat_room_rename', { p_edit_pin: pin, p_room: room, p_name: name }),
       chatRoomAdd: (pin, id, name, code) => rpc('ictc_chat_room_add', { p_edit_pin: pin, p_id: id, p_name: name, p_code: code }),
       chatRoomDelete: (pin, room) => rpc('ictc_chat_room_delete', { p_edit_pin: pin, p_room: room }),
+      // 첨부: 입장코드를 먼저 확인한 뒤 Storage 버킷 sail41 의 chat/<톡방>/ 에 올린다 (공개 읽기, 경로는 추측 불가)
+      chatUpload: async (room, code, file) => {
+        await api.chatJoin(room, code);
+        const ext = ((file.name || '').split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+        const key = `chat/${encodeURIComponent(room)}/${uid()}.${ext}`;
+        const res = await fetch(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, { method: 'POST', headers: { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false' }, body: file });
+        if (!res.ok) { let msg = ''; try { msg = (await res.json()).message || ''; } catch (e) {} throw new ApiError(res.status === 413 || /too large|exceeded/i.test(msg) ? 'FILE_TOO_LARGE' : /mime|type/i.test(msg) ? 'FILE_TYPE' : /bucket/i.test(msg) ? 'STORAGE_NOT_READY' : 'UPLOAD_FAILED', res.status); }
+        return { url: `${CFG.supabaseUrl}/storage/v1/object/public/sail41/${key}`, name: file.name, size: file.size, type: file.type };
+      },
     };
   } else if (LOCALSRV) {
     const get = async (path) => { const res = await fetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
@@ -1153,6 +1205,7 @@
       chatRoomRename: (pin, room, name) => post('/api/chat_room_rename', { pin, room, name }),
       chatRoomAdd: (pin, id, name, code) => post('/api/chat_room_add', { pin, id, name, code }),
       chatRoomDelete: (pin, room) => post('/api/chat_room_delete', { pin, room }),
+      chatUpload: async (room, code, file) => { const res = await fetch(`${CFG.apiUrl}/api/upload?room=${encodeURIComponent(room)}&code=${encodeURIComponent(code)}&name=${encodeURIComponent(file.name || 'file')}`, { method: 'POST', headers: { 'X-Pin': viewPin(), 'Content-Type': file.type || 'application/octet-stream' }, body: file }); if (!res.ok) await throwApi(res); return res.json(); },
     };
   } else {
     /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
@@ -1199,6 +1252,7 @@
       chatSetCode: async (pin, room, nw) => { const rs = lsGet('ictc.chat.rooms') || []; const r = rs.find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); r.code = nw; lsSet('ictc.chat.rooms', rs); },
       chatRoomRename: async (pin, room, name) => { const rs = lsGet('ictc.chat.rooms') || []; const r = rs.find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); r.name = name; lsSet('ictc.chat.rooms', rs); },
       chatRoomAdd: async (pin, id, name, code) => { const rs = lsGet('ictc.chat.rooms') || []; if (rs.some(x => x.id === id)) throw new ApiError('CHAT_ROOM_EXISTS'); rs.push({ id, name, code, sort: rs.length + 1 }); lsSet('ictc.chat.rooms', rs); },
+      chatUpload: async (room, code, file) => { await api.chatJoin(room, code); if (file.size > 1.5 * 1024 * 1024) throw new ApiError('FILE_TOO_LARGE_PREVIEW'); const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new ApiError('UPLOAD_FAILED')); r.readAsDataURL(file); }); return { url, name: file.name, size: file.size, type: file.type }; },
       chatRoomDelete: async (pin, room) => { lsSet('ictc.chat.rooms', (lsGet('ictc.chat.rooms') || []).filter(x => x.id !== room)); const st = store(); delete st[key('chat', room)]; lsSet(LS.items, st); },
     };
   }
@@ -1308,8 +1362,11 @@
     m.querySelectorAll('hr.admin-only').forEach(h => h.style.display = admin ? '' : 'none');
     if (admin) {
       show('menuBoardDelete', state.board !== 'main'); show('menuImport', currentTab() !== 'personal');
-      show('menuPin', REMOTE); show('menuViewPin', REMOTE); show('menuAdminOff', REMOTE && document.body.classList.contains('admin'));
+      show('menuViewPin', REMOTE);
     }
+    // 맨 아래: 관리자 로그인(일반 사용자) / 관리자 모드 해제(관리자). 미리보기 모드에는 없음
+    const isAdminDevice = document.body.classList.contains('admin');
+    show('menuPin', REMOTE && !isAdminDevice); show('menuAdminOff', REMOTE && isAdminDevice); show('menuAdminHr', REMOTE);
     show('menuLogout', !!state.me); show('menuMyPin', !!state.me);
     show('menuExcel', !!state.me);
     m.classList.toggle('open');
@@ -1986,7 +2043,7 @@
     const list = document.getElementById('chatList'); if (list) list.scrollTop = list.scrollHeight;
     setTimeout(() => { const ta = document.getElementById('chatText'); if (ta && window.innerWidth >= 1024) ta.focus(); }, 300);
   }
-  function leaveRoomView() { CHAT.room = null; renderChat(); }
+  function leaveRoomView() { CHAT.room = null; CHAT.pending = []; renderPending(); chatToggleAttach(false); renderChat(); }
   function chatDayLabel(iso) {
     const d = new Date(iso), t = new Date(); const day = x => `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`;
     if (day(d) === day(t)) return '오늘'; t.setDate(t.getDate() - 1); if (day(d) === day(t)) return '어제';
@@ -2005,7 +2062,7 @@
       list.innerHTML = CHAT.rooms.map(r => { const joined = !!chatCode(r.id); const n = joined ? chatUnread(r.id) : 0; const last = joined ? chatMsgs(r.id).slice(-1)[0] : null;
         return `<div class="room-row ${joined ? 'joined' : ''}"><button type="button" class="room-main" onclick="enterRoom('${esc(r.id)}')">
           <span class="room-name">${esc(r.name)}${n ? `<span class="room-unread">${n > 99 ? '99+' : n}</span>` : ''}</span>
-          <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc((last.text || '').slice(0, 40))}` : '아직 글이 없어요') : '입장코드 4자리가 필요해요'}</span></button>
+          <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc(chatPreviewText(last).slice(0, 40))}` : '아직 글이 없어요') : '입장코드 4자리가 필요해요'}</span></button>
           ${admin ? `<button type="button" class="room-admin" title="입장코드 변경" aria-label="${esc(r.name)} 입장코드 변경" onclick="chatSetCode('${esc(r.id)}')">${I.key || '코드'}</button>` : ''}
           <button type="button" class="room-ico" aria-label="${esc(r.name)} 톡방 열기" onclick="enterRoom('${esc(r.id)}')">${CHAT_ICO}</button></div>`; }).join('')
         + (admin ? `<button type="button" class="room-add" onclick="chatRoomAdd()">+ 톡방 추가</button>` : '');
@@ -2015,7 +2072,7 @@
     head.innerHTML = `<button type="button" class="icon-btn chat-back" aria-label="톡방 목록" onclick="leaveRoomView()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       <div class="chat-title-wrap"><h2 id="chatTitle">${esc(chatRoomName(room))}</h2><div class="chat-sub">41망 · 최근 300개 보관</div></div>
       <div class="chat-who" id="chatWho">${nm ? `<b>${esc(nm)}</b>${state.me ? '' : ` <button type="button" class="linklike" onclick="chatSetNick()">바꾸기</button>`}` : `<button type="button" class="linklike" onclick="chatSetNick()">이름 정하기</button>`}</div>
-      ${admin ? `<button type="button" class="icon-btn chat-close" title="톡방 관리" aria-label="톡방 관리" onclick="chatRoomMenu('${esc(room)}')">${I.pencil || '⋯'}</button>` : ''}
+      ${admin ? `<button type="button" class="icon-btn chat-admin" title="톡방 관리(이름·입장코드·삭제)" aria-label="톡방 관리" onclick="chatRoomMenu('${esc(room)}')">${I.pencil || '⋯'}</button>` : ''}
       <button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
     input.style.display = ''; list.classList.remove('rooms');
     if (CHAT.source[room] === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refreshRoom('${esc(room)}')">다시 시도</button></div>`; return; }
@@ -2028,7 +2085,7 @@
       const d = new Date(m.created); const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       const showName = !mine && key !== lastKey; lastKey = key;
       html += `<div class="chat-msg ${mine ? 'mine' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
-        <div class="chat-row"><div class="chat-bubble">${linkify(m.text || '')}</div><div class="chat-meta"><span>${time}</span>${(mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
+        <div class="chat-row"><div class="chat-body">${m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files)}</div><div class="chat-meta"><span>${time}</span>${(mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
     });
     list.innerHTML = html; list.dataset.room = room;
     if (atBottom) list.scrollTop = list.scrollHeight;
@@ -2045,22 +2102,27 @@
   async function chatSend() {
     const room = CHAT.room; if (!room) return;
     const ta = document.getElementById('chatText'); const text = ta.value.replace(/\s+$/g, '').trim();
-    if (!text) return; if (text.length > CHAT.max) { toast(`글은 ${CHAT.max}자까지예요`); return; }
+    if (!text && !CHAT.pending.length) return; if (text.length > CHAT.max) { toast(`글은 ${CHAT.max}자까지예요`); return; }
     if (!chatName()) { chatSetNick(); if (!chatName()) return; }
     const msg = { id: uid(), text, name: chatName(), dev: chatDev(), uid: state.me ? state.me.id : null, created: new Date().toISOString() };
-    const btn = document.getElementById('chatSend'); btn.disabled = true;
+    const btn = document.getElementById('chatSend'); btn.disabled = true; const plus = document.getElementById('chatPlus'); plus.disabled = true;
     try {
+      if (CHAT.pending.length) {
+        const files = []; let k = 0;
+        for (const p of CHAT.pending) { k++; btn.classList.add('busy'); btn.setAttribute('aria-label', `올리는 중 ${k}/${CHAT.pending.length}`); document.getElementById('chatCount').textContent = `올리는 중 ${k}/${CHAT.pending.length}`; files.push(await api.chatUpload(room, chatCode(room), p.file)); }
+        msg.files = files; CHAT.pending.forEach(p => p.preview && URL.revokeObjectURL(p.preview)); CHAT.pending = []; renderPending();
+      }
       await api.chatSave(room, chatCode(room), msg);
       ta.value = ''; chatInput(ta);
       (CHAT.msgs[room] = CHAT.msgs[room] || []).push(msg); chatMarkSeen(room, msg.created); renderChat();
       const list = document.getElementById('chatList'); list.scrollTop = list.scrollHeight;
       refreshRoom(room, true);
     } catch (e) { toast(e.message); }
-    btn.disabled = false; if (window.innerWidth >= 1024) ta.focus();
+    btn.disabled = false; plus.disabled = false; btn.classList.remove('busy'); btn.setAttribute('aria-label', '보내기'); document.getElementById('chatCount').textContent = ''; if (window.innerWidth >= 1024) ta.focus();
   }
   async function chatDelete(id) {
     const room = CHAT.room; const m = chatMsgs(room).find(x => x.id === id); if (!m) return;
-    if (!confirm(`이 글을 삭제할까요?\n"${(m.text || '').slice(0, 40)}${(m.text || '').length > 40 ? '…' : ''}"`)) return;
+    if (!confirm(`이 글을 삭제할까요?\n"${chatPreviewText(m).slice(0, 40)}${(m.text || '').length > 40 ? '…' : ''}"${(m.files || []).length && REMOTE ? '\n첨부 파일은 저장소에 남아요(링크로만 접근)' : ''}`)) return;
     try { await api.chatDelete(room, chatCode(room), id); CHAT.msgs[room] = (CHAT.msgs[room] || []).filter(x => x.id !== id); renderChat(); toast('삭제했어요'); refreshRoom(room, true); }
     catch (e) { toast(e.message); }
   }
@@ -2082,6 +2144,48 @@
     const id = 'r' + uid();
     if (await withPin(pin => api.chatRoomAdd(pin, id, nm, code))) { const c = chatCodes(); c[id] = code; lsSet('ictc.chat.codes', c); await loadChatRooms(true); renderChat(); toast('톡방을 만들었어요'); }
   }
+
+  /* ── 41망 첨부: + 토글 → 사진·카메라·파일. 올리기 전 사진은 1600px·JPEG 로 줄인다 ── */
+  CHAT.pending = []; CHAT.fileMax = 10 * 1024 * 1024; CHAT.filesPerMsg = 5;
+  const isImgFile = f => /^image\//i.test(f.type || '') || /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(f.name || '');
+  const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? Math.round(n / 1024) + 'KB' : (n || 0) + 'B';
+  function chatToggleAttach(force) {
+    const bar = document.getElementById('chatAttach'), btn = document.getElementById('chatPlus');
+    const on = force != null ? force : !bar.classList.contains('open');
+    bar.classList.toggle('open', on); btn.classList.toggle('on', on); btn.setAttribute('aria-expanded', String(on));
+  }
+  function chatPick(kind) { document.getElementById(kind === 'image' ? 'chatFileImg' : kind === 'camera' ? 'chatFileCam' : 'chatFileAny').click(); }
+  async function shrinkImage(file) {
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type) || file.size < 400 * 1024) return file;
+    const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) return file;
+    const max = 1600, sc = Math.min(1, max / Math.max(bmp.width, bmp.height)); const w = Math.round(bmp.width * sc), h = Math.round(bmp.height * sc);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85)); if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+  }
+  async function chatFilesChosen(input) {
+    const files = [...(input.files || [])]; input.value = ''; if (!files.length) return;
+    for (const f of files) {
+      if (CHAT.pending.length >= CHAT.filesPerMsg) { toast(`한 번에 ${CHAT.filesPerMsg}개까지 보낼 수 있어요`); break; }
+      const g = isImgFile(f) ? await shrinkImage(f) : f;
+      if (g.size > CHAT.fileMax) { toast(`'${f.name}' 은 10MB 를 넘어 올릴 수 없어요`); continue; }
+      CHAT.pending.push({ file: g, preview: isImgFile(g) ? URL.createObjectURL(g) : null });
+    }
+    chatToggleAttach(false); renderPending();
+  }
+  function renderPending() {
+    const el = document.getElementById('chatPending');
+    el.innerHTML = CHAT.pending.map((p, i) => `<div class="pend">${p.preview ? `<img src="${p.preview}" alt="">` : `<span class="pend-ico">${I.file}</span>`}<span class="pend-name">${esc(p.file.name)}</span><span class="pend-size">${fmtSize(p.file.size)}</span><button type="button" aria-label="첨부 취소" onclick="chatRemovePending(${i})">×</button></div>`).join('');
+    el.style.display = CHAT.pending.length ? '' : 'none';
+  }
+  function chatRemovePending(i) { const p = CHAT.pending.splice(i, 1)[0]; if (p && p.preview) URL.revokeObjectURL(p.preview); renderPending(); }
+  function chatFilesHtml(files) {
+    if (!files || !files.length) return '';
+    return `<div class="chat-files">${files.map(f => isImgFile(f)
+      ? `<a class="chat-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name || '')}"><img src="${esc(f.url)}" alt="${esc(f.name || '사진')}" loading="lazy"></a>`
+      : `<a class="chat-file" href="${esc(f.url)}" target="_blank" rel="noopener" download="${esc(f.name || '')}">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)}</span></a>`).join('')}</div>`;
+  }
+  const chatPreviewText = m => m.text ? m.text : (m.files || []).some(isImgFile) ? '📷 사진' : (m.files || []).length ? '📎 파일' : '';
 
   /* ── 엑셀 가져오기(개인업무) ── 파일은 이 브라우저에서만 읽고, 고른 행만 내 개인업무로 저장한다 */
   const XL = { rows: [], hdr: 0, wb: null, sheet: 0, map: {}, pick: [], name: '' };

@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6: 부서별 41망 톡방 + 입장코드 · v4: 개인업무 비밀번호 4자리)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드 · v4: 개인업무 비밀번호 4자리)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -480,6 +480,28 @@ begin
   delete from public.ictc_items where kind = 'chat' and board = p_room;
   delete from public.ictc_chat_rooms where id = p_room;
   if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
+end $$;
+
+-- ---------- 41망 첨부파일 저장소 (Supabase Storage, v6.1) ----------
+-- 버킷 sail41 (공개 읽기, 파일당 10MB). 업로드는 anon 키로 chat/ 경로에만, 허용 형식 제한.
+-- 로컬 PostgreSQL 에는 storage 스키마가 없으므로 있을 때만 실행한다.
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    values ('sail41', 'sail41', true, 10485760,
+      array['image/jpeg','image/png','image/gif','image/webp','image/heic','image/heif','application/pdf','text/plain','text/csv',
+            'application/zip','application/x-hwp','application/haansofthwp','application/vnd.hancom.hwp','application/vnd.hancom.hwpx','application/x-hwpx',
+            'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/octet-stream'])
+    on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+    execute 'drop policy if exists "sail41 chat upload" on storage.objects';
+    execute $p$create policy "sail41 chat upload" on storage.objects for insert to anon, authenticated
+      with check (bucket_id = 'sail41' and (storage.foldername(name))[1] = 'chat')$p$;
+    execute 'drop policy if exists "sail41 public read" on storage.objects';
+    execute $p$create policy "sail41 public read" on storage.objects for select to anon, authenticated using (bucket_id = 'sail41')$p$;
+  end if;
 end $$;
 
 -- ---------- 권한 ----------

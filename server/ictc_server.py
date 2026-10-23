@@ -18,7 +18,7 @@ SAIL:41 (지휘역량강화센터 일정·업무 보드) 로컬 서버 (Python 3
 접속:  본인  http://localhost:8080
        팀원  http://<이 PC의 IP>:8080
 """
-import argparse, glob, hashlib, hmac, json, os, secrets, socket, sqlite3, sys, threading, time
+import argparse, glob, hashlib, hmac, json, mimetypes, os, re, secrets, socket, sqlite3, sys, threading, time
 from collections import deque
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -27,7 +27,8 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.0'
+VERSION = '5.1'
+FILE_MAX = 10 * 1024 * 1024   # 41망 첨부파일 최대 10MB (DB 폴더 옆 files/ 에 저장)
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -381,6 +382,16 @@ def make_handler(db, static_dir, pin_path, poll):
                 self.send_header('Content-Type', 'application/javascript; charset=utf-8')
                 self.send_header('Cache-Control', 'no-store'); self.send_header('Content-Length', str(len(body)))
                 self.end_headers(); self.wfile.write(body); return
+            if u.path.startswith('/files/'):
+                m = re.match(r'^/files/([0-9a-f]{24,40})/', u.path)
+                fdir = os.path.join(os.path.dirname(db.path), 'files')
+                path = m and glob.glob(os.path.join(fdir, m.group(1) + '-*'))
+                if not path: self.send_error(404); return
+                data = open(path[0], 'rb').read(); name = os.path.basename(path[0]).split('-', 1)[1]
+                ctype = mimetypes.guess_type(name)[0] or 'application/octet-stream'
+                self.send_response(200); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(data)))
+                self.send_header('Cache-Control', 'public, max-age=31536000, immutable'); self.send_header('X-Content-Type-Options', 'nosniff')
+                self.end_headers(); self.wfile.write(data); return
             if not u.path.startswith('/api/'):
                 return super().do_GET()
             try:
@@ -403,6 +414,19 @@ def make_handler(db, static_dir, pin_path, poll):
             u = urlparse(self.path)
             try:
                 if not u.path.startswith('/api/'): raise ApiError('NOT_FOUND', 404)
+                if u.path == '/api/upload':   # 41망 첨부: 조회 PIN + 톡방 입장코드 확인 뒤 files/ 에 저장
+                    q = parse_qs(u.query); room = (q.get('room') or [''])[0]; code = (q.get('code') or [''])[0]
+                    self.require_view(self.headers.get('X-Pin')); throttle.check(self._ip())
+                    try: db.chat_check(room, code)
+                    except ApiError as e:
+                        if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
+                        raise
+                    n = int(self.headers.get('Content-Length') or 0)
+                    if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)
+                    name = re.sub(r'[^\w.\-가-힣 ()]+', '_', (q.get('name') or ['file'])[0])[:80] or 'file'
+                    fid = secrets.token_hex(12); fdir = os.path.join(os.path.dirname(db.path), 'files'); os.makedirs(fdir, exist_ok=True)
+                    with open(os.path.join(fdir, f'{fid}-{name}'), 'wb') as f: f.write(self.rfile.read(n))
+                    return self._json(200, {'url': f'/files/{fid}/{name}', 'name': name, 'size': n, 'type': self.headers.get('Content-Type') or mimetypes.guess_type(name)[0] or 'application/octet-stream'})
                 try:
                     n = int(self.headers.get('Content-Length') or 0)
                     b = json.loads(self.rfile.read(n) or b'{}')
