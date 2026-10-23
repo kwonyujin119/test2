@@ -114,6 +114,10 @@
   .lock .lock-sub { font-size: 13px; color: var(--text-3); margin: 2px 0 10px; }
   .lock .lock-sub span { font-weight: 700; color: var(--gold-text, #8A6A00); }
   .segment button { white-space: nowrap; }
+  /* S·A·IL 머리글자를 금색·크게·굵게 → 탭만 봐도 SAIL 이 읽히게 */
+  .segment button .ini { font-size: 1.3em; font-weight: 900; color: var(--gold, #F5C400); letter-spacing: .5px; line-height: 1; vertical-align: -1px; }
+  .segment button.active .ini { color: var(--gold-text, #8A6A00); }
+  .segment button:not(.active) { color: rgba(255,255,255,.72); }
   .segment button small { display: block; font-size: 11px; font-weight: 600; line-height: 1.2; margin-top: 1px; opacity: .75; }
   .segment button.active small { opacity: .8; }
   @media (max-width: 640px) { .segment button { font-size: 13px; padding: 7px 0; } .segment button small { font-size: 10.5px; } }
@@ -816,10 +820,10 @@
       </div>
       <div class="segment" id="segment" data-pos="0" role="tablist" aria-label="보드 탭">
       <div class="thumb"></div>
-      <button class="active" role="tab" aria-selected="true" data-tab="schedule" onclick="tabClick('schedule')" title="한 번 더 누르면 달력">Schedule<span class="vbadge">달력</span><small>일정표</small></button>
+      <button class="active" role="tab" aria-selected="true" data-tab="schedule" onclick="tabClick('schedule')" title="한 번 더 누르면 달력"><b class="ini">S</b>chedule<span class="vbadge">달력</span><small>일정표</small></button>
       <div class="tab-tip" id="tabTip" role="status">탭을 한 번 더 누르면 달력</div>
-      <button role="tab" aria-selected="false" data-tab="tasks" onclick="tabClick('tasks')">Attention<small>주요업무</small></button>
-      <button role="tab" aria-selected="false" data-tab="personal" onclick="tabClick('personal')">Individual Log<small>개인업무</small></button>
+      <button role="tab" aria-selected="false" data-tab="tasks" onclick="tabClick('tasks')"><b class="ini">A</b>ttention<small>주요업무</small></button>
+      <button role="tab" aria-selected="false" data-tab="personal" onclick="tabClick('personal')"><b class="ini">I</b>ndividual <b class="ini">L</b>og<small>개인업무</small></button>
     </div>
     </div>
   </div>
