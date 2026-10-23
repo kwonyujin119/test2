@@ -2886,10 +2886,10 @@
   /* ── 키워드 검색 ── */
   let qTimer = null;
   function setQ(tab, v) {
-    v = (v || '').trim(); Q[tab] = v;
-    document.querySelectorAll(`.qin[data-tab="${tab}"]`).forEach(i => { if (i.value !== v) i.value = v; });
-    const f = document.getElementById('qfabIn'); if (f && currentTab() === tab && f.value !== v) f.value = v;
-    document.querySelectorAll('.qbox').forEach(b => b.classList.toggle('has', !!(b.querySelector('.qin').value)));
+    const raw = String(v || ''); Q[tab] = raw.trim();   // 검색에는 다듬은 값, 입력창에는 친 그대로(끝 공백을 지우면 띄어쓰기를 칠 수 없다)
+    document.querySelectorAll(`.qin[data-tab="${tab}"]`).forEach(i => { if (i.value !== raw) i.value = raw; });
+    const f = document.getElementById('qfabIn'); if (f && currentTab() === tab && f.value !== raw) f.value = raw;
+    document.querySelectorAll('.qbox').forEach(b => b.classList.toggle('has', !!(b.querySelector('.qin').value.trim())));
     if (tab === 'schedule') state.page.schedule = 1;
     clearTimeout(qTimer); qTimer = setTimeout(() => render(tab), 120);
   }
