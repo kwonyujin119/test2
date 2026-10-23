@@ -30,7 +30,8 @@
     --shadow-lg: 0 12px 40px rgba(10,31,76,.16);
     --radius: 16px; --radius-sm: 12px;
     /* 일정 카테고리 색 (교육은 주색 남색과 겹치지 않게 청록) */
-    --c-ICTC: #123A8C; --c-ICTC-soft: #E3EAF8; --c-시민체험: #0F766E; --c-시민체험-soft: #D7F3EF;
+    --c-ICTC: #123A8C; --c-ICTC-soft: #E3EAF8; --c-시민체험팀: #0F766E; --c-시민체험팀-soft: #D7F3EF;
+    --c-지휘역량팀: #4338CA; --c-지휘역량팀-soft: #E8E7FF; --c-사고자: #8B1A1A; --c-사고자-soft: #FBE4E4;
     --c-교육: #0E7490; --c-교육-soft: #E0F2F7;
     --c-평가: #C42B38; --c-평가-soft: #FFEEF0;
     --c-회의: #6D4FD6; --c-회의-soft: #EFEBFF;
@@ -39,7 +40,8 @@
     --c-기타: #5B6472; --c-기타-soft: #f2f4f6;
     --c-주요업무: #8A6A00; --c-주요업무-soft: #FFF6D1;
     /* 업무 카테고리 색 */
-    --t-ICTC: #123A8C; --t-ICTC-soft: #E3EAF8; --t-시민체험: #0F766E; --t-시민체험-soft: #D7F3EF;
+    --t-ICTC: #123A8C; --t-ICTC-soft: #E3EAF8; --t-시민체험팀: #0F766E; --t-시민체험팀-soft: #D7F3EF;
+    --t-지휘역량팀: #4338CA; --t-지휘역량팀-soft: #E8E7FF;
     --t-교육운영: #0E7490; --t-교육운영-soft: #E0F2F7;
     --t-행정: #6D4FD6; --t-행정-soft: #EFEBFF;
     --t-시설장비: #A34A05; --t-시설장비-soft: #FFF4E5;
@@ -59,12 +61,14 @@
       --done-bg: #12261C; --done-line: #1E4A31;
       --sat: #8FB0F5; --sun: #FF6B76;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
-      --c-ICTC: #7FA6FF; --c-ICTC-soft: #1B2A52; --c-시민체험: #4FD1C5; --c-시민체험-soft: #0F3330;
+      --c-ICTC: #7FA6FF; --c-ICTC-soft: #1B2A52; --c-시민체험팀: #4FD1C5; --c-시민체험팀-soft: #0F3330;
+      --c-지휘역량팀: #A5B4FC; --c-지휘역량팀-soft: #22245A; --c-사고자: #F08A8A; --c-사고자-soft: #3E1A1A;
       --c-교육: #38C4E0; --c-교육-soft: #0F3140; --c-평가: #FF6B76; --c-평가-soft: #3A1F2A;
       --c-회의: #A99BFF; --c-회의-soft: #27244A; --c-방문: #4CC38A; --c-방문-soft: #123226;
       --c-출장: #FFB347; --c-출장-soft: #3A2A12; --c-기타: #9AA4B8; --c-기타-soft: #263050;
       --c-주요업무: #F2CD55; --c-주요업무-soft: #3A2F0A;
-      --t-ICTC: #7FA6FF; --t-ICTC-soft: #1B2A52; --t-시민체험: #4FD1C5; --t-시민체험-soft: #0F3330;
+      --t-ICTC: #7FA6FF; --t-ICTC-soft: #1B2A52; --t-시민체험팀: #4FD1C5; --t-시민체험팀-soft: #0F3330;
+      --t-지휘역량팀: #A5B4FC; --t-지휘역량팀-soft: #22245A;
       --t-교육운영: #38C4E0; --t-교육운영-soft: #0F3140; --t-행정: #A99BFF; --t-행정-soft: #27244A;
       --t-시설장비: #FFB347; --t-시설장비-soft: #3A2A12; --t-대외협력: #4CC38A; --t-대외협력-soft: #123226;
       --t-예산: #FF6B76; --t-예산-soft: #3A1F2A; --t-기타: #9AA4B8; --t-기타-soft: #263050;
@@ -249,7 +253,9 @@
   .pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--cat-soft, var(--c-기타-soft)); color: var(--cat, var(--c-기타)); letter-spacing: 0; }
   .chevron { color: var(--text-3); flex-shrink: 0; margin-top: 3px; }
   .cat-ICTC { --cat: var(--c-ICTC); --cat-soft: var(--c-ICTC-soft); }
-  .cat-시민체험 { --cat: var(--c-시민체험); --cat-soft: var(--c-시민체험-soft); }
+  .cat-지휘역량팀 { --cat: var(--c-지휘역량팀); --cat-soft: var(--c-지휘역량팀-soft); }
+  .cat-시민체험팀 { --cat: var(--c-시민체험팀); --cat-soft: var(--c-시민체험팀-soft); }
+  .cat-사고자 { --cat: var(--c-사고자); --cat-soft: var(--c-사고자-soft); }
   .cat-교육 { --cat: var(--c-교육); --cat-soft: var(--c-교육-soft); }
   .cat-평가 { --cat: var(--c-평가); --cat-soft: var(--c-평가-soft); }
   .cat-회의 { --cat: var(--c-회의); --cat-soft: var(--c-회의-soft); }
@@ -263,7 +269,8 @@
   .task-list .month-head .cnt { font-weight: 600; font-size: 12px; }
   .task-list .month-head:first-child { margin-top: 0; }
   .tcat-ICTC { --cat: var(--t-ICTC); --cat-soft: var(--t-ICTC-soft); }
-  .tcat-시민체험 { --cat: var(--t-시민체험); --cat-soft: var(--t-시민체험-soft); }
+  .tcat-지휘역량팀 { --cat: var(--t-지휘역량팀); --cat-soft: var(--t-지휘역량팀-soft); }
+  .tcat-시민체험팀 { --cat: var(--t-시민체험팀); --cat-soft: var(--t-시민체험팀-soft); }
   .tcat-교육운영 { --cat: var(--t-교육운영); --cat-soft: var(--t-교육운영-soft); }
   .tcat-행정 { --cat: var(--t-행정); --cat-soft: var(--t-행정-soft); }
   .tcat-시설장비 { --cat: var(--t-시설장비); --cat-soft: var(--t-시설장비-soft); }
@@ -1249,9 +1256,10 @@
   /* 상태는 색만이 아니라 아이콘으로도 구분 */
   const STATUS_ICON = { '예정': svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), '진행중': svg('<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5Z" fill="currentColor"/>'),
     '완료': svg('<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-6"/>'), '보류': svg('<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>') };
-  const CATEGORIES = ['주요업무', 'ICTC', '시민체험', '교육', '평가', '회의', '방문', '출장', '기타'];
-  // 화면 표시 우선순위: 1 주요업무 · 2 ICTC · 3 시민체험 · 4 나머지(기타 포함)
-  const TEAM_PRIO = { '주요업무': 0, 'ICTC': 1, '시민체험': 2 };
+  const CATEGORIES = ['주요업무', 'ICTC', '지휘역량팀', '시민체험팀', '사고자', '교육', '평가', '회의', '방문', '출장', '기타'];
+  // 화면 표시 우선순위: 1 주요업무 · 2 ICTC · 3 지휘역량팀 · 4 시민체험팀 · 5 나머지(기타 포함)
+  const TEAM_PRIO = { '주요업무': 0, 'ICTC': 1, '지휘역량팀': 2, '시민체험팀': 3 };
+  const PRIO_REST = 4;
   /* 키워드 검색: 탭마다 따로. 제목·장소·담당·메모·구분·날짜에서 찾는다 */
   const Q = { schedule: '', tasks: '', personal: '' };
   const qNorm = v => String(v || '').toLowerCase().replace(/\s+/g, '');
@@ -1260,12 +1268,13 @@
   // 강조는 원문에서 찾은 뒤 조각마다 이스케이프한다(이스케이프한 글에서 찾으면 &amp; 같은 엔티티 안이 깨질 수 있음)
   const qMark = (text, q) => { const raw = String(text == null ? '' : text); const ts = qTerms(q); if (!ts.length) return esc(raw);
     try { const re = new RegExp(ts.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'); let out = '', last = 0, m; while ((m = re.exec(raw))) { if (!m[0]) { re.lastIndex++; continue; } out += esc(raw.slice(last, m.index)) + `<mark>${esc(m[0])}</mark>`; last = m.index + m[0].length; } return out + esc(raw.slice(last)); } catch (x) { return esc(raw); } };
-  const prioOf = tags => Math.min(3, ...(tags || []).map(t => TEAM_PRIO[t] ?? 3));
+  const prioOf = tags => Math.min(PRIO_REST, ...(tags || []).map(t => TEAM_PRIO[t] ?? PRIO_REST));
   const prioChips = chips => [...chips.filter(c => TEAM_PRIO[c.key] != null), ...zerosLast(chips.filter(c => TEAM_PRIO[c.key] == null))];
   const TASK_OF = id => 'sch-' + id;   // 일정 → 연동 주요업무 카드 id
-  const LEGACY_CAT = { '실습': '교육', '점검': '기타', '행사': '기타' };
-  const TASK_CATEGORIES = ['ICTC', '시민체험', '교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
-  const taskPrio = t => t.fromSchedule ? 0 : (TEAM_PRIO[t.category] ?? 3);
+  const LEGACY_CAT = { '실습': '교육', '점검': '기타', '행사': '기타', '시민체험': '시민체험팀', 'ictc': 'ICTC', 'Ictc': 'ICTC' };   // 옛 이름은 새 이름으로 읽는다(저장된 데이터는 그대로)
+  const TASK_CATEGORIES = ['ICTC', '지휘역량팀', '시민체험팀', '교육운영', '행정', '시설장비', '대외협력', '예산', '기타'];
+  const LEGACY_TCAT = { '시민체험': '시민체험팀', 'ictc': 'ICTC' };
+  const taskPrio = t => t.fromSchedule ? 0 : (TEAM_PRIO[tcatOf(t)] ?? PRIO_REST);
   const STATUSES = ['예정', '진행중', '완료', '보류'];
   const STATUS_ORDER = { '진행중': 0, '예정': 1, '보류': 2, '완료': 3 };
   const LS = { items: 'ictc.items.v2', boards: 'ictc.boards.v1', users: 'ictc.users.v1', pin: 'ictc.pin', viewPin: 'ictc.viewPin', server: 'ictc.serverUrl', me: 'ictc.me', board: 'ictc.board', legacy: { schedule: 'ictc.schedule.v1', tasks: 'ictc.tasks.v1' } };
@@ -1312,7 +1321,7 @@
   const normCat = t => CATEGORIES.includes(t) ? t : (LEGACY_CAT[t] || '기타');
   const tagsOf = ev => { const raw = Array.isArray(ev.tags) && ev.tags.length ? ev.tags : [ev.tag]; return [...new Set(raw.map(normCat))]; };
   const catOf = ev => tagsOf(ev)[0];
-  const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : '기타';
+  const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : (LEGACY_TCAT[t.category] || '기타');
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const endOf = ev => (ev.endDate && ev.endDate > ev.date) ? ev.endDate : ev.date;
@@ -1321,7 +1330,7 @@
   const md = date => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); const multi = endOf(ev) !== ev.date;
     return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})${multi ? ' ~ ' + md(endOf(ev)) : ''} ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
-  const expand = items => { const occ = []; items.forEach(ev => { const ds = daysOf(ev); ds.forEach((day, i) => occ.push({ ev, day, idx: i, total: ds.length })); }); return occ.sort((a, b) => a.day.localeCompare(b.day) || prioOf(tagsOf(a.ev)) - prioOf(tagsOf(b.ev)) || (a.ev.start || '').localeCompare(b.ev.start || '')); };   // 같은 날: 주요업무 → ICTC → 시민체험 → 나머지, 그 안에서 시간순
+  const expand = items => { const occ = []; items.forEach(ev => { const ds = daysOf(ev); ds.forEach((day, i) => occ.push({ ev, day, idx: i, total: ds.length })); }); return occ.sort((a, b) => a.day.localeCompare(b.day) || prioOf(tagsOf(a.ev)) - prioOf(tagsOf(b.ev)) || (a.ev.start || '').localeCompare(b.ev.start || '')); };   // 같은 날: 주요업무 → ICTC → 시민체험팀 → 나머지, 그 안에서 시간순
   function syncEndDate(form) { const s = form.elements.date.value, e = form.elements.endDate; if (s && (!e.value || e.value < s)) e.value = s; }
   const normId = s => (s || '').replace(/\D/g, '').slice(-4);
   const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
@@ -2734,7 +2743,7 @@
     const raw = xlCell(s); const n = xlNorm(raw);
     if (!n) return { cat: '기타', raw: '' };
     const exact = TASK_CATEGORIES.find(c => xlNorm(c) === n); if (exact) return { cat: exact, raw: '' };
-    const rules = [['ICTC', /ictc|지휘역량|지휘/i], ['시민체험', /시민|체험/], ['교육운영', /교육|훈련|과정|강의|교관|실습|평가/], ['행정', /행정|서무|문서|인사|복무|보고|회의|계획/], ['시설장비', /시설|장비|장치|물품|시스템|점검|유지/], ['대외협력', /대외|협력|홍보|방문|교류|섭외/], ['예산', /예산|회계|계약|정산|구매|지출/]];
+    const rules = [['ICTC', /ictc/i], ['지휘역량팀', /지휘역량|지휘/], ['시민체험팀', /시민|체험/], ['교육운영', /교육|훈련|과정|강의|교관|실습|평가/], ['행정', /행정|서무|문서|인사|복무|보고|회의|계획/], ['시설장비', /시설|장비|장치|물품|시스템|점검|유지/], ['대외협력', /대외|협력|홍보|방문|교류|섭외/], ['예산', /예산|회계|계약|정산|구매|지출/]];
     const hit = rules.find(([, re]) => re.test(n));
     return { cat: hit ? hit[0] : '기타', raw: hit ? '' : raw };
   }
