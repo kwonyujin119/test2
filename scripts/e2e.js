@@ -14,7 +14,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.title = await P.locator('#boardName').innerText();
   r.logos = await P.locator('.logos img').evaluateAll(els => els.every(e => e.naturalWidth > 0));
   r.tabs = (await P.locator('.segment button').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
-  P.on('dialog', d => { const m = d.message(); if (m.includes('관리자 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else if (m.includes('41망에 표시할 이름')) d.accept('테스터'); else if (m.includes('입장코드 4자리')) d.accept(m.includes('교육지원과') ? '0000' : '5948'); else d.accept(); });
+  P.on('dialog', d => { const m = d.message(); if (m.includes('관리자 PIN')) d.accept('1234'); else if (m.includes('대시보드 이름')) d.accept('E2E 보드'); else if (m.includes('41망에 표시할 이름')) d.accept('테스터'); else if (m.includes('입장코드 4자리')) d.accept(m.includes('교육지원과') ? '0000' : '5948'); else if (m.includes('개인업무에 표시할 이름')) d.accept('홍길동'); else d.accept(); });
   r.noPinPromptOnSave = true;
   await P.keyboard.press('n'); await P.waitForTimeout(300);
   await P.fill('#scheduleForm [name=title]', 'E2E 일정'); await P.click('#catPicker button.cat-회의');
@@ -88,7 +88,9 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   await P.evaluate(() => gotoPage('tasks', 2)); await P.waitForTimeout(300); r.page2Label = await P.locator('#taskList .pager-nav span').innerText().catch(() => '');
   await P.evaluate(() => setPageSize('tasks', 10)); await P.waitForTimeout(200);
   await P.click('.segment [data-tab=personal]'); await P.waitForTimeout(300);
-  await P.click('#loginTabRegister'); await P.fill('#loginForm [name=uid]', '032-870-1234'); await P.fill('#loginForm [name=upw]', '1111'); await P.fill('#loginForm [name=uname]', '홍길동'); await P.fill('#loginForm [name=upw2]', '1111'); await P.click('#loginSubmit'); await P.waitForTimeout(800);
+  await P.fill('#loginForm [name=uid]', '032-870-1234'); await P.fill('#loginForm [name=upw]', '1111'); await P.click('#loginSubmit'); await P.waitForTimeout(900);   // 처음 → confirm 수락 → 자동 등록
+  r.personalDefaultName = await P.locator('#personalSummary .name').innerText().catch(() => '');
+  await P.evaluate(() => changeMyName()); await P.waitForTimeout(600);
   r.personalName = await P.locator('#personalSummary .name').innerText().catch(() => '');
   await P.keyboard.press('n'); await P.waitForTimeout(300); await P.fill('#taskForm [name=title]', 'E2E 개인'); await P.click('#taskForm button[type=submit]'); await P.waitForTimeout(700);
   r.personalSaved = await P.locator('#personalList .task-title', { hasText: 'E2E 개인' }).count();
@@ -120,14 +122,6 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   if (shared) { // 미리보기 모드는 브라우저별 저장이라 사용자가 없으므로 공유 모드에서만 검사
     await Q.fill('#loginForm [name=upw]', '9999'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
     r.wrongName = await Q.locator('#loginErr').innerText();
-    // 예전 방식(이름=비밀번호) 사용자 전환: 서버에 이름 그대로 pin 인 사용자를 만들어 두고 '처음 등록'으로 비밀번호 설정
-    await Q.evaluate(() => api.userRegister('5678', '남궁민수', '남궁민수'));
-    await Q.click('#loginTabRegister'); await Q.fill('#loginForm [name=uid]', '5678'); await Q.fill('#loginForm [name=upw]', '2222'); await Q.fill('#loginForm [name=uname]', '남궁민수'); await Q.fill('#loginForm [name=upw2]', '2222'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
-    r.migrated = await Q.locator('#personalSummary .name').innerText().catch(() => '');
-    await Q.evaluate(() => logout(true)); await Q.waitForTimeout(300);
-    await Q.fill('#loginForm [name=uid]', '5678'); await Q.fill('#loginForm [name=upw]', '2222'); await Q.click('#loginSubmit'); await Q.waitForTimeout(900);
-    r.migratedLogin = await Q.locator('#personalSummary .name').innerText().catch(() => '');
-    await Q.evaluate(() => logout(true)); await Q.waitForTimeout(300);
     await Q.fill('#loginForm [name=uid]', '1234');
   }
   await Q.fill('#loginForm [name=upw]', '1111'); await Q.click('#loginSubmit'); await Q.waitForTimeout(800);
@@ -145,8 +139,8 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   }
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
-  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalSaved: 1, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatRoomLast: '테스터: 📷 사진', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: 1, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요', migrated: '남궁민수', migratedLogin: '남궁민수' });
+  const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalDefaultName: '직원 1234', personalSaved: 1, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatRoomLast: '테스터: 📷 사진', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
+  if (shared) Object.assign(expect, { chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: 1, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

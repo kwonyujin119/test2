@@ -82,12 +82,11 @@
 
   /* ── 상단 바 ── */
   .appbar { position: sticky; top: 0; z-index: 50; padding-top: env(safe-area-inset-top); background: var(--navy); color: var(--on-navy); border-bottom: 3px solid var(--gold); box-shadow: 0 2px 10px rgba(6,31,92,.22); }
-  .appbar-inner { max-width: 880px; margin: 0 auto; padding: 14px 20px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
-  .appbar-row { display: flex; align-items: center; gap: 12px; grid-column: 1; min-width: 0; }
-  .appbar-inner > .appbar-right { grid-column: 2; grid-row: 1; }
-  .appbar-inner > .brandline { grid-row: 2; }
-  .appbar-inner > .segment { grid-row: 3; }
-  .appbar-inner > .segment { grid-column: 1 / -1; margin-top: 8px; }
+  .appbar-inner { max-width: 880px; margin: 0 auto; padding: 12px 20px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 10px; }
+  .appbar-row { display: flex; align-items: center; gap: 12px; grid-column: 1; grid-row: 1; min-width: 0; }
+  .appbar-inner > .brandline { grid-column: 2; grid-row: 1; }
+  .appbar-inner > .appbar-right { grid-column: 3; grid-row: 1; }
+  .appbar-inner > .segment { grid-column: 1 / -1; grid-row: 2; margin-top: 10px; }
   .logos { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .logos a { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 0 0 1.5px rgba(255,255,255,.35); transition: transform .15s, box-shadow .15s; }
   .logos a:hover { transform: scale(1.06); box-shadow: 0 2px 6px rgba(0,0,0,.35), 0 0 0 2px var(--gold); }
@@ -102,10 +101,9 @@
   .board-add { width: 34px; height: 34px; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,.5); background: transparent; color: var(--on-navy-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
   .board-add:hover { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(245,196,0,.14); }
   /* SAIL:41 워드마크: 상단 바 가운데, 탭 위 */
-  .brandline { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; position: relative; margin-top: 8px; min-height: 22px; }
-  .brandline .appname { font-size: 17px; font-weight: 800; letter-spacing: 2px; color: var(--gold, #F5C400); line-height: 1; }
+  .brandline { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .brandline .appname { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--gold, #F5C400); line-height: 1; }
   .brandline .appname span { letter-spacing: 1px; }
-  .brandline .admin-badge { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
   .lock .lock-title { font-size: 30px; font-weight: 800; letter-spacing: 3px; color: var(--navy, #0A2F7E); margin-left: 3px; }
   .lock .lock-title .lock-num { letter-spacing: 1px; color: var(--gold-text, #8A6A00); font-size: 22px; vertical-align: 3px; margin-left: 2px; }
   .lock .lock-sub { font-size: 13px; color: var(--text-3); margin: 2px 0 10px; }
@@ -367,7 +365,7 @@
   .admin-badge { display: none; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #3DBA12, #1A7F37); padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
   body.admin .admin-badge { display: inline-flex; }
   body.admin .appbar { border-bottom-color: #3DBA12; }
-  @media (max-width: 640px) { body.admin::after { border-width: 3px; } .admin-badge { font-size: 9.5px; padding: 1px 6px; } }
+  @media (max-width: 640px) { body.admin::after { border-width: 3px; } .admin-badge { font-size: 0; width: 10px; height: 10px; padding: 0; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.35); } .brandline .appname { font-size: 16px; letter-spacing: 1.5px; } }
 
   /* ── 필터 고정 (모바일·태블릿) ── */
   @media (max-width: 1023px) {
@@ -408,12 +406,13 @@
   @media (min-width: 1024px) {
     body { padding-bottom: 60px; }
     .appbar-inner, main { max-width: 1240px; padding-left: 32px; padding-right: 32px; }
-    .appbar-inner { display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr); align-items: center; gap: 20px; padding-top: 12px; padding-bottom: 12px; }
-    .appbar-row { grid-column: 1; grid-row: 1 / span 2; } .appbar-inner > .appbar-right { grid-column: 3; grid-row: 1 / span 2; justify-self: end; }
-    .appbar-inner > .brandline { grid-column: 2; grid-row: 1; margin: 0 0 6px; min-height: 0; }
-    .brandline .appname { font-size: 19px; letter-spacing: 2.5px; }
-    .appbar-inner > .segment { grid-column: 2; grid-row: 2; margin-top: 0; width: 420px; }
-    .appbar-inner { row-gap: 0; padding-top: 10px; padding-bottom: 10px; }
+    .appbar-inner { align-items: center; gap: 18px; }
+    .appbar-inner { grid-template-columns: minmax(0, 1.2fr) auto auto minmax(0, 1fr); }
+    .appbar-row { grid-column: 1; grid-row: 1; } .appbar-inner > .brandline { grid-column: 2; grid-row: 1; margin-right: 6px; }
+    .appbar-inner > .segment { grid-column: 3; grid-row: 1; margin-top: 0; width: 420px; }
+    .appbar-inner > .appbar-right { grid-column: 4; grid-row: 1; justify-self: end; }
+    .brandline .appname { font-size: 20px; letter-spacing: 2.5px; }
+    .appbar-inner { padding-top: 10px; padding-bottom: 10px; }
     .logos a { width: 52px; height: 52px; } .logos img { height: 42px; }
     .appbar h1 { max-width: 320px; }
     main { padding-top: 24px; }
@@ -544,9 +543,6 @@
   .login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 24px; max-width: 420px; margin: 0 auto; }
   .login-card h2 { font-size: 19px; font-weight: 800; margin-bottom: 4px; color: var(--primary-text); }
   .login-card p { font-size: 13.5px; color: var(--text-3); margin-bottom: 18px; line-height: 1.55; }
-  .login-tabs { display: flex; background: var(--card-2); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
-  .login-tabs button { flex: 1; border: none; background: transparent; border-radius: 10px; padding: 9px 0; font-size: 14px; font-weight: 700; color: var(--text-3); transition: .15s; }
-  .login-tabs button.on { background: var(--card); color: var(--primary-text); box-shadow: var(--shadow); }
   .login-card .err { color: var(--red); font-size: 13px; font-weight: 600; min-height: 18px; margin: 4px 0 8px; }
   .login-card .err-hint { color: var(--text-3); font-size: 13px; margin: -6px 0 8px; display: none; }
   .login-card .err-hint.show { display: block; }
@@ -688,10 +684,10 @@
   }
   /* ── 기기별 미세 조정(위의 공통 규칙보다 뒤에 두어 우선 적용) ── */
   /* 1024~1279px(태블릿 가로·작은 노트북): 탭을 좁히고 로고를 줄여 제목이 잘리지 않게 */
-  @media (min-width: 1024px) and (max-width: 1279px) { .appbar-inner > .segment { width: 360px; } .logos a { width: 44px; height: 44px; } .logos img { height: 35px; } .appbar h1 { font-size: 18px; } .appbar-inner { gap: 14px; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .appbar-inner { grid-template-columns: minmax(0, 1.6fr) auto auto minmax(0, 1fr); gap: 12px; } .admin-badge { font-size: 0; width: 10px; height: 10px; padding: 0; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.35); } .brandline .appname { font-size: 18px; letter-spacing: 2px; } .appbar-inner > .segment { width: 360px; } .logos a { width: 44px; height: 44px; } .logos img { height: 35px; } .appbar h1 { font-size: 18px; } .appbar-inner { gap: 14px; }
  }
   /* 아주 좁은 폰(갤럭시 폴드 커버 등, 380px 미만) */
-  @media (max-width: 379px) { .board-btn > svg { display: none; } .appbar h1 { font-size: 15px; } .logos a { width: 40px; height: 40px; } .logos img { height: 32px; } .appbar-row { gap: 6px; } .segment button { font-size: 12.5px; } .segment button small { font-size: 10px; } .summary .big { font-size: 17px; } .chip { padding-left: 10px; padding-right: 10px; } }
+  @media (max-width: 379px) { .board-btn > svg { display: none; } .brandline .appname { font-size: 14px; letter-spacing: 1px; } .appbar-inner { column-gap: 6px; } .appbar h1 { font-size: 15px; } .logos a { width: 40px; height: 40px; } .logos img { height: 32px; } .appbar-row { gap: 6px; } .segment button { font-size: 12.5px; } .segment button small { font-size: 10px; } .summary .big { font-size: 17px; } .chip { padding-left: 10px; padding-right: 10px; } }
   /* 폰 가로 모드(높이 500px 미만): 고정 필터를 풀어 화면을 확보 */
   @media (max-height: 500px) and (max-width: 1023px) { .filters { position: static !important; box-shadow: none; } .fab { height: 44px; bottom: 12px; } .a2hs { display: none !important; } }
 </style>
@@ -771,19 +767,14 @@
     <div class="personal-login" id="personalLogin">
       <form class="login-card" id="loginForm" onsubmit="submitLogin(event)">
         <h2 id="loginTitle">개인업무</h2>
-        <p id="loginDesc">행정전화번호 뒤 4자리와 비밀번호 4자리로 들어가요. 내 업무는 나만 볼 수 있어요.</p>
-        <div class="login-tabs" role="tablist"><button type="button" class="on" id="loginTabLogin" role="tab" aria-selected="true" onclick="setLoginMode('login')">들어가기</button><button type="button" id="loginTabRegister" role="tab" aria-selected="false" onclick="setLoginMode('register')">처음 등록</button></div>
+        <p id="loginDesc">행정전화번호 뒤 4자리와 내가 정한 비밀번호 4자리로 들어가요. 처음이면 그 자리에서 바로 등록돼요. 내 업무는 나만 볼 수 있어요.</p>
         <div class="row">
           <div class="field"><label>행정전화번호 뒤 4자리</label><input name="uid" inputmode="numeric" autocomplete="username" placeholder="예) 1234 (전체 번호도 됨)" required></div>
           <div class="field"><label>비밀번호 4자리</label><input name="upw" type="password" inputmode="numeric" autocomplete="current-password" placeholder="숫자 4자리" required></div>
         </div>
-        <div class="row reg-only" id="loginRegRow" style="display:none">
-          <div class="field"><label>이름</label><input name="uname" maxlength="20" autocomplete="name" placeholder="예) 홍길동"></div>
-          <div class="field"><label>비밀번호 확인</label><input name="upw2" type="password" inputmode="numeric" autocomplete="new-password" placeholder="한 번 더"></div>
-        </div>
         <div class="err" id="loginErr"></div><div class="err-hint" id="loginErrHint"></div>
         <button type="submit" class="btn primary" id="loginSubmit" style="width:100%">들어가기</button>
-        <p class="login-note" id="loginNote">비밀번호는 본인만 알아요. 잊으면 담당자가 초기화해 줘요.</p>
+        <p class="login-note" id="loginNote">비밀번호는 본인만 알아요. 잊으면 담당자가 초기화해 줘요. 이름은 들어간 뒤 ⋮ → 내 이름 변경에서 정할 수 있어요.</p>
       </form>
     </div>
     <aside class="side" id="personalSide" style="display:none">
@@ -803,6 +794,7 @@
       <div class="side-actions">
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
         <button class="btn ghost" onclick="importExcel()">엑셀로 가져오기</button>
+        <button class="btn ghost" onclick="changeMyName()">이름 변경</button>
         <button class="btn ghost" onclick="changeMyPin()">비밀번호 변경</button>
         <button class="btn ghost" onclick="logout()">로그아웃</button>
         <div class="hint"><kbd>N</kbd> 새 개인업무 · <kbd>Esc</kbd> 닫기</div>
@@ -823,6 +815,7 @@
   <button id="menuBoardDelete" data-ico="trash" class="danger" onclick="deleteBoard()"><span>이 대시보드 삭제</span></button>
   <hr class="admin-only">
   <button id="menuViewPin" data-ico="eye" style="display:none" onclick="changeViewPin()"><span>팀 PIN 다시 입력</span></button>
+  <button id="menuMyName" data-ico="pencil" style="display:none" onclick="changeMyName()"><span>내 이름 변경</span></button>
   <button id="menuMyPin" data-ico="key" style="display:none" onclick="changeMyPin()"><span>내 비밀번호 변경</span></button>
   <button id="menuLogout" data-ico="logout" style="display:none" onclick="logout()"><span>개인업무 로그아웃</span></button>
   <button id="menuExcel" data-ico="upload" style="display:none" onclick="importExcel()"><span>엑셀로 개인업무 가져오기</span></button>
@@ -1098,6 +1091,9 @@
   function syncEndDate(form) { const s = form.elements.date.value, e = form.elements.endDate; if (s && (!e.value || e.value < s)) e.value = s; }
   const normId = s => (s || '').replace(/\D/g, '').slice(-4);
   const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
+  // 화면(상단 제목)에는 줄임 이름, 선택 목록·문서 제목에는 풀네임
+  const SHORT_NAME = { '지휘역량강화센터': 'ICTC', '교육지원과': '지원', '교육기획과': '기획', '훈련운영과': '훈련' };
+  const shortName = n => SHORT_NAME[(n || '').trim()] || n;
 
   let toastTimer;
   function toast(msg, ms) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms || Math.min(5000, 2200 + Math.max(0, msg.length - 12) * 90)); }
@@ -1145,6 +1141,7 @@
       userLogin: (id, upin) => rpc('ictc_user_login', { p_id: id, p_pin: upin }),
       userSetPin: (id, old, nw) => rpc('ictc_user_set_pin', { p_id: id, p_old: old, p_new: nw }),
       userResetPin: (pin, id, nw) => rpc('ictc_user_reset_pin', { p_edit_pin: pin, p_id: id, p_new: nw }),
+      userSetName: (id, upin, name) => rpc('ictc_user_set_name', { p_id: id, p_pin: upin, p_name: name }),
       userRename: (pin, id, name) => rpc('ictc_user_rename', { p_edit_pin: pin, p_id: id, p_name: name }),
       personalList: async (id, upin) => rows2(await rpc('ictc_personal_list', { p_id: id, p_pin: upin })),
       personalSave: (id, upin, item) => rpc('ictc_personal_save', { p_id: id, p_pin: upin, p_item: item }),
@@ -1188,6 +1185,7 @@
       userLogin: async (id, upin) => (await post('/api/user_login', { id, user_pin: upin })).name,
       userSetPin: (id, old, nw) => post('/api/user_set_pin', { id, user_pin: old, new_pin: nw }),
       userResetPin: (pin, id, nw) => post('/api/user_reset_pin', { pin, id, new_pin: nw }),
+      userSetName: (id, upin, name) => post('/api/user_set_name', { id, user_pin: upin, name }),
       userRename: (pin, id, name) => post('/api/user_rename', { pin, id, name }),
       personalList: async (id, upin) => rows2(await post('/api/personal_list', { id, user_pin: upin })),
       personalSave: (id, upin, item) => post('/api/personal_save', { id, user_pin: upin, item }),
@@ -1235,6 +1233,7 @@
       userLogin: async (id, upin) => { const u = users()[id]; if (!u) throw new ApiError('USER_NOT_FOUND'); if (u.pin !== upin) throw new ApiError('USER_PIN_INVALID'); return u.name; },
       userSetPin: async (id, old, nw) => { const u = users(); if (!u[id] || u[id].pin !== old) throw new ApiError('USER_PIN_INVALID'); u[id].pin = nw; lsSet(LS.users, u); },
       userResetPin: async (pin, id, nw) => { const u = users(); if (!u[id]) throw new ApiError('USER_NOT_FOUND'); u[id].pin = nw; lsSet(LS.users, u); },
+      userSetName: async (id, upin, name) => { const u = users(); if (!u[id]) throw new ApiError('USER_NOT_FOUND'); if (u[id].pin !== upin) throw new ApiError('USER_PIN_INVALID'); u[id].name = name.trim(); lsSet(LS.users, u); },
       userRename: async (pin, id, name) => { const u = users(); if (!u[id]) throw new ApiError('USER_NOT_FOUND'); u[id].name = name.trim(); lsSet(LS.users, u); },
       personalList: async (id) => ({ updated: null, items: getItems('personal', id) }),
       personalSave: async (id, upin, item) => api.save('personal', item, id),
@@ -1367,7 +1366,7 @@
     // 맨 아래: 관리자 로그인(일반 사용자) / 관리자 모드 해제(관리자). 미리보기 모드에는 없음
     const isAdminDevice = document.body.classList.contains('admin');
     show('menuPin', REMOTE && !isAdminDevice); show('menuAdminOff', REMOTE && isAdminDevice); show('menuAdminHr', REMOTE);
-    show('menuLogout', !!state.me); show('menuMyPin', !!state.me);
+    show('menuLogout', !!state.me); show('menuMyPin', !!state.me); show('menuMyName', !!state.me);
     show('menuExcel', !!state.me);
     m.classList.toggle('open');
   }
@@ -1382,7 +1381,7 @@
     btn.addEventListener('click', e => { if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; } }, true);
     btn.addEventListener('contextmenu', e => { if (REMOTE) e.preventDefault(); });
   })();
-  function renderBoardTitle() { document.getElementById('boardName').textContent = boardName(); document.title = 'SAIL:41 · ' + boardName(); }
+  function renderBoardTitle() { const h = document.getElementById('boardName'); h.textContent = shortName(boardName()); h.title = boardName(); document.title = 'SAIL:41 · ' + boardName(); }
   function toggleBoardMenu(e) {
     e.stopPropagation(); document.getElementById('menu').classList.remove('open');
     const m = document.getElementById('boardMenu'); if (m.classList.contains('open')) { closeBoardMenu(); return; }
@@ -1739,52 +1738,39 @@
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
   function renderLoginForm() {}
-  let loginMode = 'login';
   const PW_RE = /^\d{4}$/;
-  function setLoginMode(m) {
-    loginMode = m; const reg = m === 'register';
-    document.getElementById('loginRegRow').style.display = reg ? '' : 'none';
-    document.getElementById('loginTabLogin').classList.toggle('on', !reg); document.getElementById('loginTabLogin').setAttribute('aria-selected', String(!reg));
-    document.getElementById('loginTabRegister').classList.toggle('on', reg); document.getElementById('loginTabRegister').setAttribute('aria-selected', String(reg));
-    document.getElementById('loginSubmit').textContent = reg ? '등록하고 들어가기' : '들어가기';
-    document.getElementById('loginNote').textContent = reg ? '이름은 업무 카드의 담당자로 표시돼요. 전에 이름으로 들어가던 분도 여기서 이름과 새 비밀번호를 넣으면 전환돼요.' : '비밀번호는 본인만 알아요. 잊으면 담당자가 초기화해 줘요.';
-    const f = document.getElementById('loginForm'); f.elements.upw.autocomplete = reg ? 'new-password' : 'current-password';
-    document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show');
-  }
+  const defaultName = id => '직원 ' + id;
   async function submitLogin(e) {
     e.preventDefault();
     const f = document.getElementById('loginForm'); const id = normId(f.elements.uid.value), pw = (f.elements.upw.value || '').replace(/\D/g, '');
-    const name = (f.elements.uname.value || '').trim(), pw2 = (f.elements.upw2.value || '').replace(/\D/g, '');
     const err = document.getElementById('loginErr'); err.textContent = ''; const hint = document.getElementById('loginErrHint'); hint.classList.remove('show');
     const showHint = t => { hint.textContent = t; hint.classList.add('show'); };
     if (id.length !== 4) { err.textContent = '뒤 4자리 숫자를 입력하세요'; f.elements.uid.focus(); return; }
     if (!PW_RE.test(pw)) { err.textContent = '비밀번호는 숫자 4자리예요'; f.elements.upw.focus(); return; }
-    if (loginMode === 'register') {
-      if (name.length < 2) { err.textContent = '이름을 2자 이상 입력하세요'; f.elements.uname.focus(); return; }
-      if (pw2 !== pw) { err.textContent = '비밀번호 확인이 달라요'; f.elements.upw2.focus(); return; }
-    }
     const btn = document.getElementById('loginSubmit'); btn.disabled = true;
     try {
       let nm, msg;
-      if (loginMode === 'register') {
-        try { nm = await api.userRegister(id, name, pw); msg = `${nm}님, 등록했어요`; }
-        catch (ex) {
-          if (ex.code !== 'USER_EXISTS') throw ex;
-          // 예전 방식(이름이 곧 비밀번호)으로 등록된 사용자 → 이름이 맞으면 새 비밀번호로 전환
-          try { await api.userSetPin(id, name, pw); nm = name; msg = `${nm}님, 비밀번호를 설정했어요`; }
-          catch (ex2) { err.textContent = '이미 등록된 번호예요'; showHint('비밀번호로 들어가거나, 잊었으면 담당자에게 초기화를 요청하세요'); btn.disabled = false; return; }
-        }
-      } else {
-        nm = await api.userLogin(id, pw); msg = `${nm}님, 환영합니다`;
+      try { nm = await api.userLogin(id, pw); msg = `${nm}님, 환영합니다`; }
+      catch (ex) {
+        if (ex.code !== 'USER_NOT_FOUND') throw ex;
+        // 처음 쓰는 번호: 번호 오타를 한 번 확인한 뒤 바로 등록
+        if (!confirm(`${id} 번호는 아직 등록되지 않았어요.\n이 번호와 지금 넣은 비밀번호로 새로 등록할까요?\n(번호를 잘못 넣었으면 취소)`)) { btn.disabled = false; return; }
+        nm = await api.userRegister(id, defaultName(id), pw); msg = `등록했어요. 이름은 ⋮ → 내 이름 변경에서 정할 수 있어요`;
       }
-      state.me = { id, pin: pw, name: nm }; lsSet(LS.me, state.me); f.reset(); setLoginMode('login');
-      await refresh('personal'); toast(msg); showTab('personal');
+      state.me = { id, pin: pw, name: nm }; lsSet(LS.me, state.me); f.reset();
+      await refresh('personal'); toast(msg, 4500); showTab('personal');
     } catch (ex) {
       err.textContent = ex.message;
-      if (ex.code === 'USER_NOT_FOUND') showHint('처음이면 위의 \'처음 등록\'을 눌러 주세요');
-      else if (ex.code === 'USER_PIN_INVALID') showHint('잊었으면 담당자에게 초기화를 요청하세요. 전에 이름으로 들어가던 분은 \'처음 등록\'에서 이름과 새 비밀번호를 넣으면 전환돼요');
+      if (ex.code === 'USER_PIN_INVALID') showHint('잊었으면 담당자에게 비밀번호 초기화를 요청하세요. 전에 이름으로 들어가던 분도 담당자가 새 비밀번호를 정해 드려요');
     }
     btn.disabled = false;
+  }
+  async function changeMyName() {
+    if (!state.me) return;
+    const nm = (prompt('개인업무에 표시할 이름을 입력하세요 (업무 카드의 담당자로 보여요)', state.me.name && !/^직원 \d{4}$/.test(state.me.name) ? state.me.name : '') || '').trim().slice(0, 20);
+    if (!nm) return; if (nm.length < 2) { toast('이름은 2자 이상'); return; }
+    try { await api.userSetName(state.me.id, state.me.pin, nm); state.me.name = nm; lsSet(LS.me, state.me); renderPersonal(); toast('이름을 바꿨어요'); }
+    catch (e) { toast(e.message); if (e.code === 'USER_PIN_INVALID') logout(true); }
   }
   async function changeMyPin() {
     if (!state.me) return;
@@ -1853,7 +1839,7 @@
     else if (board === state.board) await refresh(kind, true);
     renderTrash(rows || []); toast('복구했어요');
   }
-  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); setLoginMode('login'); document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show'); renderPersonal(); if (!silent) toast('로그아웃했어요'); }
+  function logout(silent) { state.me = null; state.personal = null; lsDel(LS.me); document.getElementById('loginErr').textContent = ''; document.getElementById('loginErrHint').classList.remove('show'); renderPersonal(); if (!silent) toast('로그아웃했어요'); }
   /* ── 저장 계층 ── */
   async function saveItem(kind, item) {
     try {

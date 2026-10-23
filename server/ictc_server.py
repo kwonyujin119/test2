@@ -27,7 +27,7 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.1'
+VERSION = '5.2'
 FILE_MAX = 10 * 1024 * 1024   # 41망 첨부파일 최대 10MB (DB 폴더 옆 files/ 에 저장)
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
@@ -486,6 +486,8 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.require_edit(b.get('pin')); db.chat_room_add(str(b.get('id', '')), str(b.get('name', '')), str(b.get('code', ''))); return self._json(204)
                 if fn == 'chat_room_delete':
                     self.require_edit(b.get('pin')); db.chat_room_delete(str(b.get('room', ''))); return self._json(204)
+                if fn == 'user_set_name':
+                    self.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_rename(str(b.get('id', '')), str(b.get('name', ''))[:20]); return self._json(204)
                 if fn == 'user_rename':
                     self.require_edit(b.get('pin')); db.user_rename(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
                 if fn == 'users_list':

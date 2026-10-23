@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드 · v4: 개인업무 비밀번호 4자리)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.2: 개인업무 이름 본인 변경 · v6.1: 41망 첨부파일 저장소 · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -253,6 +253,15 @@ begin
   if length(trim(coalesce(p_new, ''))) < 4 then raise exception 'PIN_TOO_SHORT'; end if;
   update public.ictc_users set pin_hash = crypt(trim(p_new), gen_salt('bf')) where id = p_id;
   if not found then raise exception 'USER_NOT_FOUND'; end if;
+end $$;
+
+-- 개인업무 이름 변경(본인, 비밀번호 확인). 등록 때는 '직원 1234' 같은 기본 이름이 들어가고 본인이 바꾼다
+create or replace function public.ictc_user_set_name(p_id text, p_pin text, p_name text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_user_check(p_id, p_pin);
+  if length(trim(coalesce(p_name, ''))) < 2 then raise exception 'NAME_REQUIRED'; end if;
+  update public.ictc_users set name = left(trim(p_name), 20) where id = p_id;
 end $$;
 
 -- 개인업무 이름 수정(담당자, 편집 PIN). 업무 카드의 담당자 표시도 이 이름을 쓴다

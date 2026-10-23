@@ -127,6 +127,10 @@ class H(BaseHTTPRequestHandler):
                 if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')
                 if len((g('p_new') or '').strip())<4: raise ValueError('PIN_TOO_SHORT')
                 USERS[g('p_id')]['pin']=g('p_new').strip(); return self._send(204)
+            if fn=='ictc_user_set_name':
+                user(g('p_id'),g('p_pin'))
+                if len((g('p_name') or '').strip())<2: raise ValueError('NAME_REQUIRED')
+                USERS[g('p_id')]['name']=g('p_name').strip()[:20]; return self._send(204)
             if fn=='ictc_user_rename':
                 edit(g('p_edit_pin'))
                 if g('p_id') not in USERS: raise ValueError('USER_NOT_FOUND')
