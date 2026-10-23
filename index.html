@@ -328,6 +328,33 @@
 
   .fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40; height: 52px; padding: 0 20px 0 16px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 0 8px 24px rgba(10,47,126,.38); transition: transform .15s, background .15s; }
   .fab:hover { background: var(--primary-hover); }
+  /* 키워드 검색창: 추가 버튼과 같은 알약 모양 */
+  .qbox { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 10px 0 14px; border-radius: 999px; background: var(--card); border: 1.5px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+  .qbox:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .qbox svg { width: 20px; height: 20px; color: var(--text-3); flex-shrink: 0; }
+  .qbox .qin { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--text); outline: none; }
+  .qbox .qin::-webkit-search-cancel-button { display: none; }
+  .qbox .qclear { display: none; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--card-2); color: var(--text-3); font-size: 18px; line-height: 1; }
+  .qbox.has .qclear { display: flex; align-items: center; justify-content: center; }
+  .qbox.has svg { color: var(--primary); }
+  .side-actions .qbox { margin-bottom: 4px; }
+  .qfab { position: fixed; right: 20px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 40; width: 180px; max-width: calc(100% - 40px); height: 46px; box-shadow: 0 8px 24px rgba(10,47,126,.25); }
+  .qfab:focus-within, .qfab.has { width: calc(100% - 40px); max-width: 420px; }
+  @media (min-width: 1024px) { .qfab { display: none; } body.wide .qfab { display: flex; right: 24px; bottom: 92px; width: 260px; } }
+  @media (max-height: 500px) and (max-width: 1023px) { .qfab { bottom: 68px; height: 40px; } }
+  mark { background: rgba(245,196,0,.45); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .q-summary { font-size: 13.5px; color: var(--text-2); background: var(--gold-soft); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 12px; }
+  .q-summary b { color: var(--text); }
+  .cal-cell.hit { background: var(--gold-soft); box-shadow: inset 0 0 0 2px var(--gold); }
+  /* 업무 달력 */
+  .task-list .grid-span { grid-column: 1 / -1; }
+  .cal-ev.done { opacity: .55; text-decoration: line-through; }
+  .cal-ev.late { border-left-color: var(--red); } .cal-ev.late b { color: var(--red); }
+  .cal-undated { margin-top: 14px; }
+  .undated-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .undated-row .cal-ev { width: auto; display: inline-block; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; border-left-width: 3px; cursor: pointer; }
+  .cal-agenda .task-list { grid-template-columns: 1fr; gap: 10px; }
+  .cal-cell.hit .n { color: var(--gold-text); font-weight: 800; }
   .fab:active { transform: scale(.95); }
   @media (min-width: 880px) { .fab { right: calc(50% - 440px + 20px); } }
   @media (min-width: 1024px) { .fab.show-pc { display: flex; right: max(24px, calc(50% - 620px + 24px)); bottom: 28px; } }
@@ -817,7 +844,7 @@
       <div class="brandline" aria-label="SAIL:41"><b class="appname">SAIL<span>:41</span></b><span class="admin-badge" title="이 기기에 관리자 PIN이 저장되어 있습니다">● 관리자</span></div>
       <div class="appbar-right">
         <button class="install-btn" id="installBtn" onclick="installApp()" title="앱으로 설치 · 홈 화면에 추가" aria-label="앱 설치"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></svg><span>앱 설치</span></button>
-        <button class="icon-btn chat-btn" id="chatBtn" aria-label="41망 톡방" title="41망 · 부서 톡방" onclick="openChat()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg><span class="chat-badge" id="chatBadge" style="display:none">0</span></button>
+        <button class="icon-btn chat-btn" id="chatBtn" aria-label="41망 톡방" title="41망 · 부서 톡방" onclick="openChat()"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><defs><mask id="cbm-hdr"><rect width="24" height="24" fill="#fff"/><path d="M9.2 2.8a8.4 6.4 0 1 0 0 12.8a8.4 6.4 0 1 0 0-12.8Z M2.4 18.8C3.5 17.5 4.1 15.8 4.3 13L8.9 14.8C7.4 16.7 5.4 18.1 2.4 18.8Z" fill="#000" transform="translate(9.2 9.2) scale(1.16) translate(-9.2 -9.2)"/></mask></defs><path d="M16 8.4a6.8 5.2 0 1 0 0 10.4a6.8 5.2 0 1 0 0-10.4Z M21.8 21.4C20.5 20.3 19.8 18.8 19.5 17.2L15.3 18.4C16.8 19.9 18.8 20.9 21.8 21.4Z" mask="url(#cbm-hdr)"/><path d="M9.2 2.8a8.4 6.4 0 1 0 0 12.8a8.4 6.4 0 1 0 0-12.8Z M2.4 18.8C3.5 17.5 4.1 15.8 4.3 13L8.9 14.8C7.4 16.7 5.4 18.1 2.4 18.8Z"/></svg><span class="chat-badge" id="chatBadge" style="display:none">0</span></button>
         <button class="icon-btn" id="menuBtn" aria-label="더보기" onclick="toggleMenu(event)"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
       </div>
     </div>
@@ -845,6 +872,7 @@
       <div class="summary" id="scheduleSummary"></div>
       <div class="filters"><div class="chips" id="scheduleFilters"></div></div>
       <div class="side-actions">
+        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="schedule" placeholder="키워드 검색" autocomplete="off" oninput="setQ('schedule', this.value)" onkeydown="if(event.key==='Escape'){setQ('schedule','');this.blur()}"><button type="button" class="qclear" onclick="setQ('schedule','')" aria-label="지우기">×</button></label>
         <button class="btn primary" onclick="openScheduleForm()">+ 일정 추가</button>
         <button class="btn ghost" onclick="toggleView()" id="viewToggleBtn">달력으로 보기</button>
         <div class="hint"><kbd>N</kbd> 새 일정 · <kbd>C</kbd> 달력 · <kbd>W</kbd> 넓게 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
@@ -868,7 +896,9 @@
         </div>
       </div>
       <div class="side-actions">
+        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="tasks" placeholder="키워드 검색" autocomplete="off" oninput="setQ('tasks', this.value)" onkeydown="if(event.key==='Escape'){setQ('tasks','');this.blur()}"><button type="button" class="qclear" onclick="setQ('tasks','')" aria-label="지우기">×</button></label>
         <button class="btn primary" onclick="openTaskForm()">+ 업무 추가</button>
+        <button class="btn ghost" onclick="toggleTaskView('tasks')">달력으로 보기</button>
         <div class="hint"><kbd>N</kbd> 새 업무 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 탭 · <kbd>Esc</kbd> 닫기</div>
       </div>
     </aside>
@@ -904,7 +934,9 @@
         </div>
       </div>
       <div class="side-actions">
+        <label class="qbox" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" data-tab="personal" placeholder="키워드 검색" autocomplete="off" oninput="setQ('personal', this.value)" onkeydown="if(event.key==='Escape'){setQ('personal','');this.blur()}"><button type="button" class="qclear" onclick="setQ('personal','')" aria-label="지우기">×</button></label>
         <button class="btn primary" onclick="openTaskForm(null, 'personal')">+ 개인업무 추가</button>
+        <button class="btn ghost" onclick="toggleTaskView('personal')">달력으로 보기</button>
         <button class="btn ghost" onclick="importExcel()">엑셀로 가져오기</button>
         <button class="btn ghost" onclick="changeMyName()">이름 변경</button>
         <button class="btn ghost" onclick="changeMyPin()">비밀번호 변경</button>
@@ -916,6 +948,7 @@
   </section>
 </main>
 
+<label class="qbox qfab" id="qfab" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" class="qin" id="qfabIn" placeholder="키워드 검색" autocomplete="off" oninput="setQ(currentTab(), this.value)" onkeydown="if(event.key==='Escape'){setQ(currentTab(),'');this.blur()}"><button type="button" class="qclear" onclick="setQ(currentTab(),'')" aria-label="지우기">×</button></label>
 <div class="wide-bar" id="wideBar"><button type="button" id="wideExit" onclick="toggleWide(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>기본 보기</button><button type="button" id="wideView" style="display:none" onclick="toggleView()">달력 보기</button></div>
 <button class="fab" id="fab" onclick="fabClick()" aria-label="추가"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="fabLabel">일정 추가</span></button>
 
@@ -1175,6 +1208,11 @@
   const CATEGORIES = ['주요업무', 'ICTC', '시민체험', '교육', '평가', '회의', '방문', '출장', '기타'];
   // 화면 표시 우선순위: 1 주요업무 · 2 ICTC · 3 시민체험 · 4 나머지(기타 포함)
   const TEAM_PRIO = { '주요업무': 0, 'ICTC': 1, '시민체험': 2 };
+  /* 키워드 검색: 탭마다 따로. 제목·장소·담당·메모·구분·날짜에서 찾는다 */
+  const Q = { schedule: '', tasks: '', personal: '' };
+  const qNorm = v => String(v || '').toLowerCase().replace(/\s+/g, '');
+  const qMatch = (it, q) => { if (!q) return true; const n = qNorm(q); return [it.title, it.place, it.owner, it.note, it.detail, it.category, it.date, it.due, ...(it.tags || [])].some(v => qNorm(v).includes(n)); };
+  const qMark = (text, q) => { const e = esc(text); const n = (q || '').trim(); if (!n) return e; try { return e.replace(new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); } catch (x) { return e; } };
   const prioOf = tags => Math.min(3, ...(tags || []).map(t => TEAM_PRIO[t] ?? 3));
   const prioChips = chips => [...chips.filter(c => TEAM_PRIO[c.key] != null), ...zerosLast(chips.filter(c => TEAM_PRIO[c.key] == null))];
   const TASK_OF = id => 'sch-' + id;   // 일정 → 연동 주요업무 카드 id
@@ -1232,7 +1270,7 @@
   const md = date => { const d = new Date(date + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; };
   const fmtWhen = ev => { if (!ev.date) return ''; const d = new Date(ev.date + 'T00:00:00'); const multi = endOf(ev) !== ev.date;
     return `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})${multi ? ' ~ ' + md(endOf(ev)) : ''} ${ev.start ? ev.start + (ev.end ? ' – ' + ev.end : '') : '종일'}`; };
-  const expand = items => { const occ = []; items.forEach(ev => { const ds = daysOf(ev); ds.forEach((day, i) => occ.push({ ev, day, idx: i, total: ds.length })); }); return occ.sort((a, b) => (a.day + (a.ev.start || '')).localeCompare(b.day + (b.ev.start || ''))); };
+  const expand = items => { const occ = []; items.forEach(ev => { const ds = daysOf(ev); ds.forEach((day, i) => occ.push({ ev, day, idx: i, total: ds.length })); }); return occ.sort((a, b) => a.day.localeCompare(b.day) || prioOf(tagsOf(a.ev)) - prioOf(tagsOf(b.ev)) || (a.ev.start || '').localeCompare(b.ev.start || '')); };   // 같은 날: 주요업무 → ICTC → 시민체험 → 나머지, 그 안에서 시간순
   function syncEndDate(form) { const s = form.elements.date.value, e = form.elements.endDate; if (s && (!e.value || e.value < s)) e.value = s; }
   const normId = s => (s || '').replace(/\D/g, '').slice(-4);
   const boardName = () => (state.boards.find(b => b.id === state.board) || DEFAULT_BOARD).name;
@@ -1444,9 +1482,11 @@
     document.getElementById('fabLabel').textContent = { schedule: '일정 추가', tasks: '업무 추가', personal: '개인업무 추가' }[name];
     const fab = document.getElementById('fab'); fab.style.display = (name === 'personal' && !state.me) ? 'none' : ''; fab.classList.toggle('show-pc', name === 'personal');
     if (typeof updateWideBar === 'function') updateWideBar();
+    if (typeof syncQFab === 'function') syncQFab();
   }
   function tabClick(name) {
     if (name === 'schedule' && currentTab() === 'schedule') { hideTabTip(); toggleView(); return; }
+    if ((name === 'tasks' || name === 'personal') && currentTab() === name) { toggleTaskView(name); return; }
     if (name === 'schedule') { state.view = 'list'; renderSchedule(); }
     showTab(name); pushNav({ tab: name, view: state.view }); window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -1646,23 +1686,25 @@
     document.querySelector('.segment [data-tab=schedule]').classList.toggle('cal', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
     if (typeof updateWideBar === 'function') updateWideBar();
-    const items = data.items.filter(i => state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)).slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));   // 일정표는 시간순 유지(우선순위는 칩·업무 카드에 적용)
+    const q = Q.schedule;
+    const items = data.items.filter(i => (state.scheduleTag === '전체' || tagsOf(i).includes(state.scheduleTag)) && qMatch(i, q)).slice().sort((a, b) => a.date.localeCompare(b.date) || prioOf(tagsOf(a)) - prioOf(tagsOf(b)) || (a.start || '').localeCompare(b.start || ''));
     if (state.view === 'calendar') { renderCalendar(items); return; }
     if (!items.length) {
       list.innerHTML = state.source.schedule === 'error' ? `<div class="empty"><div class="ico">${I.alert}</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('schedule')">다시 시도</button></div>`
-        : `<div class="empty"><div class="ico">${I.cal}</div>${state.scheduleTag === '전체' ? '아직 일정이 없어요<br>아래 버튼으로 첫 일정을 추가해 보세요' : `'${esc(state.scheduleTag)}' 일정이 없어요<br>다른 구분을 눌러 보세요`}</div>`;
+        : `<div class="empty"><div class="ico">${I.cal}</div>${q ? `'${esc(q)}' 로 찾은 일정이 없어요` : state.scheduleTag === '전체' ? '아직 일정이 없어요<br>아래 버튼으로 첫 일정을 추가해 보세요' : `'${esc(state.scheduleTag)}' 일정이 없어요<br>다른 구분을 눌러 보세요`}</div>`;
       return;
     }
     // 쪽은 '일정' 단위로 나눈다(여러 날 일정은 한 쪽에 모두). 지난 일정 = 종료일이 오늘 이전
     const pastCnt = items.filter(e => endOf(e) < TODAY).length;
-    const showPast = state.showPast || !items.some(e => endOf(e) >= TODAY);
+    const showPast = !!q || state.showPast || !items.some(e => endOf(e) >= TODAY);   // 검색 중에는 지난 일정도 함께
     const vis = showPast ? items : items.filter(e => endOf(e) >= TODAY);
     const fd = state.focusDate;
     const pg = paginate('schedule', vis, [state.board, state.scheduleTag, showPast], fd ? vis.findIndex(e => e.date <= fd && endOf(e) >= fd) : -1);
     const byDate = {}; expand(pg.slice).forEach(o => (byDate[o.day] = byDate[o.day] || []).push(o));
     const dates = Object.keys(byDate).sort();
     let html = '', lastMonth = '';
-    if (pastCnt && !showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
+    if (q) { const days = [...new Set(expand(vis).map(o => o.day))].sort(); html += `<div class="q-summary">'${esc(q)}' 검색 결과 <b>${vis.length}건</b> · <b>${days.length}일</b>${days.length ? ` (${days[0].slice(5).replace('-', '/')} ~ ${days[days.length - 1].slice(5).replace('-', '/')})` : ''} <button type="button" class="linklike" onclick="setQ('schedule','')">지우기</button></div>`; }
+    if (pastCnt && !showPast && !q) html += `<button type="button" class="past-toggle" onclick="state.showPast=true;renderSchedule()">지난 일정 ${pastCnt}건 펼치기</button>`;
     else if (pastCnt && state.showPast) html += `<button type="button" class="past-toggle" onclick="state.showPast=false;renderSchedule()">지난 일정 ${pastCnt}건 접기</button>`;
     dates.forEach(date => {
       const dd = new Date(date + 'T00:00:00'); const month = date.slice(0, 7);
@@ -1676,7 +1718,7 @@
         html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
-            <div class="event-body"><div class="event-title"><span class="t">${esc(ev.title)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
+            <div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, q)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
               ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
@@ -1708,7 +1750,7 @@
     for (let i = 0; i < rows; i++) {
       const dayNum = i - startDow + 1; const dd = new Date(y, m - 1, dayNum); const date = ymd(dd); const other = dayNum < 1 || dayNum > daysIn;
       const dow = dd.getDay(); const evs = byDate[date] || [];
-      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${mobile && date === state.calSelected ? 'selected' : ''} ${dow===0?'sun':dow===6?'sat':''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
+      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${mobile && date === state.calSelected ? 'selected' : ''} ${dow===0?'sun':dow===6?'sat':''} ${Q.schedule && (byDate[date] || []).length ? 'hit' : ''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
       const max = mobile ? 4 : 3;
       evs.slice(0, max).forEach(ev => { const multi = endOf(ev) !== ev.date; html += `<div class="cal-ev cat-${catOf(ev)} ${multi ? 'multi' : ''} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}" title="${esc(ev.title)}${multi ? ` (${md(ev.date)}~${md(endOf(ev))})` : ''}" onclick="${mobile ? '' : 'event.stopPropagation();openScheduleForm(\'' + esc(ev.id) + '\',\'detail\')'}">${ev.start && !multi ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
       if (evs.length > max) html += `<div class="cal-more">+${evs.length - max}개 더</div>`;
@@ -1728,7 +1770,7 @@
           const sub = eventSub(ev, multi);
           html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
             <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
-            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${esc(ev.title)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
         });
         html += `</div>`;
@@ -1738,8 +1780,8 @@
     list.innerHTML = html;
     if (mobile && state.calScrollAgenda) { state.calScrollAgenda = false; const a = list.querySelector('.cal-agenda'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }
-  function calMove(n) { const [y, m] = state.calMonth.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); state.calMonth = ymd(d).slice(0, 7); renderSchedule(); }
-  function calToday() { state.calMonth = TODAY.slice(0, 7); renderSchedule(); }
+  function calMove(n) { const [y, m] = state.calMonth.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); state.calMonth = ymd(d).slice(0, 7); render(currentTab()); }
+  function calToday() { state.calMonth = TODAY.slice(0, 7); render(currentTab()); }
   function calCellClick(e, date) {
     if (window.innerWidth <= 640) { state.calSelected = date; state.calScrollAgenda = true; renderSchedule(); return; }
     if (e.target.closest('.cal-ev')) return;
@@ -1792,7 +1834,7 @@
       return `<div class="task tcat-${tc} ${done ? 'done' : ''} ${t.fromSchedule ? 'linked-major' : ''} ${state.focusTask === t.id ? 'flash' : ''}" data-id="${esc(t.id)}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${STATUS_ICON[t.status] || ''}${esc(t.status)}</button></div>
-        <div class="task-title">${I.chk}${esc(t.title)}</div>
+        <div class="task-title">${I.chk}${qMark(t.title, Q[scope] || '')}</div>
         ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
         <div class="task-foot">
           ${t.due ? `<span class="${overdue ? 'overdue' : ''}">${I.cal}${esc(t.due)}${dd ? `<span class="dday ${dd.c}">${dd.t}</span>` : ''}</span>` : `<span>${I.cal}기한 미정</span>`}
@@ -1815,7 +1857,7 @@
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('tasksSummary').innerHTML = `
       <div><div class="big">${counts['진행중'] || 0}건 진행중</div><div class="label">${overdueCnt ? `<span style="color:var(--red);font-weight:600">기한 지연 ${overdueCnt}건</span>` : '지연된 업무 없음'}</div></div>
-      <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${wideBtn()}`;
+      <div class="stats">${STATUSES.filter(s => s !== '진행중').map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${taskViewSwitch('tasks')}${wideBtn()}`;
     fillDatalist('ownerList', data.items.map(i => i.owner));
     if (state.taskStatus !== '전체' && !counts[state.taskStatus]) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
@@ -1826,12 +1868,14 @@
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
     renderChips(document.getElementById('tasksOwnerFilters'), owners.map(o => ({ key: o, avatar: true, count: ownerCounts[o] })), state.taskOwner, o => { state.taskOwner = o; renderTasks(); });
     moreLabel('tasks', [state.taskCat, state.taskOwner].filter(v => v !== '전체'), '분류 · 담당자 필터');
-    const items = sortTasks(data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus) && (state.taskCat === '전체' || tcatOf(i) === state.taskCat) && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner)));
+    const items = sortTasks(data.items.filter(i => (state.taskStatus === '전체' || i.status === state.taskStatus) && (state.taskCat === '전체' || tcatOf(i) === state.taskCat) && (state.taskOwner === '전체' || ((i.owner || '').trim() || '미지정') === state.taskOwner) && qMatch(i, Q.tasks)));
+    if (state.tview.tasks === 'calendar' && state.source.tasks !== 'error') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); renderTaskCalendar('tasks', items, list); return; }
     if (!items.length) {
       list.innerHTML = state.source.tasks === 'error' ? `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.alert}</div>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('tasks')">다시 시도</button></div>`
-        : `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.inbox}</div>${data.items.length ? '이 조건에 맞는 업무가 없어요<br>필터를 바꿔 보세요' : '아직 업무가 없어요<br>아래 버튼으로 첫 업무를 추가해 보세요'}</div>`;
+        : `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.inbox}</div>${Q.tasks ? `'${esc(Q.tasks)}' 로 찾은 업무가 없어요` : data.items.length ? '이 조건에 맞는 업무가 없어요<br>필터를 바꿔 보세요' : '아직 업무가 없어요<br>아래 버튼으로 첫 업무를 추가해 보세요'}</div>`;
       return;
     }
+    if (state.tview.tasks === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); renderTaskCalendar('tasks', items, list); return; }
     const pg = paginate('tasks', items, [state.board, state.taskStatus, state.taskCat, state.taskOwner], state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1);
     list.innerHTML = taskCards(pg.slice, 'tasks') + pg.html;
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -1850,7 +1894,7 @@
     const overdueCnt = data.items.filter(t => t.due && t.due < TODAY && t.status !== '완료').length;
     document.getElementById('personalSummary').innerHTML = `
       <div class="me-card"><span class="avatar">${esc(initial(state.me.name))}</span><div class="me-info"><div class="name">${esc(state.me.name)}</div><div class="id">${esc(state.me.id)} · ${counts['진행중'] || 0}건 진행중${overdueCnt ? ` · <span style="color:var(--red);font-weight:600">지연 ${overdueCnt}</span>` : ''}</div></div><button type="button" class="logout-btn" onclick="logout()" aria-label="개인업무 로그아웃">로그아웃</button></div>
-      <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${wideBtn()}`;
+      <div class="stats">${STATUSES.map(s => `<div class="stat c-${s}"><b>${counts[s] || 0}</b><span>${s}</span></div>`).join('')}</div>${taskViewSwitch('personal')}${wideBtn()}`;
     if (state.pStatus !== '전체' && !counts[state.pStatus]) state.pStatus = '전체';
     renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
@@ -1873,8 +1917,9 @@
     { const el = document.getElementById('personalMoreLabel'); if (el) el.innerHTML = [state.pCat !== '전체' ? `<span class="on">${esc(state.pCat)}</span>` : '분류', `<span class="on">${state.pYear === '전체' ? '모든 연도' : esc(state.pYear) + '년'}</span>`, state.pMonth === '전체' ? '월' : `<span class="on">${state.pMonth === '미정' ? '날짜 미정' : Number(state.pMonth) + '월'}</span>`].join(' · '); }
 
     const items = sortTasks(inYear.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat)
-      && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth))));
-    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가하거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
+      && (state.pMonth === '전체' || (state.pMonth === '미정' ? !keyOf(i) : keyOf(i).slice(5, 7) === state.pMonth)) && qMatch(i, Q.personal)));
+    if (state.tview.personal === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); const all = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat) && qMatch(i, Q.personal))); renderTaskCalendar('personal', all, list); return; }
+    if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${Q.personal ? `'${esc(Q.personal)}' 로 찾은 개인업무가 없어요` : data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 필터를 바꿔 보세요' : '아직 개인업무가 없어요<br>아래 버튼으로 첫 업무를 추가하거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
     const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth];
     if (state.pMonth === '전체') {
       // 월별 묶음 (최근 월부터). 묶음 순서대로 한 줄로 세운 뒤 쪽을 나누고, 이 쪽에 있는 월만 머리글을 붙인다
@@ -2091,15 +2136,16 @@
   function openTaskForm(id, scope, preset) {
     scope = scope || 'tasks';
     if (scope === 'personal' && !state.me) { showTab('personal'); return; }
-    const form = document.getElementById('taskForm'); form.reset(); form.elements.scope.value = scope; form.classList.toggle('copying', !!preset);
+    const dueOnly = preset && Object.keys(preset).length === 1 && preset.due;   // 달력 칸에서 '이날 업무': 기한만 미리 채움
+    const form = document.getElementById('taskForm'); form.reset(); form.elements.scope.value = scope; form.classList.toggle('copying', !!preset && !dueOnly);
     const item = id ? state[scope].items.find(i => i.id === id) : null;
-    document.getElementById('taskFormTitle').textContent = (scope === 'personal' ? '개인업무' : '업무') + (preset ? ' 복사' : item ? ' 수정' : ' 추가');
+    document.getElementById('taskFormTitle').textContent = (scope === 'personal' ? '개인업무' : '업무') + (preset && !dueOnly ? ' 복사' : item ? ' 수정' : ' 추가');
     document.getElementById('taskDelete').style.display = item ? '' : 'none';
     document.getElementById('taskCopy').style.display = item ? '' : 'none';
     document.getElementById('taskOwnerField').style.display = scope === 'personal' ? 'none' : '';
     const base = item || preset || {};
     fillForm(form, base); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영');
-    openModal('taskModal'); if (!item) setTimeout(() => (preset ? form.due : form.title).focus(), 300);
+    openModal('taskModal'); if (!item) setTimeout(() => ((preset && !dueOnly) ? form.due : form.title).focus(), 300);
   }
   async function copyTask() {
     const form = document.getElementById('taskForm'); const scope = form.elements.scope.value; const src = state[scope].items.find(i => i.id === form.elements.id.value); if (!src) return;
@@ -2185,7 +2231,7 @@
     if (day(d) === day(t)) return '오늘'; t.setDate(t.getDate() - 1); if (day(d) === day(t)) return '어제';
     return `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}`;
   }
-  const CHAT_ICO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg>';
+  let chatIcoN = 0; const chatIco = () => '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><defs><mask id="cbm-'+(++chatIcoN)+'"><rect width="24" height="24" fill="#fff"/><path d="M9.2 2.8a8.4 6.4 0 1 0 0 12.8a8.4 6.4 0 1 0 0-12.8Z M2.4 18.8C3.5 17.5 4.1 15.8 4.3 13L8.9 14.8C7.4 16.7 5.4 18.1 2.4 18.8Z" fill="#000" transform="translate(9.2 9.2) scale(1.16) translate(-9.2 -9.2)"/></mask></defs><path d="M16 8.4a6.8 5.2 0 1 0 0 10.4a6.8 5.2 0 1 0 0-10.4Z M21.8 21.4C20.5 20.3 19.8 18.8 19.5 17.2L15.3 18.4C16.8 19.9 18.8 20.9 21.8 21.4Z" mask="url(#cbm-'+(++chatIcoN)+')"/><path d="M9.2 2.8a8.4 6.4 0 1 0 0 12.8a8.4 6.4 0 1 0 0-12.8Z M2.4 18.8C3.5 17.5 4.1 15.8 4.3 13L8.9 14.8C7.4 16.7 5.4 18.1 2.4 18.8Z"/></svg>';
   function renderChat() {
     const modal = document.getElementById('chatModal'); updateChatBadge(); if (!modal.classList.contains('open')) return;
     const admin = document.body.classList.contains('admin') || !REMOTE;
@@ -2200,7 +2246,7 @@
           <span class="room-name">${esc(r.name)}${n ? `<span class="room-unread">${n > 99 ? '99+' : n}</span>` : ''}</span>
           <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc(chatPreviewText(last).slice(0, 40))}` : '아직 글이 없어요') : '입장코드 4자리가 필요해요'}</span></button>
           ${admin ? `<button type="button" class="room-admin" title="입장코드 변경" aria-label="${esc(r.name)} 입장코드 변경" onclick="chatSetCode('${esc(r.id)}')">${I.key || '코드'}</button>` : ''}
-          <button type="button" class="room-ico" aria-label="${esc(r.name)} 톡방 열기" onclick="enterRoom('${esc(r.id)}')">${CHAT_ICO}</button></div>`; }).join('')
+          <button type="button" class="room-ico" aria-label="${esc(r.name)} 톡방 열기" onclick="enterRoom('${esc(r.id)}')">${chatIco()}</button></div>`; }).join('')
         + (admin ? `<button type="button" class="room-add" onclick="chatRoomAdd()">+ 톡방 추가</button>` : '');
       return;
     }
@@ -2684,10 +2730,72 @@
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
-    else if (e.key === 'c' || e.key === 'C') { if (currentTab() !== 'schedule') showTab('schedule'); toggleView(); }
+    else if (e.key === 'c' || e.key === 'C') { const t = currentTab(); if (t === 'schedule') toggleView(); else toggleTaskView(t); }
     else if (e.key === '1') tabClick('schedule'); else if (e.key === '2') tabClick('tasks'); else if (e.key === '3') tabClick('personal');
     else if (e.key === 'w' || e.key === 'W') toggleWide();
+    else if (e.key === '/') { e.preventDefault(); const pc = window.innerWidth >= 1024 && !document.body.classList.contains('wide'); const el = pc ? document.querySelector(`#${currentTab()} .qin`) : document.getElementById('qfabIn'); if (el) { el.focus(); el.select(); } }
   });
+
+  /* ── 주요업무·개인업무 달력 보기: 기한(due) 기준 월 달력. 기한 없는 업무는 아래 '기한 미정' 줄 ── */
+  state.tview = { tasks: lsGet('ictc.tview.tasks') || 'list', personal: lsGet('ictc.tview.personal') || 'list' };
+  function toggleTaskView(scope, v) {
+    state.tview[scope] = v || (state.tview[scope] === 'calendar' ? 'list' : 'calendar'); lsSet('ictc.tview.' + scope, state.tview[scope]);
+    if (state.tview[scope] === 'calendar' && !state.calMonth) state.calMonth = TODAY.slice(0, 7);
+    render(scope); updateWideBar(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  const taskViewSwitch = scope => `<div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.tview[scope] !== 'calendar' ? 'on' : ''}" aria-label="목록 보기" onclick="toggleTaskView('${scope}','list')">${I.list}</button><button type="button" class="${state.tview[scope] === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="toggleTaskView('${scope}','calendar')">${I.cal}</button></div>`;
+  function renderTaskCalendar(scope, items, list) {
+    const [y, m] = state.calMonth.split('-').map(Number);
+    const first = new Date(y, m - 1, 1), startDow = first.getDay(), daysIn = new Date(y, m, 0).getDate();
+    const byDate = {}; const undated = [];
+    items.forEach(t => { if (t.due) (byDate[t.due] = byDate[t.due] || []).push(t); else undated.push(t); });
+    Object.values(byDate).forEach(arr => arr.sort((a, b) => taskPrio(a) - taskPrio(b) || (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)));
+    const inMonthCnt = items.filter(t => t.due && t.due.slice(0, 7) === state.calMonth).length;
+    const mobile = window.innerWidth <= 640; const q = Q[scope] || '';
+    if (mobile) { const inMonth = d => d && d.slice(0, 7) === state.calMonth; if (!inMonth(state.calSelected)) state.calSelected = inMonth(TODAY) ? TODAY : (Object.keys(byDate).filter(inMonth).sort()[0] || null); }
+    let html = `<div class="grid-span"><div class="cal-head"><button class="nav" onclick="calMove(-1)" aria-label="이전 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h3>${y}년 ${m}월 <small class="cal-cnt">${inMonthCnt}건</small></h3><button class="today-btn" onclick="calToday()">오늘</button>
+      <button class="nav" onclick="calMove(1)" aria-label="다음 달"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="cal"><div class="cal-dow">${DOW.map(d => `<div>${d}</div>`).join('')}</div><div class="cal-grid">`;
+    const cells = startDow + daysIn, rows = Math.ceil(cells / 7) * 7;
+    for (let i = 0; i < rows; i++) {
+      const dayNum = i - startDow + 1; const dd = new Date(y, m - 1, dayNum); const date = ymd(dd); const other = dayNum < 1 || dayNum > daysIn;
+      const dow = dd.getDay(); const ts = byDate[date] || [];
+      html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${mobile && date === state.calSelected ? 'selected' : ''} ${dow===0?'sun':dow===6?'sat':''} ${q && ts.length ? 'hit' : ''}" onclick="taskCellClick(event,'${scope}','${date}')"><div class="n">${dd.getDate()}</div>`;
+      const max = mobile ? 4 : 3;
+      ts.slice(0, max).forEach(t => { html += `<div class="cal-ev tcat-${tcatOf(t)} ${t.status === '완료' ? 'done' : ''} ${t.fromSchedule ? 'major' : ''} ${t.due < TODAY && t.status !== '완료' ? 'late' : ''}" title="${esc(t.title)} · ${esc(t.status)}" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')"><b>${esc(t.title)}</b></div>`; });
+      if (ts.length > max) html += `<div class="cal-more">+${ts.length - max}개 더</div>`;
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+    if (mobile) {
+      const sel = state.calSelected; const ts = sel ? (byDate[sel] || []) : []; const sd = sel ? new Date(sel + 'T00:00:00') : null;
+      html += `<div class="cal-agenda"><div class="agenda-head"><b>${sd ? `${sd.getMonth()+1}월 ${sd.getDate()}일 ${DOW[sd.getDay()]}요일` : '날짜를 선택하세요'}</b><span>${sel ? ts.length + '건' : ''}</span>${sel ? `<button type="button" class="agenda-add" onclick="openTaskForm(null,'${scope}',{ due: '${sel}' })">+ 이날 업무</button>` : ''}</div>`;
+      html += ts.length ? `<div class="task-list">${taskCards(ts, scope)}</div>` : `<div class="empty">이날 기한인 업무가 없어요</div>`;
+      html += `</div>`;
+    }
+    if (undated.length) html += `<div class="cal-undated"><div class="filter-label">기한 미정 ${undated.length}건</div><div class="undated-row">${undated.map(t => `<button type="button" class="cal-ev tcat-${tcatOf(t)} ${t.status === '완료' ? 'done' : ''}" onclick="openTaskForm('${esc(t.id)}','${scope}')"><b>${esc(t.title)}</b></button>`).join('')}</div></div>`;
+    html += `</div>`;
+    list.innerHTML = html;
+    if (mobile && state.calScrollAgenda) { state.calScrollAgenda = false; const a = list.querySelector('.cal-agenda'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }
+  function taskCellClick(e, scope, date) {
+    if (window.innerWidth <= 640) { state.calSelected = date; state.calScrollAgenda = true; render(scope); return; }
+    if (e.target.closest('.cal-ev')) return;
+    openTaskForm(null, scope, { due: date });
+  }
+
+  /* ── 키워드 검색 ── */
+  let qTimer = null;
+  function setQ(tab, v) {
+    v = (v || '').trim(); Q[tab] = v;
+    document.querySelectorAll(`.qin[data-tab="${tab}"]`).forEach(i => { if (i.value !== v) i.value = v; });
+    const f = document.getElementById('qfabIn'); if (f && currentTab() === tab && f.value !== v) f.value = v;
+    document.querySelectorAll('.qbox').forEach(b => b.classList.toggle('has', !!(b.querySelector('.qin').value)));
+    if (tab === 'schedule') state.page.schedule = 1;
+    clearTimeout(qTimer); qTimer = setTimeout(() => render(tab), 120);
+  }
+  function syncQFab() { const f = document.getElementById('qfabIn'); if (f) { f.value = Q[currentTab()] || ''; f.parentElement.classList.toggle('has', !!f.value); } }
 
   /* ── 넓게 보기 ── */
   const WIDE_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
@@ -2700,7 +2808,7 @@
     }
     setTimeout(setAppbarH, 50); updateWideBar(); toast(on ? '넓게 보기' : '기본 보기', 1200);
   }
-  function updateWideBar() { const b = document.getElementById('wideView'); if (!b) return; b.style.display = currentTab() === 'schedule' ? '' : 'none'; b.textContent = state.view === 'calendar' ? '목록 보기' : '달력 보기'; }
+  function updateWideBar() { const b = document.getElementById('wideView'); if (!b) return; const t = currentTab(); b.style.display = ''; const cal = t === 'schedule' ? state.view === 'calendar' : state.tview[t] === 'calendar'; b.textContent = cal ? '목록 보기' : '달력 보기'; b.onclick = () => t === 'schedule' ? toggleView() : toggleTaskView(t); }
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('wide') && window.innerWidth < 1024) { document.body.classList.remove('wide'); lsSet('ictc.wide', 0); setTimeout(setAppbarH, 50); } });
   if (lsGet('ictc.wide')) document.body.classList.add('wide');
 
