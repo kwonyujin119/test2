@@ -25,8 +25,9 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KINDS = ('schedule', 'tasks', 'chat')   # chat = 41망 팀 대화(대시보드 main 고정, 최근 300개 보관)
-VERSION = '4.0'
+KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
+CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
+VERSION = '5.0'
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -125,6 +126,11 @@ class DB:
         con.execute('''create table if not exists items_deleted (seq integer primary key autoincrement, id text not null, kind text not null,
             board text not null, data text not null, updated_at text not null, deleted_at text not null, reason text not null default 'delete')''')
         con.execute('create index if not exists items_deleted_deleted_at on items_deleted(deleted_at)')
+        # 41망 톡방: 입장코드는 해시로만. 기본 코드는 처음 만들 때만(insert or ignore)
+        con.execute('create table if not exists chat_rooms (id text primary key, name text not null, code_hash text not null, sort integer not null default 0, created_at text not null)')
+        for rid, name, code, sort in CHAT_ROOMS_DEFAULT:
+            con.execute('insert or ignore into chat_rooms(id, name, code_hash, sort, created_at) values(?,?,?,?,?)', (rid, name, hash_pin(code), sort, self.now()))
+        con.execute("update items set board='ictc' where kind='chat' and board='main'")   # v4 의 단일 톡방 글을 지휘역량강화센터 톡방으로
         con.commit(); con.close()
 
     def _con(self):
@@ -153,9 +159,51 @@ class DB:
                 on conflict(id) do update set data=excluded.data, kind=excluded.kind, board=excluded.board, updated_at=excluded.updated_at
                 where items.kind in ('schedule','tasks','chat')''',
                       (item['id'], kind, board, json.dumps(item, ensure_ascii=False), self.now()))   # 같은 id 의 개인업무 행은 덮어쓰지 않음
-            if kind == 'chat':   # 41망은 최근 300개만 보관 (supabase.sql ictc_save 와 동일)
+            if kind == 'chat':   # 톡방마다 최근 300개만 보관 (supabase.sql ictc_chat_save 와 동일)
                 c.execute('''delete from items where kind='chat' and board=? and id not in
                              (select id from items where kind='chat' and board=? order by updated_at desc limit 300)''', (board, board))
+        self._run(go)
+
+    # ----- 41망 톡방 -----
+    def chat_rooms(self):
+        rows = self._run(lambda c: c.execute('select id, name, sort from chat_rooms order by sort, created_at').fetchall())
+        return [{'id': i, 'name': n, 'sort': s} for i, n, s in rows]
+
+    def chat_check(self, room, code):
+        row = self._run(lambda c: c.execute('select code_hash from chat_rooms where id=?', (room,)).fetchone())
+        if not row: raise ApiError('CHAT_ROOM_NOT_FOUND', 404)
+        if not check_hash((code or '').strip(), row[0]): raise ApiError('CHAT_CODE_INVALID', 403)
+
+    def chat_room_name(self, room):
+        row = self._run(lambda c: c.execute('select name from chat_rooms where id=?', (room,)).fetchone())
+        return row[0] if row else None
+
+    def chat_set_code(self, room, new):
+        if len((new or '').strip()) < 4: raise ApiError('CHAT_CODE_TOO_SHORT')
+        def go(c):
+            if c.execute('update chat_rooms set code_hash=? where id=?', (hash_pin(new.strip()), room)).rowcount == 0: raise ApiError('CHAT_ROOM_NOT_FOUND', 404)
+        self._run(go)
+
+    def chat_room_rename(self, room, name):
+        if not (name or '').strip(): raise ApiError('NAME_REQUIRED')
+        def go(c):
+            if c.execute('update chat_rooms set name=? where id=?', (name.strip(), room)).rowcount == 0: raise ApiError('CHAT_ROOM_NOT_FOUND', 404)
+        self._run(go)
+
+    def chat_room_add(self, id_, name, code):
+        if not (id_ or '').strip() or not (name or '').strip(): raise ApiError('NAME_REQUIRED')
+        if len((code or '').strip()) < 4: raise ApiError('CHAT_CODE_TOO_SHORT')
+        def go(c):
+            if c.execute('select 1 from chat_rooms where id=?', (id_.strip(),)).fetchone(): raise ApiError('CHAT_ROOM_EXISTS')
+            sort = (c.execute('select coalesce(max(sort),0) from chat_rooms').fetchone()[0] or 0) + 1
+            c.execute('insert into chat_rooms(id, name, code_hash, sort, created_at) values(?,?,?,?,?)', (id_.strip(), name.strip(), hash_pin(code.strip()), sort, self.now()))
+        self._run(go)
+
+    def chat_room_delete(self, room):
+        def go(c):
+            self._trash(c, 'chat', room, None, 'room_delete')
+            c.execute("delete from items where kind='chat' and board=?", (room,))
+            if c.execute('delete from chat_rooms where id=?', (room,)).rowcount == 0: raise ApiError('CHAT_ROOM_NOT_FOUND', 404)
         self._run(go)
 
     def _trash(self, c, kind, board, id_, reason):
@@ -345,6 +393,8 @@ def make_handler(db, static_dir, pin_path, poll):
                     return self._json(200, db.list(kind, board))
                 if u.path == '/api/boards':
                     return self._json(200, db.boards())
+                if u.path == '/api/chat_rooms':
+                    return self._json(200, db.chat_rooms())
                 raise ApiError('NOT_FOUND', 404)
             except ApiError as e:
                 return self._json(e.status, {'message': e.code})
@@ -390,6 +440,28 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
                 if fn == 'user_reset_pin':
                     self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn in ('chat_join', 'chat_list', 'chat_save', 'chat_delete'):
+                    self.require_view(b.get('pin')); room = str(b.get('room', ''))
+                    throttle.check(self._ip())
+                    try: db.chat_check(room, str(b.get('code', '')))
+                    except ApiError as e:
+                        if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
+                        raise
+                    if fn == 'chat_join': return self._json(200, {'name': db.chat_room_name(room)})
+                    if fn == 'chat_list': return self._json(200, db.list('chat', room))
+                    if fn == 'chat_save':
+                        item = b.get('item') or {}
+                        if not item.get('id'): raise ApiError('ID_REQUIRED')
+                        db.save('chat', room, item); return self._json(204)
+                    db.delete('chat', room, str(b.get('id', ''))); return self._json(204)
+                if fn == 'chat_set_code':
+                    self.require_edit(b.get('pin')); db.chat_set_code(str(b.get('room', '')), str(b.get('new_code', ''))); return self._json(204)
+                if fn == 'chat_room_rename':
+                    self.require_edit(b.get('pin')); db.chat_room_rename(str(b.get('room', '')), str(b.get('name', ''))); return self._json(204)
+                if fn == 'chat_room_add':
+                    self.require_edit(b.get('pin')); db.chat_room_add(str(b.get('id', '')), str(b.get('name', '')), str(b.get('code', ''))); return self._json(204)
+                if fn == 'chat_room_delete':
+                    self.require_edit(b.get('pin')); db.chat_room_delete(str(b.get('room', ''))); return self._json(204)
                 if fn == 'user_rename':
                     self.require_edit(b.get('pin')); db.user_rename(str(b.get('id', '')), str(b.get('name', ''))); return self._json(204)
                 if fn == 'users_list':

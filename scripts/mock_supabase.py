@@ -8,6 +8,7 @@ for m in re.finditer(r'create or replace function public\.(ictc_\w+)\((.*?)\)\s*
     params=[p.strip().split()[0] for p in m.group(2).split(',') if p.strip()]
     SIGS[m.group(1)]=params
 EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}; TRASH=[]
+ROOMS={'ictc':{'name':'지휘역량강화센터','code':'5948','sort':1},'edu-support':{'name':'교육지원과','code':'5914','sort':2},'edu-plan':{'name':'교육기획과','code':'5926','sort':3},'training':{'name':'훈련운영과','code':'5527','sort':4}}
 def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00','Z')
 class H(BaseHTTPRequestHandler):
     def log_message(self,*a): pass
@@ -36,18 +37,52 @@ class H(BaseHTTPRequestHandler):
         try:
             if fn=='ictc_list':
                 view(g('p_pin') or ''); board=g('p_board') or 'main'
-                if g('p_kind') not in ('schedule','tasks','chat'): raise ValueError('KIND_INVALID')
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
                 rows=[{'data':v['data'],'updated_at':v['u']} for v in ITEMS.values() if v['kind']==g('p_kind') and v['board']==board]
                 return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
             if fn=='ictc_boards': view(g('p_pin') or ''); return self._send(200,json.dumps(BOARDS).encode())
+            if fn=='ictc_chat_rooms': view(g('p_pin') or ''); return self._send(200,json.dumps([{'id':k,'name':v['name'],'sort':v['sort']} for k,v in sorted(ROOMS.items(),key=lambda kv:kv[1]['sort'])]).encode())
+            if fn in ('ictc_chat_join','ictc_chat_list','ictc_chat_save','ictc_chat_delete'):
+                view(g('p_pin') or ''); room=g('p_room')
+                if room not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')
+                if (g('p_code') or '')!=ROOMS[room]['code']: raise ValueError('CHAT_CODE_INVALID')
+                if fn=='ictc_chat_join': return self._send(200,json.dumps(ROOMS[room]['name']).encode())
+                if fn=='ictc_chat_list':
+                    rows=[{'data':v['data'],'updated_at':v['u']} for v in ITEMS.values() if v['kind']=='chat' and v['board']==room]
+                    return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
+                if fn=='ictc_chat_save':
+                    it=g('p_item')
+                    if not it.get('id'): raise ValueError('ID_REQUIRED')
+                    ITEMS[it['id']]={'kind':'chat','board':room,'data':it,'u':now()}; return self._send(204)
+                if g('p_id') in ITEMS: TRASH.append({'seq':len(TRASH)+1,'reason':'delete','deleted_at':now(),**ITEMS.pop(g('p_id'))})
+                return self._send(204)
+            if fn=='ictc_chat_set_code':
+                edit(g('p_edit_pin'))
+                if g('p_room') not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')
+                if len((g('p_new') or '').strip())<4: raise ValueError('CHAT_CODE_TOO_SHORT')
+                ROOMS[g('p_room')]['code']=g('p_new').strip(); return self._send(204)
+            if fn=='ictc_chat_room_rename':
+                edit(g('p_edit_pin'))
+                if g('p_room') not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')
+                ROOMS[g('p_room')]['name']=(g('p_name') or '').strip(); return self._send(204)
+            if fn=='ictc_chat_room_add':
+                edit(g('p_edit_pin'))
+                if g('p_id') in ROOMS: raise ValueError('CHAT_ROOM_EXISTS')
+                if len((g('p_code') or '').strip())<4: raise ValueError('CHAT_CODE_TOO_SHORT')
+                ROOMS[g('p_id')]={'name':g('p_name'),'code':g('p_code').strip(),'sort':len(ROOMS)+1}; return self._send(204)
+            if fn=='ictc_chat_room_delete':
+                edit(g('p_edit_pin'))
+                if g('p_room') not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')
+                for k in [k for k,v in ITEMS.items() if v['kind']=='chat' and v['board']==g('p_room')]: ITEMS.pop(k)
+                ROOMS.pop(g('p_room')); return self._send(204)
             if fn=='ictc_save':
                 view(g('p_pin') or ''); it=g('p_item')
-                if g('p_kind') not in ('schedule','tasks','chat'): raise ValueError('KIND_INVALID')
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
                 if not it.get('id'): raise ValueError('ID_REQUIRED')
                 ITEMS[it['id']]={'kind':g('p_kind'),'board':g('p_board') or 'main','data':it,'u':now()}; return self._send(204)
             if fn=='ictc_delete':
                 view(g('p_pin') or '')
-                if g('p_kind') not in ('schedule','tasks','chat'): raise ValueError('KIND_INVALID')
+                if g('p_kind') not in ('schedule','tasks'): raise ValueError('KIND_INVALID')
                 if g('p_id') in ITEMS: TRASH.append({'seq':len(TRASH)+1,'reason':'delete','deleted_at':now(),**ITEMS.pop(g('p_id'))})
                 return self._send(204)
             if fn=='ictc_replace':

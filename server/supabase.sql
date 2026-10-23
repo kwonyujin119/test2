@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v5: 41망 팀 대화 종류 추가 · v4: 개인업무 비밀번호 4자리, 이름 수정 함수)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6: 부서별 41망 톡방 + 입장코드 · v4: 개인업무 비밀번호 4자리)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -128,7 +128,7 @@ create or replace function public.ictc_list(p_pin text, p_kind text, p_board tex
 returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;   -- chat 은 ictc_chat_* (입장코드) 로만
   return query select i.data, i.updated_at from public.ictc_items i
     where i.kind = p_kind and i.board = coalesce(p_board, 'main') order by i.updated_at desc;
 end $$;
@@ -138,24 +138,19 @@ create or replace function public.ictc_save(p_pin text, p_kind text, p_item json
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
   if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
   insert into public.ictc_items (id, kind, board, data, updated_at)
   values (p_item->>'id', p_kind, coalesce(p_board, 'main'), p_item, now())
   on conflict (id) do update set data = excluded.data, kind = excluded.kind, board = excluded.board, updated_at = now()
-  where public.ictc_items.kind in ('schedule', 'tasks', 'chat');   -- 같은 id 의 개인업무 행은 덮어쓰지 않음
-  -- 41망(chat)은 최근 300개만 보관. 넘치는 옛 글은 휴지통 없이 지운다
-  if p_kind = 'chat' then
-    delete from public.ictc_items where kind = 'chat' and board = coalesce(p_board, 'main') and id not in (
-      select id from public.ictc_items where kind = 'chat' and board = coalesce(p_board, 'main') order by updated_at desc limit 300);
-  end if;
+  where public.ictc_items.kind in ('schedule', 'tasks');   -- 같은 id 의 개인업무·톡방 행은 덮어쓰지 않음
 end $$;
 
 create or replace function public.ictc_delete(p_pin text, p_kind text, p_id text, p_board text default 'main')
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_view(p_pin);
-  if p_kind not in ('schedule', 'tasks', 'chat') then raise exception 'KIND_INVALID'; end if;
+  if p_kind not in ('schedule', 'tasks') then raise exception 'KIND_INVALID'; end if;
   perform public.ictc_trash(p_kind, coalesce(p_board, 'main'), p_id, 'delete');
   delete from public.ictc_items where id = p_id and kind = p_kind and board = coalesce(p_board, 'main');
 end $$;
@@ -365,6 +360,128 @@ begin
   on conflict (key) do update set value = excluded.value;
 end $$;
 
+
+-- ---------- 41망 톡방 (v6: 부서별 톡방 + 입장코드) ----------
+-- 입장코드는 해시로만 저장. 기본 코드는 최초 설치 때만 들어가고(on conflict do nothing) 이후 ictc_chat_set_code 로 바꾼다.
+create table if not exists public.ictc_chat_rooms (
+  id          text primary key,
+  name        text not null,
+  code_hash   text not null,
+  sort        int  not null default 0,
+  created_at  timestamptz not null default now()
+);
+alter table public.ictc_chat_rooms enable row level security;
+-- 함수 밖에서는 search_path 에 extensions 가 없어 gen_salt 를 못 찾으므로 DO 블록 안에서 경로를 지정한다
+do $$
+begin
+  perform set_config('search_path', 'public, extensions', true);
+  insert into public.ictc_chat_rooms (id, name, code_hash, sort) values
+    ('ictc',        '지휘역량강화센터', crypt('5948', gen_salt('bf')), 1),
+    ('edu-support', '교육지원과',       crypt('5914', gen_salt('bf')), 2),
+    ('edu-plan',    '교육기획과',       crypt('5926', gen_salt('bf')), 3),
+    ('training',    '훈련운영과',       crypt('5527', gen_salt('bf')), 4)
+  on conflict (id) do nothing;
+end $$;
+-- v5 에서 'main' 톡방에 쓴 글은 지휘역량강화센터 톡방으로
+update public.ictc_items set board = 'ictc' where kind = 'chat' and board = 'main';
+
+create or replace function public.ictc_chat_check(p_room text, p_code text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare h text;
+begin
+  select code_hash into h from public.ictc_chat_rooms where id = p_room;
+  if h is null then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
+  if h <> crypt(coalesce(p_code, ''), h) then
+    perform public.ictc_fail_delay();
+    raise exception 'CHAT_CODE_INVALID';
+  end if;
+end $$;
+
+create or replace function public.ictc_chat_rooms(p_pin text)
+returns table (id text, name text, sort int) language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_view(p_pin);
+  return query select r.id, r.name, r.sort from public.ictc_chat_rooms r order by r.sort, r.created_at;
+end $$;
+
+-- 입장: 코드가 맞으면 톡방 이름을 돌려준다
+create or replace function public.ictc_chat_join(p_pin text, p_room text, p_code text)
+returns text language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_view(p_pin);
+  perform public.ictc_chat_check(p_room, p_code);
+  return (select name from public.ictc_chat_rooms where id = p_room);
+end $$;
+
+create or replace function public.ictc_chat_list(p_pin text, p_room text, p_code text)
+returns table (data jsonb, updated_at timestamptz) language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_view(p_pin);
+  perform public.ictc_chat_check(p_room, p_code);
+  return query select i.data, i.updated_at from public.ictc_items i where i.kind = 'chat' and i.board = p_room order by i.updated_at desc;
+end $$;
+
+create or replace function public.ictc_chat_save(p_pin text, p_room text, p_code text, p_item jsonb)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_view(p_pin);
+  perform public.ictc_chat_check(p_room, p_code);
+  if coalesce(p_item->>'id', '') = '' then raise exception 'ID_REQUIRED'; end if;
+  insert into public.ictc_items (id, kind, board, data, updated_at)
+  values (p_item->>'id', 'chat', p_room, p_item, now())
+  on conflict (id) do update set data = excluded.data, updated_at = now()
+  where public.ictc_items.kind = 'chat' and public.ictc_items.board = p_room;
+  -- 톡방마다 최근 300개만 보관. 밀려난 옛 글은 휴지통 없이 지운다
+  delete from public.ictc_items where kind = 'chat' and board = p_room and id not in (
+    select id from public.ictc_items where kind = 'chat' and board = p_room order by updated_at desc limit 300);
+end $$;
+
+create or replace function public.ictc_chat_delete(p_pin text, p_room text, p_code text, p_id text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_view(p_pin);
+  perform public.ictc_chat_check(p_room, p_code);
+  perform public.ictc_trash('chat', p_room, p_id, 'delete');
+  delete from public.ictc_items where id = p_id and kind = 'chat' and board = p_room;
+end $$;
+
+-- 관리(편집 PIN): 입장코드 변경, 이름 변경, 톡방 추가·삭제
+create or replace function public.ictc_chat_set_code(p_edit_pin text, p_room text, p_new text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  if length(trim(coalesce(p_new, ''))) < 4 then raise exception 'CHAT_CODE_TOO_SHORT'; end if;
+  update public.ictc_chat_rooms set code_hash = crypt(trim(p_new), gen_salt('bf')) where id = p_room;
+  if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
+end $$;
+create or replace function public.ictc_chat_room_rename(p_edit_pin text, p_room text, p_name text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  if length(trim(coalesce(p_name, ''))) < 1 then raise exception 'NAME_REQUIRED'; end if;
+  update public.ictc_chat_rooms set name = trim(p_name) where id = p_room;
+  if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
+end $$;
+create or replace function public.ictc_chat_room_add(p_edit_pin text, p_id text, p_name text, p_code text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  if length(trim(coalesce(p_id, ''))) < 1 or length(trim(coalesce(p_name, ''))) < 1 then raise exception 'NAME_REQUIRED'; end if;
+  if length(trim(coalesce(p_code, ''))) < 4 then raise exception 'CHAT_CODE_TOO_SHORT'; end if;
+  if exists (select 1 from public.ictc_chat_rooms where id = trim(p_id)) then raise exception 'CHAT_ROOM_EXISTS'; end if;
+  insert into public.ictc_chat_rooms (id, name, code_hash, sort)
+  values (trim(p_id), trim(p_name), crypt(trim(p_code), gen_salt('bf')), coalesce((select max(sort) from public.ictc_chat_rooms), 0) + 1);
+end $$;
+create or replace function public.ictc_chat_room_delete(p_edit_pin text, p_room text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  perform public.ictc_trash('chat', p_room, null, 'room_delete');
+  delete from public.ictc_items where kind = 'chat' and board = p_room;
+  delete from public.ictc_chat_rooms where id = p_room;
+  if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
+end $$;
+
 -- ---------- 권한 ----------
 do $$
 declare f record;
@@ -372,7 +489,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

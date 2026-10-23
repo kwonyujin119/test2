@@ -85,7 +85,9 @@
   .appbar-inner { max-width: 880px; margin: 0 auto; padding: 14px 20px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; }
   .appbar-row { display: flex; align-items: center; gap: 12px; grid-column: 1; min-width: 0; }
   .appbar-inner > .appbar-right { grid-column: 2; grid-row: 1; }
-  .appbar-inner > .segment { grid-column: 1 / -1; }
+  .appbar-inner > .brandline { grid-row: 2; }
+  .appbar-inner > .segment { grid-row: 3; }
+  .appbar-inner > .segment { grid-column: 1 / -1; margin-top: 8px; }
   .logos { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .logos a { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 0 0 1.5px rgba(255,255,255,.35); transition: transform .15s, box-shadow .15s; }
   .logos a:hover { transform: scale(1.06); box-shadow: 0 2px 6px rgba(0,0,0,.35), 0 0 0 2px var(--gold); }
@@ -99,8 +101,11 @@
   .board-btn svg { color: var(--on-navy-2); flex-shrink: 0; }
   .board-add { width: 34px; height: 34px; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,.5); background: transparent; color: var(--on-navy-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
   .board-add:hover { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(245,196,0,.14); }
-  .appbar .sub { font-size: 12px; color: var(--on-navy-2); margin-top: 1px; }
-  .appbar .sub .appname { font-weight: 700; letter-spacing: .5px; color: var(--gold, #F5C400); }
+  /* SAIL:41 워드마크: 상단 바 가운데, 탭 위 */
+  .brandline { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; position: relative; margin-top: 8px; min-height: 22px; }
+  .brandline .appname { font-size: 17px; font-weight: 800; letter-spacing: 2px; color: var(--gold, #F5C400); line-height: 1; }
+  .brandline .appname span { letter-spacing: 1px; }
+  .brandline .admin-badge { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
   .lock .lock-title { font-size: 30px; font-weight: 800; letter-spacing: 3px; color: var(--navy, #0A2F7E); margin-left: 3px; }
   .lock .lock-title .lock-num { letter-spacing: 1px; color: var(--gold-text, #8A6A00); font-size: 22px; vertical-align: 3px; margin-left: 2px; }
   .lock .lock-sub { font-size: 13px; color: var(--text-3); margin: 2px 0 10px; }
@@ -362,7 +367,7 @@
   .admin-badge { display: none; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #3DBA12, #1A7F37); padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
   body.admin .admin-badge { display: inline-flex; }
   body.admin .appbar { border-bottom-color: #3DBA12; }
-  @media (max-width: 640px) { body.admin::after { border-width: 3px; } body.admin .admin-badge { display: none; } body.admin .appbar .sub::before { content: '● 관리자'; color: #7CE495; font-weight: 800; } }  /* 폰에서는 배지를 제목 아래 줄로 */
+  @media (max-width: 640px) { body.admin::after { border-width: 3px; } .admin-badge { font-size: 9.5px; padding: 1px 6px; } }
 
   /* ── 필터 고정 (모바일·태블릿) ── */
   @media (max-width: 1023px) {
@@ -404,12 +409,14 @@
     body { padding-bottom: 60px; }
     .appbar-inner, main { max-width: 1240px; padding-left: 32px; padding-right: 32px; }
     .appbar-inner { display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr); align-items: center; gap: 20px; padding-top: 12px; padding-bottom: 12px; }
-    .appbar-row { grid-column: 1; } .appbar-inner > .appbar-right { grid-column: 3; justify-self: end; }
-    .appbar-inner > .segment { grid-column: 2; grid-row: 1; margin-top: 0; width: 420px; }
+    .appbar-row { grid-column: 1; grid-row: 1 / span 2; } .appbar-inner > .appbar-right { grid-column: 3; grid-row: 1 / span 2; justify-self: end; }
+    .appbar-inner > .brandline { grid-column: 2; grid-row: 1; margin: 0 0 6px; min-height: 0; }
+    .brandline .appname { font-size: 19px; letter-spacing: 2.5px; }
+    .appbar-inner > .segment { grid-column: 2; grid-row: 2; margin-top: 0; width: 420px; }
+    .appbar-inner { row-gap: 0; padding-top: 10px; padding-bottom: 10px; }
     .logos a { width: 52px; height: 52px; } .logos img { height: 42px; }
     .appbar h1 { max-width: 320px; }
     main { padding-top: 24px; }
-    .appbar .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     section.active { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; align-items: start; }
     .side { position: sticky; top: 92px; display: flex; flex-direction: column; gap: 14px; }
     .summary { margin-bottom: 0; flex-direction: column; align-items: stretch; gap: 14px; padding: 22px; }
@@ -436,8 +443,6 @@
     .appbar-inner, main { padding-left: 16px; padding-right: 16px; }
     .logos a { width: 40px; height: 40px; } .logos img { height: 32px; }
     .appbar h1 { font-size: 17px; }
-    .appbar .sub { display: none; }
-    body.admin .appbar .sub { display: block; font-size: 0; line-height: 1; margin-top: 2px; } body.admin .appbar .sub::before { font-size: 11px; line-height: 1.3; } body.admin .appbar .sub .appname { display: none; }
     body .board-add, body.admin .board-add, body.local .board-add { display: none !important; }
     .task-list { grid-template-columns: 1fr; }
     .summary { padding: 12px 14px; gap: 10px; margin-bottom: 10px; }
@@ -562,6 +567,8 @@
   @media (min-width: 640px) { .chat-sheet { height: min(720px, 86vh); padding-top: 14px; } }
   .chat-head { display: flex; align-items: center; gap: 12px; padding: 4px 18px 10px; border-bottom: 1px solid var(--line); }
   .chat-head h2 { font-size: 19px; font-weight: 800; color: var(--primary-text); letter-spacing: .3px; }
+  .chat-head > div:first-child, .chat-head .chat-title-wrap { flex: 1; min-width: 0; }
+  .chat-head .chat-back + .chat-title-wrap { flex: 1; }
   .chat-sub { font-size: 12px; color: var(--text-3); }
   .chat-who { margin-left: auto; font-size: 12.5px; color: var(--text-3); text-align: right; }
   .chat-who b { color: var(--text-2); }
@@ -584,6 +591,21 @@
   .chat-msg.mine .chat-meta { align-items: flex-end; }
   .chat-del { border: none; background: none; color: var(--text-3); font-size: 11px; padding: 0; opacity: .7; }
   .chat-del:hover { color: var(--red); opacity: 1; }
+  .chat-list.rooms { gap: 8px; padding: 14px 16px; }
+  .room-row { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px 8px 6px 14px; box-shadow: var(--shadow); }
+  .room-main { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 8px 0; display: flex; flex-direction: column; gap: 3px; color: var(--text); }
+  .room-name { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .room-unread { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #E5484D; color: #fff; font-size: 11.5px; font-weight: 800; line-height: 20px; text-align: center; }
+  .room-last { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .room-row:not(.joined) .room-last { color: var(--gold-text, #8A6A00); font-weight: 600; }
+  .room-ico, .room-admin { width: 42px; height: 42px; border-radius: 12px; border: 0; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
+  .room-admin { background: transparent; color: var(--text-3); width: 36px; }
+  .room-admin svg { width: 18px; height: 18px; }
+  .room-ico:hover { background: var(--primary); color: #fff; }
+  .room-row:not(.joined) .room-ico { background: var(--card-2); color: var(--text-3); }
+  .room-add { border: 1.5px dashed var(--line); background: transparent; color: var(--text-3); border-radius: 14px; padding: 12px; font-weight: 700; font-size: 14px; }
+  .chat-back { color: var(--text-2); width: 36px; height: 36px; flex-shrink: 0; margin-left: -6px; }
+  .chat-title-wrap { min-width: 0; } .chat-title-wrap h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-input { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); position: relative; }
   .chat-input textarea { flex: 1; resize: none; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 14px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--card-2); color: var(--text); outline: none; max-height: 120px; }
   .chat-input textarea:focus { border-color: var(--primary); background: var(--card); }
@@ -632,8 +654,8 @@
   }
   /* ── 기기별 미세 조정(위의 공통 규칙보다 뒤에 두어 우선 적용) ── */
   /* 1024~1279px(태블릿 가로·작은 노트북): 탭을 좁히고 로고를 줄여 제목이 잘리지 않게 */
-  @media (min-width: 1024px) and (max-width: 1279px) { .appbar-inner > .segment { width: 360px; } .logos a { width: 44px; height: 44px; } .logos img { height: 35px; } .appbar h1 { font-size: 18px; } .appbar .sub { display: none; } .appbar-inner { gap: 14px; }
-    body.admin .admin-badge { display: none; } body.admin .appbar .sub { display: block; font-size: 0; line-height: 1; margin-top: 2px; } body.admin .appbar .sub::before { content: '● 관리자'; font-size: 11px; line-height: 1.3; color: #7CE495; font-weight: 800; } body.admin .appbar .sub .appname { display: none; } }
+  @media (min-width: 1024px) and (max-width: 1279px) { .appbar-inner > .segment { width: 360px; } .logos a { width: 44px; height: 44px; } .logos img { height: 35px; } .appbar h1 { font-size: 18px; } .appbar-inner { gap: 14px; }
+ }
   /* 아주 좁은 폰(갤럭시 폴드 커버 등, 380px 미만) */
   @media (max-width: 379px) { .board-btn > svg { display: none; } .appbar h1 { font-size: 15px; } .logos a { width: 40px; height: 40px; } .logos img { height: 32px; } .appbar-row { gap: 6px; } .segment button { font-size: 12.5px; } .segment button small { font-size: 10px; } .summary .big { font-size: 17px; } .chip { padding-left: 10px; padding-right: 10px; } }
   /* 폰 가로 모드(높이 500px 미만): 고정 필터를 풀어 화면을 확보 */
@@ -651,7 +673,7 @@
       </div>
       <div class="board-title">
         <button class="board-btn" id="boardBtn" onclick="toggleBoardMenu(event)" title="대시보드 선택">
-          <div><div class="title-row"><h1 id="boardName">지휘역량강화센터</h1><span class="admin-badge" title="이 기기에 관리자 PIN이 저장되어 있습니다">● 관리자</span></div><div class="sub"><b class="appname">SAIL:41</b> · 인천소방학교 팀 보드</div></div>
+          <div class="title-row"><h1 id="boardName">지휘역량강화센터</h1></div>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <button class="board-add" onclick="addBoard()" title="새 대시보드 추가"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -659,9 +681,10 @@
     </div>
     <div class="appbar-right">
       <button class="install-btn" id="installBtn" onclick="installApp()" title="앱으로 설치 · 홈 화면에 추가" aria-label="앱 설치"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></svg><span>앱 설치</span></button>
-      <button class="icon-btn chat-btn" id="chatBtn" aria-label="41망 팀 대화" title="41망 · 팀 대화" onclick="openChat()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg><span class="chat-badge" id="chatBadge" style="display:none">0</span></button>
+      <button class="icon-btn chat-btn" id="chatBtn" aria-label="41망 톡방" title="41망 · 부서 톡방" onclick="openChat()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg><span class="chat-badge" id="chatBadge" style="display:none">0</span></button>
       <button class="icon-btn" id="menuBtn" aria-label="더보기" onclick="toggleMenu(event)"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
     </div>
+    <div class="brandline" aria-label="SAIL:41"><b class="appname">SAIL<span>:41</span></b><span class="admin-badge" title="이 기기에 관리자 PIN이 저장되어 있습니다">● 관리자</span></div>
     <div class="segment" id="segment" data-pos="0" role="tablist" aria-label="보드 탭">
       <div class="thumb"></div>
       <button class="active" role="tab" aria-selected="true" data-tab="schedule" onclick="tabClick('schedule')" title="한 번 더 누르면 달력">Schedule<span class="vbadge">달력</span><small>일정표</small></button>
@@ -898,9 +921,9 @@
 <div class="sheet-bg chat-bg" id="chatModal" onclick="if(event.target===this)closeModal('chatModal')">
   <div class="sheet chat-sheet" role="dialog" aria-modal="true" aria-labelledby="chatTitle">
     <div class="handle"></div>
-    <div class="chat-head"><div><h2 id="chatTitle">41망</h2><div class="chat-sub">지휘역량강화센터 팀 대화 · 최근 300개 보관</div></div><div class="chat-who" id="chatWho"></div><button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="chat-head" id="chatHead"><h2 id="chatTitle">41망</h2></div>
     <div class="chat-list" id="chatList" aria-live="polite"></div>
-    <div class="chat-input"><textarea id="chatText" rows="1" maxlength="600" placeholder="팀에 전할 말을 적어요" oninput="chatInput(this)" onkeydown="chatKey(event)"></textarea><span class="chat-count" id="chatCount"></span><button type="button" class="btn primary" id="chatSend" onclick="chatSend()" aria-label="보내기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg></button></div>
+    <div class="chat-input" id="chatInputBar" style="display:none"><textarea id="chatText" rows="1" maxlength="600" placeholder="팀에 전할 말을 적어요" oninput="chatInput(this)" onkeydown="chatKey(event)"></textarea><span class="chat-count" id="chatCount"></span><button type="button" class="btn primary" id="chatSend" onclick="chatSend()" aria-label="보내기"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg></button></div>
   </div>
 </div>
 <div class="sheet-bg" id="trashModal" onclick="if(event.target===this)closeModal('trashModal')">
@@ -948,6 +971,7 @@
   const I = {
     pin: svg('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>'),
     plus: svg('<path d="M12 5v14M5 12h14"/>'),
+    close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
     cal: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
     list: svg('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" stroke-width="2.6"/>'),
     link: svg('<path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/>'),
@@ -985,7 +1009,7 @@
   const LOCALSRV = typeof CFG.apiUrl === 'string';
   const REMOTE = SUPABASE || LOCALSRV;
   const DEFAULT_BOARD = { id: 'main', name: '지휘역량강화센터' };
-  const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, chat: null, me: null,
+  const state = { board: 'main', boards: [DEFAULT_BOARD], schedule: null, tasks: null, personal: null, me: null,
     view: 'list', calMonth: null, scheduleTag: '전체', taskStatus: '전체', taskCat: '전체', taskOwner: '전체', pStatus: '전체', pCat: '전체', pYear: String(new Date().getFullYear()), pMonth: '전체',
     source: {}, lastSync: null, page: { schedule: 1, tasks: 1, personal: 1 }, pageKey: {} };
 
@@ -1044,7 +1068,7 @@
   /* ── 오류 코드 → 메시지 ── */
   const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요합니다', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않습니다', PIN_INVALID: '관리자 PIN이 올바르지 않습니다',
     USER_NOT_FOUND: '등록되지 않은 번호예요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요',
-    USER_ID_INVALID: '뒤 4자리를 확인하세요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
+    USER_ID_INVALID: '뒤 4자리를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요', CHAT_CODE_TOO_SHORT: '입장코드는 4자리 이상', CHAT_ROOM_EXISTS: '이미 있는 톡방이에요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '이미 있는 대시보드입니다',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없습니다', ID_REQUIRED: '항목 ID 오류', KIND_INVALID: '종류 오류',
     TOO_MANY_ATTEMPTS: '시도가 너무 많습니다. 10분 후 다시 하세요', DELETED_NOT_FOUND: '보관된 항목이 없어요' };
   class ApiError extends Error { constructor(code, status) { super(ERR[code] || code || ('서버 오류 ' + status)); this.code = code; this.status = status; } }
@@ -1086,6 +1110,15 @@
       userDelete: (pin, id) => rpc('ictc_user_delete', { p_edit_pin: pin, p_id: id }),
       deletedList: (pin, kind, board) => rpc('ictc_deleted_list', { p_edit_pin: pin, p_kind: kind || null, p_board: board || null }),
       restore: (pin, seq) => rpc('ictc_restore', { p_edit_pin: pin, p_seq: seq }),
+      chatRooms: () => rpc('ictc_chat_rooms', { p_pin: viewPin() }),
+      chatJoin: (room, code) => rpc('ictc_chat_join', { p_pin: viewPin(), p_room: room, p_code: code }),
+      chatList: async (room, code) => rows2(await rpc('ictc_chat_list', { p_pin: viewPin(), p_room: room, p_code: code })),
+      chatSave: (room, code, item) => rpc('ictc_chat_save', { p_pin: viewPin(), p_room: room, p_code: code, p_item: item }),
+      chatDelete: (room, code, id) => rpc('ictc_chat_delete', { p_pin: viewPin(), p_room: room, p_code: code, p_id: id }),
+      chatSetCode: (pin, room, nw) => rpc('ictc_chat_set_code', { p_edit_pin: pin, p_room: room, p_new: nw }),
+      chatRoomRename: (pin, room, name) => rpc('ictc_chat_room_rename', { p_edit_pin: pin, p_room: room, p_name: name }),
+      chatRoomAdd: (pin, id, name, code) => rpc('ictc_chat_room_add', { p_edit_pin: pin, p_id: id, p_name: name, p_code: code }),
+      chatRoomDelete: (pin, room) => rpc('ictc_chat_room_delete', { p_edit_pin: pin, p_room: room }),
     };
   } else if (LOCALSRV) {
     const get = async (path) => { const res = await fetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
@@ -1111,6 +1144,15 @@
       userDelete: (pin, id) => post('/api/user_delete', { pin, id }),
       deletedList: (pin, kind, board) => post('/api/deleted_list', { pin, kind: kind || null, board: board || null }),
       restore: (pin, seq) => post('/api/restore', { pin, seq }),
+      chatRooms: () => get('/api/chat_rooms'),
+      chatJoin: (room, code) => post('/api/chat_join', { pin: viewPin(), room, code }),
+      chatList: async (room, code) => rows2(await post('/api/chat_list', { pin: viewPin(), room, code })),
+      chatSave: (room, code, item) => post('/api/chat_save', { pin: viewPin(), room, code, item }),
+      chatDelete: (room, code, id) => post('/api/chat_delete', { pin: viewPin(), room, code, id }),
+      chatSetCode: (pin, room, nw) => post('/api/chat_set_code', { pin, room, new_code: nw }),
+      chatRoomRename: (pin, room, name) => post('/api/chat_room_rename', { pin, room, name }),
+      chatRoomAdd: (pin, id, name, code) => post('/api/chat_room_add', { pin, id, name, code }),
+      chatRoomDelete: (pin, room) => post('/api/chat_room_delete', { pin, room }),
     };
   } else {
     /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
@@ -1148,6 +1190,16 @@
       userDelete: async (pin, id) => { const u = users(); delete u[id]; lsSet(LS.users, u); const s = store(); delete s[key('personal', id)]; lsSet(LS.items, s); },
       deletedList: async () => [],      // 미리보기 모드에는 휴지통이 없다
       restore: async () => {},
+      // 미리보기 톡방: 이 브라우저에만 저장. 기본 톡방·코드는 실제 서버와 같다
+      chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
+      chatJoin: async (room, code) => { const r = (lsGet('ictc.chat.rooms') || []).find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); if (r.code !== code) throw new ApiError('CHAT_CODE_INVALID'); return r.name; },
+      chatList: async (room, code) => { await api.chatJoin(room, code); return { updated: null, items: getItems('chat', room) }; },
+      chatSave: async (room, code, item) => { await api.chatJoin(room, code); await api.save('chat', item, room); const items = getItems('chat', room); if (items.length > 300) setItems('chat', room, items.slice(-300)); },
+      chatDelete: async (room, code, id) => { await api.chatJoin(room, code); await api.remove('chat', id, room); },
+      chatSetCode: async (pin, room, nw) => { const rs = lsGet('ictc.chat.rooms') || []; const r = rs.find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); r.code = nw; lsSet('ictc.chat.rooms', rs); },
+      chatRoomRename: async (pin, room, name) => { const rs = lsGet('ictc.chat.rooms') || []; const r = rs.find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); r.name = name; lsSet('ictc.chat.rooms', rs); },
+      chatRoomAdd: async (pin, id, name, code) => { const rs = lsGet('ictc.chat.rooms') || []; if (rs.some(x => x.id === id)) throw new ApiError('CHAT_ROOM_EXISTS'); rs.push({ id, name, code, sort: rs.length + 1 }); lsSet('ictc.chat.rooms', rs); },
+      chatRoomDelete: async (pin, room) => { lsSet('ictc.chat.rooms', (lsGet('ictc.chat.rooms') || []).filter(x => x.id !== room)); const st = store(); delete st[key('chat', room)]; lsSet(LS.items, st); },
     };
   }
 
@@ -1331,7 +1383,7 @@
   function normalize(data) { if (!data || !Array.isArray(data.items)) throw new Error('items 배열이 없습니다'); data.items.forEach(i => { if (!i.id) i.id = uid(); }); return data; }
   async function refresh(kind, silent) {
     try {
-      const data = kind === 'personal' ? (state.me ? await api.personalList(state.me.id, state.me.pin) : { items: [] }) : kind === 'chat' ? await api.list('chat', CHAT.board) : await api.list(kind, state.board);
+      const data = kind === 'personal' ? (state.me ? await api.personalList(state.me.id, state.me.pin) : { items: [] }) : await api.list(kind, state.board);
       state[kind] = normalize(data); state.source[kind] = REMOTE ? 'remote' : 'local'; state.lastSync = new Date(); render(kind);
     } catch (e) {
       if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; }
@@ -1341,7 +1393,7 @@
       setSyncStatus('연결 안 됨 · ' + e.message, true);
     }
   }
-  function render(kind) { ({ schedule: renderSchedule, tasks: renderTasks, personal: renderPersonal, chat: renderChat })[kind](); renderNotice(); }
+  function render(kind) { ({ schedule: renderSchedule, tasks: renderTasks, personal: renderPersonal })[kind](); renderNotice(); }
   function setSyncStatus(text, isError) { const el = document.getElementById('syncStatus'); if (el) { el.textContent = text; el.classList.toggle('err', !!isError); } }
   function renderNotice() {
     updateAdminUI();
@@ -1880,41 +1932,95 @@
     }
   }
 
-  /* ── 41망: 팀 대화 (kind 'chat', 대시보드와 무관하게 팀 전체 하나, 최근 300개 보관) ── */
-  const CHAT = { board: 'main', max: 500, timer: null };
+  /* ── 41망: 부서별 톡방 (kind 'chat', board = 톡방 id). 입장코드는 서버가 검사하고, 통과한 코드는 이 기기에 저장 ── */
+  const CHAT = { max: 500, timer: null, room: null, rooms: [], msgs: {}, source: {} };
   const chatDev = () => { let d = lsGet('ictc.chat.dev'); if (!d) { d = uid(); lsSet('ictc.chat.dev', d); } return d; };
   const chatName = () => (state.me && state.me.name) || lsGet('ictc.chat.nick') || '';
   const chatIsMine = m => m.dev === chatDev() || (state.me && m.uid && m.uid === state.me.id);
-  const chatSeen = () => lsGet('ictc.chat.seen') || '';
-  const chatMsgs = () => ((state.chat && state.chat.items) || []).slice().sort((a, b) => (a.created || '').localeCompare(b.created || ''));
-  function chatUnread() { const seen = chatSeen(); return chatMsgs().filter(m => (m.created || '') > seen && !chatIsMine(m)).length; }
+  const chatCodes = () => lsGet('ictc.chat.codes') || {};
+  const chatCode = room => chatCodes()[room] || '';
+  const chatSeen = room => (lsGet('ictc.chat.seen') || {})[room] || '';
+  const chatMarkSeen = (room, iso) => { const s = lsGet('ictc.chat.seen') || {}; if ((s[room] || '') < iso) { s[room] = iso; lsSet('ictc.chat.seen', s); } };
+  const chatMsgs = room => (CHAT.msgs[room] || []).slice().sort((a, b) => (a.created || '').localeCompare(b.created || ''));
+  const chatUnread = room => { const seen = chatSeen(room); return chatMsgs(room).filter(m => (m.created || '') > seen && !chatIsMine(m)).length; };
+  const chatRoomName = room => (CHAT.rooms.find(r => r.id === room) || {}).name || room;
   function updateChatBadge() {
-    const n = chatUnread(); const b = document.getElementById('chatBadge'); if (!b) return;
+    const n = CHAT.rooms.reduce((a, r) => a + (chatCode(r.id) ? chatUnread(r.id) : 0), 0);
+    const b = document.getElementById('chatBadge'); if (!b) return;
     b.textContent = n > 99 ? '99+' : String(n); b.style.display = n ? '' : 'none';
-    document.getElementById('chatBtn').setAttribute('aria-label', n ? `41망 · 새 글 ${n}개` : '41망 팀 대화');
+    document.getElementById('chatBtn').setAttribute('aria-label', n ? `41망 · 새 글 ${n}개` : '41망 톡방');
   }
-  function linkify(text) {
-    return esc(text).replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+  function linkify(text) { return esc(text).replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`); }
+  async function loadChatRooms(silent) {
+    try { CHAT.rooms = (await api.chatRooms()) || []; CHAT.source.rooms = 'ok'; }
+    catch (e) { CHAT.source.rooms = 'error'; if (!silent) toast(e.message); }
+  }
+  // 입장한 톡방들의 새 글 확인 (30초 동기화에서 호출)
+  async function refreshChat(silent) {
+    if (!CHAT.rooms.length) await loadChatRooms(true);
+    await Promise.all(CHAT.rooms.filter(r => chatCode(r.id)).map(r => refreshRoom(r.id, silent)));
+    updateChatBadge();
+  }
+  async function refreshRoom(room, silent) {
+    const code = chatCode(room); if (!code) return;
+    try { const rows = await api.chatList(room, code); CHAT.msgs[room] = normalize(rows).items; CHAT.source[room] = 'ok'; }
+    catch (e) {
+      if (e.code === 'CHAT_CODE_INVALID' || e.code === 'CHAT_ROOM_NOT_FOUND') { const c = chatCodes(); delete c[room]; lsSet('ictc.chat.codes', c); if (CHAT.room === room) { CHAT.room = null; toast(e.code === 'CHAT_CODE_INVALID' ? '입장코드가 바뀌었어요. 다시 입장하세요' : '없어진 톡방이에요'); } }
+      else CHAT.source[room] = 'error';
+      if (!silent) toast(e.message);
+    }
+    if (document.getElementById('chatModal').classList.contains('open')) renderChat();
   }
   async function openChat() {
-    openModal('chatModal'); renderChat(); refresh('chat', true);
-    clearInterval(CHAT.timer); CHAT.timer = setInterval(() => { if (document.getElementById('chatModal').classList.contains('open') && !document.hidden) refresh('chat', true); else { clearInterval(CHAT.timer); CHAT.timer = null; } }, 8000);
-    setTimeout(() => { const ta = document.getElementById('chatText'); if (ta && window.innerWidth >= 1024) ta.focus(); }, 350);
+    CHAT.room = null; openModal('chatModal'); renderChat();
+    await loadChatRooms(true); renderChat(); refreshChat(true);
+    clearInterval(CHAT.timer); CHAT.timer = setInterval(() => { if (document.getElementById('chatModal').classList.contains('open') && !document.hidden) { if (CHAT.room) refreshRoom(CHAT.room, true); } else { clearInterval(CHAT.timer); CHAT.timer = null; } }, 8000);
   }
+  async function enterRoom(room) {
+    if (!chatCode(room)) {
+      const code = (prompt(`'${chatRoomName(room)}' 톡방 입장코드 4자리를 입력하세요`) || '').trim(); if (!code) return;
+      try { await api.chatJoin(room, code); const c = chatCodes(); c[room] = code; lsSet('ictc.chat.codes', c); }
+      catch (e) { toast(e.message); return; }
+    }
+    CHAT.room = room; renderChat(); await refreshRoom(room, true);
+    const list = document.getElementById('chatList'); if (list) list.scrollTop = list.scrollHeight;
+    setTimeout(() => { const ta = document.getElementById('chatText'); if (ta && window.innerWidth >= 1024) ta.focus(); }, 300);
+  }
+  function leaveRoomView() { CHAT.room = null; renderChat(); }
   function chatDayLabel(iso) {
     const d = new Date(iso), t = new Date(); const day = x => `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`;
     if (day(d) === day(t)) return '오늘'; t.setDate(t.getDate() - 1); if (day(d) === day(t)) return '어제';
     return `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}`;
   }
+  const CHAT_ICO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H8l-4 3v-5.5A8 8 0 1 1 21 12Z"/><path d="M8.5 11h7M8.5 14h4"/></svg>';
   function renderChat() {
-    const modal = document.getElementById('chatModal'); const open = modal.classList.contains('open');
-    updateChatBadge(); if (!open) return;
-    const list = document.getElementById('chatList'); const msgs = chatMsgs(); const admin = document.body.classList.contains('admin') || !REMOTE;
-    const nm = chatName();
-    document.getElementById('chatWho').innerHTML = nm ? `<b>${esc(nm)}</b>${state.me ? ' <span>(개인업무 이름)</span>' : ` <button type="button" class="linklike" onclick="chatSetNick()">바꾸기</button>`}` : `<button type="button" class="linklike" onclick="chatSetNick()">이름 정하기</button> <span>글을 쓰려면 이름이 필요해요</span>`;
-    if (state.source.chat === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refresh('chat')">다시 시도</button></div>`; return; }
-    if (!msgs.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">아직 글이 없어요<br>팀에 전할 말을 첫 글로 남겨 보세요</div>`; return; }
-    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80 || !list.dataset.rendered;
+    const modal = document.getElementById('chatModal'); updateChatBadge(); if (!modal.classList.contains('open')) return;
+    const admin = document.body.classList.contains('admin') || !REMOTE;
+    const head = document.getElementById('chatHead'), list = document.getElementById('chatList'), input = document.getElementById('chatInputBar');
+    if (!CHAT.room) {
+      head.innerHTML = `<div><h2 id="chatTitle">41망</h2><div class="chat-sub">부서 톡방 · 입장코드는 담당자에게</div></div><button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
+      input.style.display = 'none'; list.classList.add('rooms');
+      if (CHAT.source.rooms === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>톡방 목록을 불러오지 못했어요<br><button type="button" class="retry-btn" onclick="openChat()">다시 시도</button></div>`; return; }
+      if (!CHAT.rooms.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${CHAT.source.rooms ? '톡방이 없어요' : '불러오는 중…'}</div>`; return; }
+      list.innerHTML = CHAT.rooms.map(r => { const joined = !!chatCode(r.id); const n = joined ? chatUnread(r.id) : 0; const last = joined ? chatMsgs(r.id).slice(-1)[0] : null;
+        return `<div class="room-row ${joined ? 'joined' : ''}"><button type="button" class="room-main" onclick="enterRoom('${esc(r.id)}')">
+          <span class="room-name">${esc(r.name)}${n ? `<span class="room-unread">${n > 99 ? '99+' : n}</span>` : ''}</span>
+          <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc((last.text || '').slice(0, 40))}` : '아직 글이 없어요') : '입장코드 4자리가 필요해요'}</span></button>
+          ${admin ? `<button type="button" class="room-admin" title="입장코드 변경" aria-label="${esc(r.name)} 입장코드 변경" onclick="chatSetCode('${esc(r.id)}')">${I.key || '코드'}</button>` : ''}
+          <button type="button" class="room-ico" aria-label="${esc(r.name)} 톡방 열기" onclick="enterRoom('${esc(r.id)}')">${CHAT_ICO}</button></div>`; }).join('')
+        + (admin ? `<button type="button" class="room-add" onclick="chatRoomAdd()">+ 톡방 추가</button>` : '');
+      return;
+    }
+    const room = CHAT.room, nm = chatName(), msgs = chatMsgs(room);
+    head.innerHTML = `<button type="button" class="icon-btn chat-back" aria-label="톡방 목록" onclick="leaveRoomView()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="chat-title-wrap"><h2 id="chatTitle">${esc(chatRoomName(room))}</h2><div class="chat-sub">41망 · 최근 300개 보관</div></div>
+      <div class="chat-who" id="chatWho">${nm ? `<b>${esc(nm)}</b>${state.me ? '' : ` <button type="button" class="linklike" onclick="chatSetNick()">바꾸기</button>`}` : `<button type="button" class="linklike" onclick="chatSetNick()">이름 정하기</button>`}</div>
+      ${admin ? `<button type="button" class="icon-btn chat-close" title="톡방 관리" aria-label="톡방 관리" onclick="chatRoomMenu('${esc(room)}')">${I.pencil || '⋯'}</button>` : ''}
+      <button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
+    input.style.display = ''; list.classList.remove('rooms');
+    if (CHAT.source[room] === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>서버에 연결하지 못했어요<br><button type="button" class="retry-btn" onclick="refreshRoom('${esc(room)}')">다시 시도</button></div>`; return; }
+    if (!msgs.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">아직 글이 없어요<br>첫 글을 남겨 보세요</div>`; return; }
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80 || list.dataset.room !== room;
     let html = '', lastDay = '', lastKey = '';
     msgs.forEach(m => {
       const day = (m.created || '').slice(0, 10); if (day !== lastDay) { html += `<div class="chat-day"><span>${chatDayLabel(m.created)}</span></div>`; lastDay = day; lastKey = ''; }
@@ -1924,9 +2030,9 @@
       html += `<div class="chat-msg ${mine ? 'mine' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
         <div class="chat-row"><div class="chat-bubble">${linkify(m.text || '')}</div><div class="chat-meta"><span>${time}</span>${(mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
     });
-    list.innerHTML = html; list.dataset.rendered = '1';
+    list.innerHTML = html; list.dataset.room = room;
     if (atBottom) list.scrollTop = list.scrollHeight;
-    const last = msgs[msgs.length - 1]; if (last && (last.created || '') > chatSeen()) { lsSet('ictc.chat.seen', last.created); updateChatBadge(); }
+    const last = msgs[msgs.length - 1]; if (last) { chatMarkSeen(room, last.created || ''); updateChatBadge(); }
   }
   function chatSetNick() {
     if (state.me) return;
@@ -1937,25 +2043,44 @@
   function chatInput(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; const c = document.getElementById('chatCount'); const n = ta.value.length; c.textContent = n > CHAT.max - 100 ? `${n}/${CHAT.max}` : ''; }
   function chatKey(e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.innerWidth >= 1024) { e.preventDefault(); chatSend(); } }
   async function chatSend() {
+    const room = CHAT.room; if (!room) return;
     const ta = document.getElementById('chatText'); const text = ta.value.replace(/\s+$/g, '').trim();
     if (!text) return; if (text.length > CHAT.max) { toast(`글은 ${CHAT.max}자까지예요`); return; }
     if (!chatName()) { chatSetNick(); if (!chatName()) return; }
     const msg = { id: uid(), text, name: chatName(), dev: chatDev(), uid: state.me ? state.me.id : null, created: new Date().toISOString() };
     const btn = document.getElementById('chatSend'); btn.disabled = true;
     try {
-      await api.save('chat', msg, CHAT.board, viewPin());
+      await api.chatSave(room, chatCode(room), msg);
       ta.value = ''; chatInput(ta);
-      state.chat = state.chat || { items: [] }; state.chat.items.push(msg); lsSet('ictc.chat.seen', msg.created); renderChat();
+      (CHAT.msgs[room] = CHAT.msgs[room] || []).push(msg); chatMarkSeen(room, msg.created); renderChat();
       const list = document.getElementById('chatList'); list.scrollTop = list.scrollHeight;
-      refresh('chat', true);
+      refreshRoom(room, true);
     } catch (e) { toast(e.message); }
     btn.disabled = false; if (window.innerWidth >= 1024) ta.focus();
   }
   async function chatDelete(id) {
-    const m = chatMsgs().find(x => x.id === id); if (!m) return;
+    const room = CHAT.room; const m = chatMsgs(room).find(x => x.id === id); if (!m) return;
     if (!confirm(`이 글을 삭제할까요?\n"${(m.text || '').slice(0, 40)}${(m.text || '').length > 40 ? '…' : ''}"`)) return;
-    try { await api.remove('chat', id, CHAT.board, viewPin()); state.chat.items = state.chat.items.filter(x => x.id !== id); renderChat(); toast('삭제했어요'); refresh('chat', true); }
+    try { await api.chatDelete(room, chatCode(room), id); CHAT.msgs[room] = (CHAT.msgs[room] || []).filter(x => x.id !== id); renderChat(); toast('삭제했어요'); refreshRoom(room, true); }
     catch (e) { toast(e.message); }
+  }
+  /* 관리자: 입장코드 변경 · 이름 변경 · 톡방 추가/삭제 */
+  async function chatSetCode(room) {
+    const nw = (prompt(`'${chatRoomName(room)}' 새 입장코드(4자리 이상)를 입력하세요. 바꾸면 모든 직원이 다시 입장해야 해요`) || '').trim(); if (!nw) return;
+    if (nw.length < 4) { toast('입장코드는 4자리 이상'); return; }
+    if (await withPin(pin => api.chatSetCode(pin, room, nw))) { const c = chatCodes(); c[room] = nw; lsSet('ictc.chat.codes', c); toast('입장코드를 바꿨어요'); renderChat(); }
+  }
+  async function chatRoomMenu(room) {
+    const a = (prompt(`'${chatRoomName(room)}' 톡방 관리\n1 = 이름 변경, 2 = 입장코드 변경, 3 = 톡방 삭제`, '1') || '').trim();
+    if (a === '1') { const nm = (prompt('새 톡방 이름', chatRoomName(room)) || '').trim(); if (!nm) return; if (await withPin(pin => api.chatRoomRename(pin, room, nm))) { await loadChatRooms(true); renderChat(); toast('이름을 바꿨어요'); } }
+    else if (a === '2') chatSetCode(room);
+    else if (a === '3') { if (!confirm(`'${chatRoomName(room)}' 톡방과 그 안의 글을 모두 삭제할까요?\n${UNDO_NOTE}`)) return; if (await withPin(pin => api.chatRoomDelete(pin, room))) { CHAT.room = null; await loadChatRooms(true); renderChat(); toast('톡방을 삭제했어요'); } }
+  }
+  async function chatRoomAdd() {
+    const nm = (prompt('새 톡방 이름(부서명)') || '').trim(); if (!nm) return;
+    const code = (prompt(`'${nm}' 입장코드(4자리 이상)`) || '').trim(); if (code.length < 4) { toast('입장코드는 4자리 이상'); return; }
+    const id = 'r' + uid();
+    if (await withPin(pin => api.chatRoomAdd(pin, id, nm, code))) { const c = chatCodes(); c[id] = code; lsSet('ictc.chat.codes', c); await loadChatRooms(true); renderChat(); toast('톡방을 만들었어요'); }
   }
 
   /* ── 엑셀 가져오기(개인업무) ── 파일은 이 브라우저에서만 읽고, 고른 행만 내 개인업무로 저장한다 */
@@ -2249,7 +2374,7 @@
     try { await loadBoards(); } catch (e) { if (e.code && e.code.startsWith('VIEW_PIN')) { showLock(e.code === 'VIEW_PIN_INVALID' ? e.message : ''); return; } }
     state.me = lsGet(LS.me);
     showTab(h.tab); if (!(history.state && history.state.app)) initHistory(); else updateHash();
-    await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true), refresh('chat', true)]);
+    await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true), refreshChat(true)]);
     const visits = (Number(lsGet('ictc.visits')) || 0) + 1; lsSet('ictc.visits', visits); updateInstallBtn(); updateAdminUI();
     if (!lsGet('ictc.hint.v1')) { lsSet('ictc.hint.v1', 1); setTimeout(() => toast('누구나 추가·수정할 수 있어요', 4000), 600); setTimeout(showTabTip, 1400); }
     if (location.hash === '#a2hs') { setTimeout(installApp, 600); }                       // 인앱 브라우저에서 '브라우저로 열기' 뒤 돌아온 경우
@@ -2260,7 +2385,7 @@
     document.getElementById('menuReset').querySelector('span').textContent = '서버에서 새로고침';
     const every = Math.max(10, Number(CFG.pollSeconds) || 30) * 1000;
     const busy = () => document.hidden || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
-    const sync = () => { if (!busy()) { refresh('schedule', true); refresh('tasks', true); refresh('chat', true); if (state.me) refresh('personal', true); } };
+    const sync = () => { if (!busy()) { refresh('schedule', true); refresh('tasks', true); refreshChat(true); if (state.me) refresh('personal', true); } };
     setInterval(sync, every);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   }
