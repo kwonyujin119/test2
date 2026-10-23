@@ -500,6 +500,13 @@
   .a2hs-guide ol { margin: 0 0 0 18px; padding: 0; font-size: 14px; line-height: 1.8; }
   .a2hs-guide .os { font-size: 13px; font-weight: 700; color: var(--text-3); margin: 14px 0 4px; }
   .a2hs-guide .os:first-child { margin-top: 0; }
+  .a2hs-guide .os { font-size: 14px; color: var(--text-2); }
+  .a2hs-guide .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .a2hs-guide .steps li { display: flex; align-items: center; gap: 12px; background: var(--card-2); border-radius: 14px; padding: 14px 16px; font-size: 16px; line-height: 1.45; }
+  .a2hs-guide .steps .n { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0; }
+  .a2hs-guide .steps .ic { display: inline-flex; color: var(--primary); flex-shrink: 0; }
+  .a2hs-guide .note { font-size: 13.5px; color: var(--text-3); margin: 12px 0 0; line-height: 1.5; }
+  .a2hs-guide .extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
   /* ── PC ── */
   .side-actions { display: none; }
@@ -986,7 +993,7 @@
   <button id="menuUsers" data-ico="users" onclick="manageUsers()"><span>개인업무 사용자 관리</span></button>
   <button id="menuTrash" data-ico="trash" onclick="openTrash()"><span>휴지통</span></button>
   <button id="menuWide" data-ico="view" onclick="toggleWide()"><span>넓게 보기</span></button>
-  <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>홈 화면에 추가</span></button>
+  <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>앱 설치</span></button>
   <button id="menuReset" data-ico="refresh" onclick="resetToDefault(currentTab())"><span>기본값으로 복원</span></button>
   <hr id="menuAdminHr">
   <button id="menuPin" data-ico="key" style="display:none" onclick="changePin()"><span>관리자 로그인</span></button>
@@ -1176,12 +1183,12 @@
 <div class="a2hs" id="a2hs" role="dialog" aria-label="홈 화면에 추가">
   <img src="assets/icon-192.png" alt="">
   <div class="txt"><b>홈 화면에 추가</b><span>앱처럼 바로 열 수 있어요</span></div>
-  <div class="btns"><button type="button" class="btn primary" onclick="installApp()">추가하기</button><button type="button" class="btn ghost" onclick="dismissA2hs()">나중에</button></div>
+  <div class="btns"><button type="button" class="btn primary" onclick="installApp()">설치하기</button><button type="button" class="btn ghost" onclick="dismissA2hs()">나중에</button></div>
 </div>
 <div class="sheet-bg" id="a2hsModal" role="dialog" aria-modal="true" aria-labelledby="a2hsTitle" onclick="if(event.target===this)closeModal('a2hsModal')">
   <div class="sheet a2hs-guide">
     <div class="handle"></div>
-    <h2 id="a2hsTitle">홈 화면에 추가하는 방법</h2>
+    <h2 id="a2hsTitle">앱 설치</h2>
     <div id="a2hsGuide"></div>
     <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('a2hsModal')">닫기</button></div>
   </div>
@@ -2926,15 +2933,19 @@
   const a2hsUrl = () => location.origin + location.pathname + location.search + '#a2hs';   // 돌아오면 설치 안내가 바로 열린다
   const openInChrome = () => { const u = a2hsUrl().replace(/^https?:\/\//, ''); location.href = `intent://${u}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(a2hsUrl())};end`; };
   const openInSamsung = () => { const u = a2hsUrl().replace(/^https?:\/\//, ''); location.href = `intent://${u}#Intent;scheme=https;package=com.sec.android.app.sbrowser;S.browser_fallback_url=${encodeURIComponent(a2hsUrl())};end`; };
-  // 인앱 브라우저 → 바깥 브라우저. 카카오톡은 전용 스킴(안드로이드·아이폰 공통), 그 밖의 안드로이드는 Chrome intent, 아이폰은 안내만 가능
+  // ── 앱 설치: 버튼 하나로 끝낸다 ─────────────────────────────────────────
+  // 1) 설치창을 띄울 수 있는 브라우저(크롬·엣지·삼성·웨일, PC 포함) → 바로 설치창
+  // 2) 카톡·네이버 등 앱 안 브라우저 → 한 번 눌러 바깥 브라우저로(돌아오면 자동으로 1 번 이어짐)
+  // 3) 아이폰 → 브라우저가 코드 설치를 막아 둬서 2단계 그림 안내만(이건 어떤 앱도 못 피함)
+  let installBusy = false;
   function openExternal() {
     if (isKakao) {
       location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(a2hsUrl());
-      setTimeout(() => { if (document.hidden) return; if (isAndroid) openInChrome(); else { installApp(); toast('자동으로 열리지 않으면 아래 방법으로 Safari에서 여세요', 4000); } }, 1500);
+      setTimeout(() => { if (document.hidden) return; if (isAndroid) openInChrome(); else showInstallSheet(); }, 1500);   // 스킴이 안 먹으면 안드로이드는 Chrome intent, 아이폰은 안내
       return;
     }
     if (isAndroid) { openInChrome(); return; }
-    installApp();
+    showInstallSheet();
   }
   async function copyLink() {
     const url = location.origin + location.pathname;
@@ -2942,21 +2953,16 @@
     catch (e) { prompt('이 주소를 복사해 크롬·Safari 에 붙여 넣으세요', url); }
   }
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
-  window.addEventListener('appinstalled', () => { hideA2hs(); lsSet(A2HS_KEY, Date.now() + 1e12); toast('설치했어요. 홈 화면·바탕화면에서 SAIL:41 을 열 수 있어요'); document.body.classList.remove('installable'); });
+  window.addEventListener('appinstalled', () => { hideA2hs(); closeModal('a2hsModal'); lsSet(A2HS_KEY, Date.now() + 1e12); toast('설치했어요. 홈 화면·바탕화면에서 SAIL:41 을 열 수 있어요'); document.body.classList.remove('installable'); });
+  const waitInstallPrompt = ms => new Promise(res => { if (deferredInstall) return res(true); const t0 = Date.now(); const iv = setInterval(() => { if (deferredInstall || Date.now() - t0 > ms) { clearInterval(iv); res(!!deferredInstall); } }, 100); });
   function showA2hs() {
     if (isStandalone()) return;
     const until = lsGet(A2HS_KEY); if (until && Date.now() < until) return;
     if (document.querySelector('.lock.open')) return;
     const b = document.getElementById('a2hs');
-    if (isInApp) {
-      b.querySelector('.txt b').textContent = 'SAIL:41 앱으로 설치';
-      b.querySelector('.txt span').textContent = isKakao ? '카카오톡 안에서는 설치가 안 돼요. 한 번 누르면 바깥 브라우저로 열려요' : `${browserName}에서는 설치가 안 돼요. ${isIOS ? 'Safari' : '크롬·삼성 인터넷'}으로 열어 주세요`;
-      b.querySelector('.btn.primary').textContent = '브라우저로 열기';
-    } else {
-      b.querySelector('.txt b').textContent = 'SAIL:41 홈 화면에 추가';
-      b.querySelector('.txt span').textContent = isSafariIOS ? '아래 공유 버튼 → 홈 화면에 추가. 설치 후 처음 한 번 PIN을 다시 넣어요' : isChromeIOS ? '주소창 오른쪽 공유 → 홈 화면에 추가. 처음 한 번 PIN을 다시 넣어요' : (browserName ? browserName + ' · ' : '') + '앱처럼 바로 열 수 있어요';
-      b.querySelector('.btn.primary').textContent = deferredInstall ? '설치하기' : isIOS ? '방법 보기' : '추가하기';
-    }
+    b.querySelector('.txt b').textContent = 'SAIL:41 앱으로 설치';
+    b.querySelector('.txt span').textContent = isInApp ? '한 번 누르면 바깥 브라우저로 열리고 설치가 이어져요' : isIOS ? '한 번 누르면 방법이 떠요 (공유 → 홈 화면에 추가)' : '한 번 누르면 설치돼요';
+    b.querySelector('.btn.primary').textContent = '설치하기';
     b.classList.add('open'); document.body.classList.add('a2hs-open');
   }
   function updateInstallBtn() { document.body.classList.toggle('installable', !isStandalone()); }
@@ -2964,24 +2970,37 @@
   function dismissA2hs() { lsSet(A2HS_KEY, Date.now() + 7 * 864e5); hideA2hs(); }
   async function installApp() {
     hideA2hs();
-    if (isInApp && !document.getElementById('a2hsModal').classList.contains('open') && event && event.target && event.target.closest('#a2hs')) { openExternal(); return; }
-    if (deferredInstall) {
-      try { deferredInstall.prompt(); const r = await deferredInstall.userChoice; deferredInstall = null; if (r && r.outcome === 'accepted') return; } catch (e) {}
-      lsSet(A2HS_KEY, Date.now() + 7 * 864e5); return;
-    }
+    if (installBusy) return; installBusy = true;
+    try {
+      if (isStandalone()) { toast('이미 앱으로 열고 있어요'); return; }
+      if (isInApp) { openExternal(); return; }
+      if (!deferredInstall && !isIOS) { toast('설치 준비 중…', 2500); await waitInstallPrompt(2500); }   // beforeinstallprompt 가 조금 늦게 올 수 있다
+      if (deferredInstall) {
+        try { deferredInstall.prompt(); const r = await deferredInstall.userChoice; deferredInstall = null; if (!(r && r.outcome === 'accepted')) lsSet(A2HS_KEY, Date.now() + 7 * 864e5); return; } catch (e) { deferredInstall = null; }
+      }
+      showInstallSheet();
+    } finally { installBusy = false; }
+  }
+  // 설치창을 못 띄우는 경우에만, 지금 브라우저 하나의 방법만 크게 보여 준다
+  function showInstallSheet() {
     const g = document.getElementById('a2hsGuide');
-    const shareIco = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;color:var(--primary)"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
-    const ios = `<div class="os">아이폰 · 아이패드 (Safari)</div><ol><li>화면 아래 가운데 <b>공유</b> 버튼 ${shareIco} 을 누르세요${isIOS ? ' (주소창이 아래에 있으면 그 옆)' : ''}</li><li>목록을 아래로 내려 <b>홈 화면에 추가</b>를 누르세요</li><li>오른쪽 위 <b>추가</b>를 누르면 끝. 홈 화면의 SAIL:41 아이콘으로 여세요</li></ol><p style="font-size:13px;color:var(--text-3);margin:6px 0 0">설치한 앱은 처음 한 번 팀 PIN과 개인업무 비밀번호를 다시 넣어요. 이후로는 기억돼요.</p>`;
-    const iosChrome = `<div class="os">아이폰 Chrome</div><ol><li>주소창 오른쪽 <b>공유</b> 버튼 ${shareIco} 을 누르세요</li><li><b>홈 화면에 추가</b>를 누르세요</li></ol>`;
-    const chrome = `<div class="os">Chrome (안드로이드)</div><ol><li>오른쪽 위 <b>⋮</b> 메뉴를 누르세요</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 선택하세요</li><li><b>설치</b>를 누르면 끝</li></ol>`;
-    const samsung = `<div class="os">삼성 인터넷</div><ol><li>아래 오른쪽 <b>≡</b> 메뉴를 누르세요</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 선택하세요</li><li><b>추가</b>를 누르면 끝</li></ol>`;
-    const whale = `<div class="os">네이버 웨일</div><ol><li>아래 <b>≡</b> 메뉴를 누르세요</li><li><b>홈 화면에 추가</b>를 선택하세요</li></ol>`;
-    const kakaoBtn = isKakao ? `<button type="button" class="btn primary" onclick="openExternal()">바깥 브라우저로 열기</button>` : '';
-    const inapp = `<div class="os">${esc(browserName || '앱 내 브라우저')}에서 열었어요</div><p style="font-size:13.5px;color:var(--text-2);margin:0 0 10px;line-height:1.5">앱 안의 브라우저는 홈 화면 설치를 지원하지 않습니다. 아래 버튼으로 바깥 브라우저에서 연 뒤 설치하세요. 열린 뒤에는 이 안내가 자동으로 다시 떠요.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${kakaoBtn}${isAndroid ? `<button type="button" class="btn ${isKakao ? 'ghost' : 'primary'}" onclick="openInChrome()">Chrome으로 열기</button><button type="button" class="btn ghost" onclick="openInSamsung()">삼성 인터넷으로 열기</button>` : ''}<button type="button" class="btn ghost" onclick="copyLink()">주소 복사</button></div>
-      ${isIOS ? `<ol><li>버튼이 안 되면 오른쪽 아래 <b>⋯</b> 또는 <b>공유</b> 메뉴 → <b>Safari로 열기</b>${isKakao ? '(<b>다른 브라우저로 열기</b>)' : ''}</li><li>Safari에서 아래 방법으로 추가</li></ol>` : `<ol><li>버튼이 안 되면 오른쪽 위 <b>⋮</b> 메뉴 → <b>다른 브라우저로 열기</b></li></ol>`}`;
-    const pc = `<div class="os">PC (Chrome · Edge · 웨일)</div><ol><li>주소창 오른쪽 끝의 <b>설치</b> 아이콘(모니터에 화살표)을 누르세요</li><li>또는 Chrome ⋮ → <b>저장 및 공유</b> → <b>앱 설치</b> / Edge ⋯ → <b>앱</b> → <b>이 사이트를 앱으로 설치</b></li><li>설치하면 바탕화면·시작 메뉴에 SAIL:41 아이콘이 생기고 창으로 열려요</li></ol><p style="font-size:13px;color:var(--text-3);margin:6px 0 0">설치 아이콘이 안 보이면 새로고침 뒤 잠시 기다리거나, 이 사이트를 한 번 더 방문하면 나타나요.</p>`;
-    g.innerHTML = isInApp ? inapp + (isIOS ? ios : chrome + samsung) : isIOS ? (isChromeIOS ? iosChrome + ios : ios) : isSamsung ? samsung + chrome : isWhale ? whale + chrome : isAndroid ? chrome + samsung + whale : pc + chrome + samsung + ios;
+    const ico = d => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+    const shareIco = ico('<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>');
+    const menuIco = ico('<circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/>');
+    const barsIco = ico('<path d="M4 7h16M4 12h16M4 17h16"/>');
+    const pcIco = ico('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 9v5M9.5 11.5 12 14l2.5-2.5M8 20h8"/>');
+    const step = (n, icon, text) => `<li><span class="n">${n}</span>${icon ? `<span class="ic">${icon}</span>` : ''}<span>${text}</span></li>`;
+    const note = t => `<p class="note">${t}</p>`;
+    let where, steps, extra = '';
+    if (isIOS && isInApp) { where = `${esc(browserName || '앱')} 안에서는 설치가 안 돼요`; steps = step(1, menuIco, '오른쪽 아래 <b>⋯</b> → <b>Safari로 열기</b>') + step(2, shareIco, 'Safari 아래 가운데 <b>공유</b> → <b>홈 화면에 추가</b>'); extra = `<button type="button" class="btn ghost" onclick="copyLink()">주소 복사</button>`; }
+    else if (isChromeIOS) { where = '아이폰 Chrome'; steps = step(1, shareIco, '주소창 오른쪽 <b>공유</b> 버튼') + step(2, null, '<b>홈 화면에 추가</b> → <b>추가</b>'); }
+    else if (isIOS) { where = '아이폰 · 아이패드'; steps = step(1, shareIco, '화면 아래 가운데 <b>공유</b> 버튼') + step(2, null, '목록을 내려 <b>홈 화면에 추가</b> → 오른쪽 위 <b>추가</b>'); extra = note('설치한 앱은 처음 한 번 팀 PIN을 다시 넣어요'); }
+    else if (isInApp) { where = `${esc(browserName || '앱')} 안에서는 설치가 안 돼요`; steps = step(1, null, '아래 버튼으로 바깥 브라우저에서 여세요. 열리면 설치가 자동으로 이어져요'); extra = `<button type="button" class="btn primary" onclick="openInChrome()">Chrome으로 열기</button><button type="button" class="btn ghost" onclick="openInSamsung()">삼성 인터넷으로 열기</button><button type="button" class="btn ghost" onclick="copyLink()">주소 복사</button>`; }
+    else if (isSamsung) { where = '삼성 인터넷'; steps = step(1, barsIco, '아래 오른쪽 <b>≡</b> 메뉴') + step(2, null, '<b>현재 페이지 추가</b> → <b>홈 화면</b> → <b>추가</b>'); }
+    else if (isWhale && !isAndroid) { where = 'PC 웨일'; steps = step(1, pcIco, '주소창 오른쪽 끝 <b>설치</b> 아이콘') + step(2, null, '<b>설치</b>를 누르면 바탕화면에 SAIL:41 아이콘이 생겨요'); }
+    else if (isAndroid) { where = isWhale ? '네이버 웨일' : 'Chrome'; steps = step(1, isWhale ? barsIco : menuIco, isWhale ? '아래 <b>≡</b> 메뉴' : '오른쪽 위 <b>⋮</b> 메뉴') + step(2, null, '<b>홈 화면에 추가</b>(또는 <b>앱 설치</b>) → <b>설치</b>'); extra = note('메뉴에 없으면 이미 설치돼 있어요. 홈 화면에서 SAIL:41 을 여세요'); }
+    else { where = 'PC'; steps = step(1, pcIco, '주소창 오른쪽 끝 <b>설치</b> 아이콘(모니터에 화살표)') + step(2, null, '<b>설치</b>를 누르면 바탕화면·시작 메뉴에 SAIL:41 아이콘이 생겨요'); extra = note('아이콘이 없으면 이미 설치돼 있거나(바탕화면 SAIL:41), 잠시 뒤 새로고침하면 나타나요'); }
+    g.innerHTML = `<div class="os">${where}</div><ol class="steps">${steps}</ol>${extra ? `<div class="extra">${extra}</div>` : ''}`;
     openModal('a2hsModal');
   }
   if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
