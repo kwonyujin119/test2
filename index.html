@@ -384,6 +384,26 @@
   .sheet h2 { font-size: 19px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
   @media (min-width: 640px) { .sheet-bg { align-items: center; } .sheet { border-radius: 24px; transform: translateY(20px) scale(.98); box-shadow: var(--shadow-lg); padding-top: 24px; } .handle { display: none; } }
   .field { margin-bottom: 14px; }
+  /* 사진 첨부(일정·업무 시트) */
+  .att-box { border: 1.5px dashed var(--line); border-radius: var(--radius-sm); padding: 10px; transition: .15s; }
+  .att-box.dragging { border-color: var(--primary); background: var(--primary-soft); }
+  .att-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .att-grid:empty { display: none; }
+  .att-grid + .att-actions { margin-top: 8px; }
+  .att-thumb { position: relative; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; background: var(--card-2); border: 1px solid var(--line); flex-shrink: 0; }
+  .att-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .att-thumb .att-x { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .att-thumb .att-st { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; font-weight: 700; text-align: center; background: rgba(0,0,0,.55); color: #fff; padding: 2px 0; }
+  .att-thumb.err { outline: 2px solid var(--c-평가); }
+  .att-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .att-add { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 13.5px; }
+  .att-hint { font-size: 12.5px; color: var(--text-3); }
+  /* 카드의 사진 줄 */
+  .atts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .atts a { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--card-2); display: block; flex-shrink: 0; }
+  .atts a img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .atts .more { width: 56px; height: 56px; border-radius: 10px; background: var(--card-2); color: var(--text-2); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); }
+  .event-body .atts { margin-top: 6px; }
   .field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
   .field input, .field select, .field textarea { width: 100%; background: var(--card-2); border: 1.5px solid transparent; border-radius: var(--radius-sm); color: var(--text); font: inherit; font-size: 15px; padding: 12px 14px; outline: none; transition: .15s; appearance: none; -webkit-appearance: none; }
   /* 아이폰: 글자 16px 미만 입력창에 초점이 가면 화면이 확대되므로 터치 기기에서는 16px */
@@ -1059,6 +1079,10 @@
       <div class="field"><label>담당</label><input name="owner" maxlength="30"></div>
     </div>
     <div class="field"><label>메모</label><textarea name="note" maxlength="500"></textarea></div>
+    <div class="field att-field"><label>사진 <small style="font-weight:500;color:var(--text-3)">(붙여넣기 Ctrl+V · 끌어다 놓기)</small></label>
+      <div class="att-box" id="att_schedule"><div class="att-grid" id="attGrid_schedule"></div>
+        <div class="att-actions"><button type="button" class="btn ghost att-add" onclick="document.getElementById('attIn_schedule').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg> 사진 첨부</button><span class="att-hint" id="attHint_schedule"></span></div>
+        <input type="file" id="attIn_schedule" accept="image/*" multiple hidden onchange="attChosen(this, 'schedule')"></div></div>
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="scheduleDelete" onclick="deleteItem('schedule')">삭제</button>
       <button type="button" class="btn ghost copy" id="scheduleCopy" onclick="copySchedule()" title="내용은 그대로, 날짜만 새로">복사</button>
@@ -1083,6 +1107,10 @@
       <div class="field"><label>기한</label><input name="due" type="date"></div>
     </div>
     <div class="field"><label>상세</label><textarea name="detail" maxlength="1000"></textarea></div>
+    <div class="field att-field"><label>사진 <small style="font-weight:500;color:var(--text-3)">(붙여넣기 Ctrl+V · 끌어다 놓기)</small></label>
+      <div class="att-box" id="att_task"><div class="att-grid" id="attGrid_task"></div>
+        <div class="att-actions"><button type="button" class="btn ghost att-add" onclick="document.getElementById('attIn_task').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg> 사진 첨부</button><span class="att-hint" id="attHint_task"></span></div>
+        <input type="file" id="attIn_task" accept="image/*" multiple hidden onchange="attChosen(this, 'task')"></div></div>
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="taskDelete" onclick="deleteItem('tasks')">삭제</button>
       <button type="button" class="btn ghost copy" id="taskCopy" onclick="copyTask()" title="내용은 그대로, 기한만 새로">복사</button>
@@ -1424,6 +1452,14 @@
         if (status < 200 || status >= 300) { let msg = ''; try { msg = JSON.parse(text).message || ''; } catch (e) {} throw new ApiError(status === 413 || /too large|exceeded|maximum/i.test(msg) ? 'FILE_TOO_LARGE' : /mime|type/i.test(msg) ? 'FILE_TYPE' : /bucket/i.test(msg) ? 'STORAGE_NOT_READY' : 'UPLOAD_FAILED', status); }
         return { url: `${CFG.supabaseUrl}/storage/v1/object/public/sail41/${key}`, name: file.name, size: file.size, type: file.type };
       },
+      // 일정·업무 사진 첨부: items/<종류>/<난수>.<확장자> (조회 PIN 으로 들어온 화면만 쓰지만 정책은 경로 형식만 본다)
+      itemUpload: async (kind, file, onProgress) => {
+        const ext = ((file.name || '').split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+        const key = `items/${kind}/${uid()}.${ext}`;
+        const { status, text } = await xhrUpload(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, file, { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false', 'cache-control': '31536000' }, onProgress);
+        if (status < 200 || status >= 300) { let msg = ''; try { msg = JSON.parse(text).message || ''; } catch (e) {} throw new ApiError(status === 413 || /too large|exceeded|maximum/i.test(msg) ? 'FILE_TOO_LARGE' : /mime|type/i.test(msg) ? 'FILE_TYPE' : /bucket/i.test(msg) ? 'STORAGE_NOT_READY' : /policy|security/i.test(msg) ? 'SQL_OUTDATED' : 'UPLOAD_FAILED', status); }
+        return { url: `${CFG.supabaseUrl}/storage/v1/object/public/sail41/${key}`, name: file.name, size: file.size, type: file.type };
+      },
     };
   } else if (LOCALSRV) {
     const get = async (path) => { const res = await netFetch(`${CFG.apiUrl}${path}`, { cache: 'no-store', headers: { 'X-Pin': viewPin() } }); if (!res.ok) await throwApi(res); return res.json(); };
@@ -1460,6 +1496,7 @@
       chatRoomAdd: (pin, id, name, code) => post('/api/chat_room_add', { pin, id, name, code }),
       chatRoomDelete: (pin, room) => post('/api/chat_room_delete', { pin, room }),
       chatUpload: async (room, code, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?room=${encodeURIComponent(room)}&code=${encodeURIComponent(code)}&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': file.type || 'application/octet-stream' }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
+      itemUpload: async (kind, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?kind=items&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': file.type || 'application/octet-stream' }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
     };
   } else {
     /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
@@ -1508,6 +1545,7 @@
       chatRoomRename: async (pin, room, name) => { const rs = lsGet('ictc.chat.rooms') || []; const r = rs.find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); r.name = name; lsSet('ictc.chat.rooms', rs); },
       chatRoomAdd: async (pin, id, name, code) => { const rs = lsGet('ictc.chat.rooms') || []; if (rs.some(x => x.id === id)) throw new ApiError('CHAT_ROOM_EXISTS'); rs.push({ id, name, code, sort: rs.length + 1 }); lsSet('ictc.chat.rooms', rs); },
       chatUpload: async (room, code, file, onProgress) => { await api.chatJoin(room, code); if (file.size > 1.5 * 1024 * 1024) throw new ApiError('FILE_TOO_LARGE_PREVIEW'); if (onProgress) onProgress(100); const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new ApiError('UPLOAD_FAILED')); r.readAsDataURL(file); }); return { url, name: file.name, size: file.size, type: file.type }; },
+      itemUpload: async (kind, file, onProgress) => { if (file.size > 1.5 * 1024 * 1024) throw new ApiError('FILE_TOO_LARGE_PREVIEW'); if (onProgress) onProgress(100); const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new ApiError('UPLOAD_FAILED')); r.readAsDataURL(file); }); return { url, name: file.name, size: file.size, type: file.type }; },
       chatRoomDelete: async (pin, room) => { lsSet('ictc.chat.rooms', (lsGet('ictc.chat.rooms') || []).filter(x => x.id !== room)); const st = store(); delete st[key('chat', room)]; lsSet(LS.items, st); },
     };
   }
@@ -1798,7 +1836,7 @@
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
             <div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, q)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
-              ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}</div>
+              ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}${attsHtml(ev.files)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
       html += `</div></div>`;
@@ -1851,7 +1889,7 @@
           const sub = eventSub(ev, multi);
           html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
             <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
-            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}</div>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}${attsHtml(ev.files)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
         });
         html += `</div>`;
@@ -1916,7 +1954,7 @@
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${STATUS_ICON[t.status] || ''}${esc(t.status)}</button></div>
         <div class="task-title">${I.chk}${qMark(t.title, Q[scope] || '')}</div>
-        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}
+        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}${attsHtml(t.files, 3)}
         <div class="task-foot">
           ${t.due ? `<span class="${overdue ? 'overdue' : ''}">${I.cal}${esc(t.due)}${dd ? `<span class="dday ${dd.c}">${dd.t}</span>` : ''}</span>` : `<span>${I.cal}기한 미정</span>`}
           ${t.owner && scope === 'tasks' ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
@@ -2194,7 +2232,7 @@
     document.getElementById('scheduleFormTitle').textContent = preset ? '일정 복사' : item ? '일정 수정' : '새 일정';
     document.getElementById('scheduleDelete').style.display = item ? '' : 'none';
     document.getElementById('scheduleCopy').style.display = item ? '' : 'none';
-    fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? tagsOf(item) : preset ? tagsOf(preset) : ['교육']);
+    fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? tagsOf(item) : preset ? tagsOf(preset) : ['교육']); attReset('schedule', (item || preset || {}).files);
     if (item && mode === 'detail') { form.classList.add('compact'); document.getElementById('whenText').textContent = fmtWhen(item); }
     openModal('scheduleModal'); setTimeout(() => (preset ? form.date : form.title).focus(), 300);
   }
@@ -2211,7 +2249,9 @@
     if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
     v.tags = (v.tag || '').split(',').filter(Boolean); if (!v.tags.length) v.tags = ['기타']; v.tag = v.tags[0];
     if (!v.id) { v.id = uid(); v.created = TODAY; }
-    setBusy(form, true); state.focusDate = v.date; if (v.date < TODAY) state.showPast = true; const ok = await saveItem('schedule', v); setBusy(form, false);
+    setBusy(form, true);
+    try { v.files = await attUpload('schedule', 'schedule'); } catch (e2) { setBusy(form, false); toast(e2.message || '사진을 올리지 못했어요'); return; }
+    state.focusDate = v.date; if (v.date < TODAY) state.showPast = true; const ok = await saveItem('schedule', v); setBusy(form, false);
     if (!ok) state.focusDate = null;
     if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('Attention에도 등록했어요. Schedule에도 그대로 있어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast('저장했어요'); }
   }
@@ -2248,7 +2288,7 @@
     document.getElementById('taskCopy').style.display = item ? '' : 'none';
     document.getElementById('taskOwnerField').style.display = scope === 'personal' ? 'none' : '';
     const base = item || preset || {};
-    fillForm(form, base); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영');
+    fillForm(form, base); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영'); attReset('task', base.files);
     openModal('taskModal'); if (!item) setTimeout(() => ((preset && !dueOnly) ? form.due : form.title).focus(), 300);
   }
   async function copyTask() {
@@ -2261,7 +2301,9 @@
     e.preventDefault();
     const form = document.getElementById('taskForm'); const v = readForm(form); const scope = v.scope; delete v.scope;
     if (!v.id) { v.id = uid(); v.created = TODAY; } else { const prev = state[scope].items.find(i => i.id === v.id); if (prev?.created) v.created = prev.created; }
-    setBusy(form, true); state.focusTask = v.id; const ok = await saveItem(scope, v); setBusy(form, false);
+    setBusy(form, true);
+    try { v.files = await attUpload('task', scope); } catch (e2) { setBusy(form, false); toast(e2.message || '사진을 올리지 못했어요'); return; }
+    state.focusTask = v.id; const ok = await saveItem(scope, v); setBusy(form, false);
     if (ok) { closeModal('taskModal'); toast('저장했어요'); } else state.focusTask = null;
   }
   async function deleteItem(kind) {
@@ -2454,6 +2496,54 @@
     bmp.close && bmp.close();
     return { main, thumb, w, h };
   }
+  /* ── 일정·업무 사진 첨부 ── */
+  const ATT = { schedule: { files: [], pending: [] }, task: { files: [], pending: [] }, max: 10 };
+  const attImgOf = f => isImgFile(f) ? (f.thumb || f.url) : '';
+  function attReset(key, files) { const a = ATT[key]; a.pending.forEach(p => p.preview && URL.revokeObjectURL(p.preview)); a.files = (Array.isArray(files) ? files : []).filter(f => f && f.url); a.pending = []; attRender(key); }
+  function attRender(key) {
+    const a = ATT[key]; const g = document.getElementById('attGrid_' + key); if (!g) return;
+    g.innerHTML = a.files.map((f, i) => `<div class="att-thumb" title="${esc(f.name || '')}"><a href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(attImgOf(f) || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy"></a><button type="button" class="att-x" aria-label="사진 빼기" onclick="attRemove('${key}', ${i}, false)">×</button></div>`).join('')
+      + a.pending.map((p, i) => `<div class="att-thumb ${p.status}" title="${esc(p.file.name)}">${p.preview ? `<img src="${p.preview}" alt="">` : ''}<button type="button" class="att-x" aria-label="사진 빼기" onclick="attRemove('${key}', ${i}, true)">×</button>${p.status === 'prep' ? '<span class="att-st">변환 중</span>' : p.status === 'up' ? `<span class="att-st">${p.pct}%</span>` : p.status === 'err' ? '<span class="att-st">실패</span>' : '<span class="att-st">저장 시 올라감</span>'}</div>`).join('');
+    const n = a.files.length + a.pending.length; const h = document.getElementById('attHint_' + key); if (h) h.textContent = n ? `${n}/${ATT.max}장` : `사진 ${ATT.max}장까지 · 파일당 ${Math.round(CHAT.fileMax / 1048576)}MB`;
+  }
+  function attRemove(key, i, pending) { const a = ATT[key]; if (pending) { const p = a.pending.splice(i, 1)[0]; if (p && p.preview) URL.revokeObjectURL(p.preview); } else a.files.splice(i, 1); attRender(key); }
+  async function attAdd(key, files) {
+    const a = ATT[key]; files = [...files].filter(Boolean); if (!files.length) return;
+    for (const f of files) {
+      if (!isImgFile(f)) { toast(`'${f.name}' 은 사진이 아니에요. 일정·업무에는 사진만 붙일 수 있어요`); continue; }
+      if (a.files.length + a.pending.length >= ATT.max) { toast(`사진은 ${ATT.max}장까지 붙일 수 있어요`); break; }
+      if (f.size > CHAT.fileMax) { toast(`'${f.name}' 은 파일당 한도(${fmtSize(CHAT.fileMax)})를 넘어요`); continue; }
+      const p = { file: f, preview: null, thumb: null, w: 0, h: 0, status: 'prep', pct: 0 }; a.pending.push(p); attRender(key);
+      const r = await prepImage(f); p.file = r.main; p.thumb = r.thumb; p.w = r.w; p.h = r.h; p.preview = URL.createObjectURL(r.thumb || r.main); p.status = 'ready'; attRender(key);
+    }
+  }
+  function attChosen(input, key) { const files = [...(input.files || [])]; input.value = ''; attAdd(key, files); }
+  function attPaste(e, key) { const items = [...(e.clipboardData && e.clipboardData.items || [])].filter(it => it.kind === 'file'); if (!items.length) return; const files = items.map((it, i) => { const f = it.getAsFile(); if (!f) return null; return f.name && f.name !== 'image.png' ? f : new File([f], `캡처-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}${i ? '-' + i : ''}.png`, { type: f.type || 'image/png' }); }); e.preventDefault(); attAdd(key, files); toast('캡처 이미지를 붙였어요. 저장하면 올라가요', 2500); }
+  // 저장 직전: 대기 사진을 올리고 files 배열을 돌려준다(실패하면 예외 → 저장 중단)
+  async function attUpload(key, kind) {
+    const a = ATT[key]; if (!a.pending.length) return a.files.slice();
+    const out = []; const q = a.pending.slice(); let idx = 0;
+    const one = async p => { p.status = 'up'; p.pct = 0; attRender(key);
+      const tryUp = async (f, onp) => { try { return await api.itemUpload(kind, f, onp); } catch (e) { if (['FILE_TOO_LARGE', 'FILE_TYPE', 'FILE_TOO_LARGE_PREVIEW', 'SQL_OUTDATED', 'STORAGE_NOT_READY'].includes(e.code)) throw e; await new Promise(r => setTimeout(r, 800)); return api.itemUpload(kind, f, onp); } };
+      const th = p.thumb ? await tryUp(p.thumb) : null; const r = await tryUp(p.file, pct => { p.pct = pct; attRender(key); });
+      p.status = 'done'; p.pct = 100; p.result = { ...r, thumb: th ? th.url : undefined, w: p.w || undefined, h: p.h || undefined }; };
+    const workers = Array.from({ length: Math.min(3, q.length) }, async () => { while (idx < q.length) { const p = q[idx++]; try { await one(p); } catch (e) { p.status = 'err'; p.err = e; attRender(key); } } });
+    await Promise.all(workers);
+    const failed = q.filter(p => p.status === 'err'); if (failed.length) throw failed[0].err || new ApiError('UPLOAD_FAILED');
+    q.forEach(p => { out.push(p.result); if (p.preview) URL.revokeObjectURL(p.preview); });
+    a.files = a.files.concat(out); a.pending = []; attRender(key); return a.files.slice();
+  }
+  // 카드에 보이는 사진 줄(최대 4장 + 더보기). 사진을 누르면 새 창으로 열리고 카드는 열리지 않는다
+  function attsHtml(files, max) { const fs = (files || []).filter(f => f && f.url); if (!fs.length) return ''; max = max || 4; const show = fs.slice(0, max); const rest = fs.length - show.length;
+    return `<div class="atts" onclick="event.stopPropagation()">${show.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name || '')}"><img src="${esc(attImgOf(f) || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"></a>`).join('')}${rest > 0 ? `<span class="more">+${rest}</span>` : ''}</div>`; }
+  // 시트 위 붙여넣기·끌어다 놓기
+  (() => { [['scheduleForm', 'schedule'], ['taskForm', 'task']].forEach(([fid, key]) => { const f = document.getElementById(fid); if (!f) return;
+    f.addEventListener('paste', e => attPaste(e, key));
+    const box = document.getElementById('att_' + key);
+    f.addEventListener('dragover', e => { if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); box.classList.add('dragging'); } });
+    f.addEventListener('dragleave', e => { if (!f.contains(e.relatedTarget)) box.classList.remove('dragging'); });
+    f.addEventListener('drop', e => { box.classList.remove('dragging'); if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); attAdd(key, e.dataTransfer.files); } }); }); })();
+
   function renderPending() {
     const el = document.getElementById('chatPending');
     el.innerHTML = CHAT.pending.map((p, i) => `<div class="pend ${p.status}">${p.preview ? `<img src="${p.preview}" alt="">` : `<span class="pend-ico">${I.file}</span>`}<span class="pend-name">${esc(p.file.name)}</span><span class="pend-size">${p.status === 'prep' ? '변환 중' : p.status === 'up' ? `${p.pct}%` : p.status === 'err' ? '실패' : fmtSize(p.file.size)}</span>${p.status === 'up' ? `<i class="pend-bar" style="width:${p.pct}%"></i>` : ''}<button type="button" aria-label="첨부 취소" onclick="chatRemovePending(${i})">×</button></div>`).join('')

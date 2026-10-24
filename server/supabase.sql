@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -543,7 +543,7 @@ begin
   if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
 end $$;
 
--- ---------- 41망 첨부파일 저장소 (Supabase Storage, v6.1) ----------
+-- ---------- 첨부파일 저장소 (Supabase Storage, v6.1 · 일정·업무 사진 v6.5) ----------
 -- 버킷 sail41 (공개 읽기, 파일당 100MB 설정. 단 Supabase 무료 요금제는 프로젝트 전체 상한이 파일당 50MB 라 그 이상은 거부됨). 업로드는 anon 키로 chat/ 경로에만, 허용 형식 제한.
 -- 로컬 PostgreSQL 에는 storage 스키마가 없으므로 있을 때만 실행한다.
 do $$
@@ -558,9 +558,11 @@ begin
             'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/octet-stream'])
     on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
     execute 'drop policy if exists "sail41 chat upload" on storage.objects';
-    -- 경로는 chat/<톡방id>/<난수>.<확장자> 세 단계만 (화면 chatUpload 의 key 형식과 같아야 함). 수정·삭제 정책은 없으므로 anon 은 올린 파일을 바꾸거나 지울 수 없다
+    -- 경로는 chat/<톡방id>/<난수>.<확장자> (41망) 또는 items/<schedule|tasks|personal>/<난수>.<확장자> (일정·업무 사진, v6.5) 세 단계만
+    -- (화면 chatUpload · itemUpload 의 key 형식과 같아야 함). 수정·삭제 정책은 없으므로 anon 은 올린 파일을 바꾸거나 지울 수 없다
     execute $p$create policy "sail41 chat upload" on storage.objects for insert to anon, authenticated
-      with check (bucket_id = 'sail41' and (storage.foldername(name))[1] = 'chat' and name ~ '^chat/[A-Za-z0-9_.%-]{1,64}/[A-Za-z0-9_.-]{1,80}$')$p$;
+      with check (bucket_id = 'sail41' and ((storage.foldername(name))[1] = 'chat' or (storage.foldername(name))[1] = 'items')
+        and name ~ '^(chat/[A-Za-z0-9_.%-]{1,64}|items/(schedule|tasks|personal))/[A-Za-z0-9_.-]{1,80}$')$p$;
     execute 'drop policy if exists "sail41 public read" on storage.objects';
     execute $p$create policy "sail41 public read" on storage.objects for select to anon, authenticated using (bucket_id = 'sail41')$p$;
   end if;

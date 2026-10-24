@@ -9,9 +9,9 @@ for m in re.finditer(r'create or replace function public\.(ictc_\w+)\((.*?)\)\s*
     SIGS[m.group(1)]=params
 EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강화센터'}]; USERS={}; TRASH=[]
 FILES={}
-# Storage 버킷 sail41 흉내: supabase.sql 의 allowed_mime_types · 업로드 정책 경로 형식(chat/<톡방>/<난수>.<확장자>)과 같게
+# Storage 버킷 sail41 흉내: supabase.sql 의 allowed_mime_types · 업로드 정책 경로 형식(chat/<톡방>/… 또는 items/<종류>/…)과 같게
 MIMES={'image/jpeg','image/png','image/gif','image/webp','image/heic','image/heif','application/pdf','text/plain','text/csv','application/zip','application/x-hwp','application/haansofthwp','application/vnd.hancom.hwp','application/vnd.hancom.hwpx','application/x-hwpx','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/octet-stream'}
-KEY_RE=re.compile(r'^chat/[A-Za-z0-9_.%-]{1,64}/[A-Za-z0-9_.-]{1,80}$')
+KEY_RE=re.compile(r'^(chat/[A-Za-z0-9_.%-]{1,64}|items/(schedule|tasks|personal))/[A-Za-z0-9_.-]{1,80}$')
 def check_item(it):   # supabase.sql ictc_check_item 과 동일
     if not isinstance(it,dict) or not it.get('id'): raise ValueError('ID_REQUIRED')
     if len(str(it['id']))>100 or len(json.dumps(it,ensure_ascii=False).encode())>65536: raise ValueError('ITEM_TOO_LARGE')

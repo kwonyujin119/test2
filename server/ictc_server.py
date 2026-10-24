@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.4'
+VERSION = '5.5'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
@@ -498,15 +498,16 @@ def make_handler(db, static_dir, pin_path, poll):
             u = urlparse(self.path)
             try:
                 if not u.path.startswith('/api/'): raise ApiError('NOT_FOUND', 404)
-                if u.path == '/api/upload':   # 41망 첨부: 조회 PIN + 톡방 입장코드 확인 뒤 files/ 에 저장
-                    q = parse_qs(u.query); room = (q.get('room') or [''])[0]; code = (q.get('code') or [''])[0]
+                if u.path == '/api/upload':   # 첨부: 조회 PIN 확인 뒤 files/ 에 저장. 41망(room+code)은 입장코드도 확인, 일정·업무 사진(kind=items)은 조회 PIN 만
+                    q = parse_qs(u.query); room = (q.get('room') or [''])[0]; code = (q.get('code') or [''])[0]; kind = (q.get('kind') or [''])[0]
                     n = int(self.headers.get('Content-Length') or 0)
                     try:
                         self.require_view(self.headers.get('X-Pin')); throttle.check(self._ip())
-                        try: db.chat_check(room, code)
-                        except ApiError as e:
-                            if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
-                            raise
+                        if kind != 'items':
+                            try: db.chat_check(room, code)
+                            except ApiError as e:
+                                if e.code == 'CHAT_CODE_INVALID': throttle.fail(self._ip())
+                                raise
                         if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)   # 헤더로 1차 거부. 실제 받은 양은 아래에서 다시 확인
                         ctype = (self.headers.get('Content-Type') or mimetypes.guess_type((q.get('name') or ['file'])[0])[0] or 'application/octet-stream').split(';')[0].strip().lower()
                         if ctype not in FILE_TYPES: raise ApiError('FILE_TYPE', 415)
