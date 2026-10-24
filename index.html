@@ -822,6 +822,26 @@
   .chat-msg, .chat-msg img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .chat-bubble { user-select: text; -webkit-user-select: text; }
   /* 우클릭·길게 누르기 메뉴 */
+  /* 사진 뷰어 */
+  .viewer { position: fixed; inset: 0; background: #000; z-index: 150; display: none; flex-direction: column; color: #fff; user-select: none; -webkit-user-select: none; }
+  .viewer.open { display: flex; }
+  .v-top { position: absolute; top: 0; left: 0; right: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: calc(8px + env(safe-area-inset-top)) 8px 8px 16px; background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0)); }
+  .v-cnt { font-size: 14px; font-weight: 700; opacity: .9; letter-spacing: .5px; }
+  .v-btns { display: flex; gap: 2px; }
+  .v-btn { width: 44px; height: 44px; border: 0; background: transparent; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .v-btn:hover { background: rgba(255,255,255,.15); }
+  .v-stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: pan-y pinch-zoom; cursor: default; }
+  .v-stage img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .18s ease, opacity .18s; will-change: transform; }
+  .v-stage img.swap { opacity: 0; transition: none; }
+  .v-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }
+  .v-nav:hover { background: rgba(255,255,255,.28); } .v-nav.prev { left: 16px; } .v-nav.next { right: 16px; }
+  .v-nav:disabled { opacity: .25; cursor: default; }
+  @media (hover: hover) and (pointer: fine) { .viewer.multi .v-nav { display: inline-flex; } }
+  .v-dots { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+  .v-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.4); } .v-dots i.on { background: #fff; width: 18px; border-radius: 3px; }
+  .v-menu { top: calc(52px + env(safe-area-inset-top)); right: 10px; z-index: 3; }
+  .v-menu.open { display: block; }
+  body.viewing { overflow: hidden; }
   .ctx { position: fixed; z-index: 200; min-width: 200px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; display: none; }
   .ctx.open { display: block; animation: fade .12s ease; }
   .ctx .ctx-head { font-size: 12.5px; font-weight: 800; color: var(--text-2); padding: 8px 12px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .ctx .ctx-head span { font-weight: 600; color: var(--text-3); margin-left: 4px; }
@@ -1152,6 +1172,15 @@
     </div>
     <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('xlsxModal')">닫기</button><button type="button" class="btn primary" id="xlAddBtn" style="display:none;flex:1" onclick="xlCommit()">추가</button></div>
   </div>
+</div>
+<!-- 사진 뷰어: 좌우로 밀어 넘기기, × 닫기, ⋮ 공유·복사·저장 -->
+<div class="viewer" id="imgViewer" role="dialog" aria-modal="true" aria-label="사진 보기">
+  <div class="v-top"><span class="v-cnt" id="vCnt"></span><div class="v-btns"><button type="button" class="v-btn" id="vMore" aria-label="더보기" aria-haspopup="menu" onclick="viewerMenu(event)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/></svg></button><button type="button" class="v-btn" aria-label="닫기" onclick="closeViewer()"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>
+  <div class="v-stage" id="vStage"><img id="vImg" alt="" draggable="false"></div>
+  <button type="button" class="v-nav prev" aria-label="이전 사진" onclick="viewerGo(-1)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button type="button" class="v-nav next" aria-label="다음 사진" onclick="viewerGo(1)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  <div class="v-dots" id="vDots"></div>
+  <div class="ctx v-menu" id="vMenu" role="menu"></div>
 </div>
 <div class="ctx" id="ctxMenu" role="menu"></div>
 <div class="sheet-bg" id="attachModal" onclick="if(event.target===this)subClose('attachModal')">
@@ -1617,6 +1646,7 @@
   function closeOverlaysDirect() {
     const had = document.querySelectorAll('.sheet-bg.open').length;
     document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open'));
+    closeViewer(true);
     document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open');
     closeBoardMenu(); document.getElementById('menu').classList.remove('open');
     if (had && typeof restoreFocus === 'function') restoreFocus();
@@ -1629,6 +1659,7 @@
   }
   window.addEventListener('popstate', e => {
     const n = e.state;
+    if (document.getElementById('imgViewer').classList.contains('open')) { closeViewer(true); return; }   // 뒤로 가기는 뷰어만 닫는다
     if (!n || n.root) {
       closeOverlaysDirect();
       if (exitTimer) return;                       // 안내 중 한 번 더 누름 → 브라우저가 페이지를 벗어남
@@ -1836,7 +1867,7 @@
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
             <div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, q)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
-              ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}${attsHtml(ev.files)}</div>
+              ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}${attsHtml(ev.files, 4, 'ev:' + ev.id)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
       html += `</div></div>`;
@@ -1889,7 +1920,7 @@
           const sub = eventSub(ev, multi);
           html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
             <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
-            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}${attsHtml(ev.files)}</div>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}${attsHtml(ev.files, 4, 'ev:' + ev.id)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
         });
         html += `</div>`;
@@ -1954,7 +1985,7 @@
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${STATUS_ICON[t.status] || ''}${esc(t.status)}</button></div>
         <div class="task-title">${I.chk}${qMark(t.title, Q[scope] || '')}</div>
-        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}${attsHtml(t.files, 3)}
+        ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}${attsHtml(t.files, 3, 'task:' + t.id)}
         <div class="task-foot">
           ${t.due ? `<span class="${overdue ? 'overdue' : ''}">${I.cal}${esc(t.due)}${dd ? `<span class="dday ${dd.c}">${dd.t}</span>` : ''}</span>` : `<span>${I.cal}기한 미정</span>`}
           ${t.owner && scope === 'tasks' ? `<span><span class="avatar">${esc(initial(t.owner))}</span>${esc(t.owner)}</span>` : ''}
@@ -2368,6 +2399,7 @@
       catch (e) { toast(e.message); return; }
     }
     CHAT.room = room; renderChat(); await refreshRoom(room, true);
+    if (CHAT.shareQueue && CHAT.shareQueue.length) { const q = CHAT.shareQueue; CHAT.shareQueue = null; chatAddFiles(q); toast('사진을 첨부했어요. 보내기를 누르세요', 3000); }
     const list = document.getElementById('chatList'); if (list) list.scrollTop = list.scrollHeight;
     setTimeout(() => { const ta = document.getElementById('chatText'); if (ta && window.innerWidth >= 1024) ta.focus(); }, 300);
   }
@@ -2413,7 +2445,7 @@
       const d = new Date(m.created); const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       const showName = !mine && key !== lastKey; lastKey = key;
       html += `<div class="chat-msg ${mine ? 'mine' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
-        <div class="chat-row"><div class="chat-body">${m.deleted ? `<div class="chat-bubble deleted">(삭제된 메시지)</div>` : `${chatQuoteHtml(m)}${m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files)}`}</div><div class="chat-meta"><span>${time}</span>${!m.deleted && (mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
+        <div class="chat-row"><div class="chat-body">${m.deleted ? `<div class="chat-bubble deleted">(삭제된 메시지)</div>` : `${chatQuoteHtml(m)}${m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files, m.id)}`}</div><div class="chat-meta"><span>${time}</span>${!m.deleted && (mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
     });
     list.innerHTML = html; list.dataset.room = room;
     if (atBottom) list.scrollTop = list.scrollHeight;
@@ -2496,13 +2528,66 @@
     bmp.close && bmp.close();
     return { main, thumb, w, h };
   }
+  /* ── 사진 뷰어 ── */
+  const VIEW = { sets: {}, files: [], i: 0, drag: null };
+  function regView(key, files) { VIEW.sets[key] = (files || []).filter(f => f && f.url && isImgFile(f)); return VIEW.sets[key]; }
+  function openViewer(key, i) {
+    const files = VIEW.sets[key]; if (!files || !files.length) return;
+    VIEW.files = files; VIEW.i = Math.max(0, Math.min(i || 0, files.length - 1));
+    const v = document.getElementById('imgViewer'); v.classList.add('open'); v.classList.toggle('multi', files.length > 1); document.body.classList.add('viewing');
+    viewerShow(); pushNav({ overlay: 'imgViewer' });
+  }
+  function viewerShow(dir) {
+    const f = VIEW.files[VIEW.i], n = VIEW.files.length, img = document.getElementById('vImg');
+    img.classList.add('swap'); img.style.transform = dir ? `translateX(${dir > 0 ? 40 : -40}px)` : ''; img.src = f.url;
+    requestAnimationFrame(() => requestAnimationFrame(() => { img.classList.remove('swap'); img.style.transform = ''; }));
+    document.getElementById('vCnt').textContent = n > 1 ? `${VIEW.i + 1} / ${n}` : '';
+    document.getElementById('vDots').innerHTML = n > 1 && n <= 12 ? VIEW.files.map((_, k) => `<i class="${k === VIEW.i ? 'on' : ''}"></i>`).join('') : '';
+    [VIEW.i - 1, VIEW.i + 1].forEach(k => { const g = VIEW.files[(k + n) % n]; if (g) { const im = new Image(); im.src = g.url; } });   // 양옆 미리 받기
+    closeVMenu();
+  }
+  function viewerGo(d) { const n = VIEW.files.length; if (n < 2) return; VIEW.i = (VIEW.i + d + n) % n; viewerShow(d); }
+  function closeViewer(viaHistory) {
+    const v = document.getElementById('imgViewer'); if (!v.classList.contains('open')) return;
+    v.classList.remove('open'); document.body.classList.remove('viewing'); closeVMenu(); VIEW.drag = null;
+    if (!viaHistory && history.state && history.state.overlay === 'imgViewer') history.back();
+  }
+  // 손가락으로 밀기: 오른쪽으로 밀면 다음, 왼쪽으로 밀면 이전 (요청대로). 세로로 끌면 무시
+  (() => { const st = document.getElementById('vStage'); if (!st) return;
+    st.addEventListener('pointerdown', e => { if (e.button !== 0 && e.pointerType === 'mouse') return; closeVMenu(); VIEW.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false }; st.setPointerCapture && st.setPointerCapture(e.pointerId); });
+    st.addEventListener('pointermove', e => { const d = VIEW.drag; if (!d || d.id !== e.pointerId) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) > 6) d.moved = true; if (Math.abs(dx) > Math.abs(dy)) document.getElementById('vImg').style.transform = `translateX(${dx * 0.6}px)`; });
+    const end = e => { const d = VIEW.drag; if (!d || d.id !== e.pointerId) return; VIEW.drag = null; const dx = e.clientX - d.x, dy = e.clientY - d.y; const img = document.getElementById('vImg'); img.style.transform = '';
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) viewerGo(dx > 0 ? 1 : -1); };
+    st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end); })();
+  // ⋮ 메뉴: 41망으로 공유 · 카카오톡 등 다른 앱으로 공유 · 이미지 복사 · 사진 저장
+  function viewerMenu(e) { e.stopPropagation(); const m = document.getElementById('vMenu'); if (m.classList.contains('open')) { closeVMenu(); return; }
+    m.innerHTML = [`<button type="button" onclick="viewerDo('chat')">${chatIco()} 41망으로 공유</button>`, `<button type="button" onclick="viewerDo('share')">${I.share || ''}카카오톡·다른 앱으로 공유</button>`, `<button type="button" onclick="viewerDo('copy')">이미지 복사</button>`, `<button type="button" onclick="viewerDo('save')">사진 저장</button>`].join('');
+    m.classList.add('open'); }
+  function closeVMenu() { const m = document.getElementById('vMenu'); if (m) { m.classList.remove('open'); } }
+  const fetchBlobOf = async url => { const r = await fetch(url, { cache: 'force-cache' }); if (!r.ok) throw new Error('사진을 내려받지 못했어요'); return r.blob(); };
+  const fileOf = async f => { const b = await fetchBlobOf(f.url); return new File([b], f.name || 'photo.jpg', { type: b.type || f.type || 'image/jpeg' }); };
+  const pngOf = async blob => { if (blob.type === 'image/png') return blob; const bmp = await createImageBitmap(blob); const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); return new Promise(r => c.toBlob(r, 'image/png')); };
+  async function viewerDo(action) {
+    closeVMenu(); const f = VIEW.files[VIEW.i]; if (!f) return;
+    try {
+      if (action === 'chat') { const file = await fileOf(f); CHAT.shareQueue = [file]; closeViewer(); setTimeout(() => { openChat(); toast('보낼 톡방을 고르면 사진이 첨부돼요', 3500); }, 150); }
+      else if (action === 'share') {
+        if (navigator.share) { try { const file = await fileOf(f); if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] }); else await navigator.share({ url: f.url }); } catch (e) { if (e.name !== 'AbortError') throw e; } }
+        else { await navigator.clipboard.writeText(f.url); toast('이 브라우저는 바로 공유를 지원하지 않아 사진 링크를 복사했어요. 카톡에 붙여 넣으세요', 4000); }
+      }
+      else if (action === 'copy') { try { const png = await pngOf(await fetchBlobOf(f.url)); await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]); toast('이미지를 복사했어요'); } catch (e) { await navigator.clipboard.writeText(f.url); toast('이미지 복사가 안 되는 브라우저라 사진 링크를 복사했어요', 3500); } }
+      else if (action === 'save') { const blob = await fetchBlobOf(f.url); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = f.name || 'photo.jpg'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast('저장했어요'); }
+    } catch (e) { toast(e.message || '실패했어요'); }
+  }
+
   /* ── 일정·업무 사진 첨부 ── */
   const ATT = { schedule: { files: [], pending: [] }, task: { files: [], pending: [] }, max: 10 };
   const attImgOf = f => isImgFile(f) ? (f.thumb || f.url) : '';
   function attReset(key, files) { const a = ATT[key]; a.pending.forEach(p => p.preview && URL.revokeObjectURL(p.preview)); a.files = (Array.isArray(files) ? files : []).filter(f => f && f.url); a.pending = []; attRender(key); }
   function attRender(key) {
     const a = ATT[key]; const g = document.getElementById('attGrid_' + key); if (!g) return;
-    g.innerHTML = a.files.map((f, i) => `<div class="att-thumb" title="${esc(f.name || '')}"><a href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(attImgOf(f) || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy"></a><button type="button" class="att-x" aria-label="사진 빼기" onclick="attRemove('${key}', ${i}, false)">×</button></div>`).join('')
+    regView('form:' + key, a.files);
+    g.innerHTML = a.files.map((f, i) => `<div class="att-thumb"><a href="${esc(f.url)}" onclick="event.preventDefault();openViewer('form:${key}', ${a.files.filter(x => isImgFile(x)).indexOf(f)})"><img src="${esc(attImgOf(f) || f.url)}" alt="" loading="lazy"></a><button type="button" class="att-x" aria-label="사진 빼기" onclick="attRemove('${key}', ${i}, false)">×</button></div>`).join('')
       + a.pending.map((p, i) => `<div class="att-thumb ${p.status}" title="${esc(p.file.name)}">${p.preview ? `<img src="${p.preview}" alt="">` : ''}<button type="button" class="att-x" aria-label="사진 빼기" onclick="attRemove('${key}', ${i}, true)">×</button>${p.status === 'prep' ? '<span class="att-st">변환 중</span>' : p.status === 'up' ? `<span class="att-st">${p.pct}%</span>` : p.status === 'err' ? '<span class="att-st">실패</span>' : '<span class="att-st">저장 시 올라감</span>'}</div>`).join('');
     const n = a.files.length + a.pending.length; const h = document.getElementById('attHint_' + key); if (h) h.textContent = n ? `${n}/${ATT.max}장` : `사진 ${ATT.max}장까지 · 파일당 ${Math.round(CHAT.fileMax / 1048576)}MB`;
   }
@@ -2534,8 +2619,8 @@
     a.files = a.files.concat(out); a.pending = []; attRender(key); return a.files.slice();
   }
   // 카드에 보이는 사진 줄(최대 4장 + 더보기). 사진을 누르면 새 창으로 열리고 카드는 열리지 않는다
-  function attsHtml(files, max) { const fs = (files || []).filter(f => f && f.url); if (!fs.length) return ''; max = max || 4; const show = fs.slice(0, max); const rest = fs.length - show.length;
-    return `<div class="atts" onclick="event.stopPropagation()">${show.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name || '')}"><img src="${esc(attImgOf(f) || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"></a>`).join('')}${rest > 0 ? `<span class="more">+${rest}</span>` : ''}</div>`; }
+  function attsHtml(files, max, key) { const fs = regView(key, files); if (!fs.length) return ''; max = max || 4; const show = fs.slice(0, max); const rest = fs.length - show.length;
+    return `<div class="atts" onclick="event.stopPropagation()">${show.map((f, i) => `<a href="${esc(f.url)}" onclick="event.preventDefault();openViewer('${esc(key)}', ${i})" aria-label="사진 ${i + 1} 크게 보기"><img src="${esc(attImgOf(f) || f.url)}" alt="" loading="lazy" decoding="async"></a>`).join('')}${rest > 0 ? `<a href="${esc(fs[max].url)}" class="more" onclick="event.preventDefault();openViewer('${esc(key)}', ${max})">+${rest}</a>` : ''}</div>`; }
   // 시트 위 붙여넣기·끌어다 놓기
   (() => { [['scheduleForm', 'schedule'], ['taskForm', 'task']].forEach(([fid, key]) => { const f = document.getElementById(fid); if (!f) return;
     f.addEventListener('paste', e => attPaste(e, key));
@@ -2566,10 +2651,11 @@
     const failed = queue.filter(p => p.status === 'err'); if (failed.length) throw failed[0].err || new ApiError('UPLOAD_FAILED');
     return out;
   }
-  function chatFilesHtml(files) {
+  function chatFilesHtml(files, mid) {
     if (!files || !files.length) return '';
+    const key = 'chat:' + mid; const imgs = regView(key, files);
     return `<div class="chat-files">${files.map((f, i) => isImgFile(f)
-      ? `<a class="chat-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name || '')}" data-fi="${i}"><img src="${esc(f.thumb || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"${f.w && f.h ? ` width="${f.w}" height="${f.h}"` : ''}></a>`
+      ? `<a class="chat-img" href="${esc(f.url)}" onclick="event.preventDefault();openViewer('${esc(key)}', ${imgs.indexOf(f)})" data-fi="${i}"><img src="${esc(f.thumb || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"${f.w && f.h ? ` width="${f.w}" height="${f.h}"` : ''}></a>`
       : `<a class="chat-file" href="${esc(f.url)}" target="_blank" rel="noopener" download="${esc(f.name || '')}" data-fi="${i}">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)}</span></a>`).join('')}</div>`;
   }
   const chatPreviewText = m => m.deleted ? '(삭제된 메시지)' : m.text ? m.text : (m.files || []).some(isImgFile) ? '📷 사진' : (m.files || []).length ? '📎 파일' : '';
@@ -2924,6 +3010,8 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       // 가장 위에 있는 것 하나만 닫는다: 우클릭 메뉴 → 답장 표시줄 → 사진 편집·첨부 시트 → 열린 창(시트·팝오버) → 드롭다운
+      if (document.querySelector('#vMenu.open')) { closeVMenu(); return; }
+      if (document.querySelector('#imgViewer.open')) { closeViewer(); return; }
       if (document.querySelector('#ctxMenu.open')) { closeCtx(); return; }
       if (CHAT.replyTo && document.activeElement === document.getElementById('chatText')) { CHAT.replyTo = null; renderReplyBar(); return; }
       const sub = document.querySelector('#imgEditModal.open') || document.querySelector('#attachModal.open'); if (sub) { sub.classList.remove('open'); return; }
@@ -2931,6 +3019,7 @@
       if (document.querySelector('.sheet-bg.open, .pop.open')) { if (history.state && history.state.overlay) history.back(); else closeOverlaysDirect(); }
       else closeOverlaysDirect();
       return; }
+    if (document.querySelector('#imgViewer.open')) { if (e.key === 'ArrowRight') viewerGo(1); else if (e.key === 'ArrowLeft') viewerGo(-1); return; }
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.querySelector('.sheet-bg.open, .pop.open, .lock.open');
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); fabClick(); }
