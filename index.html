@@ -418,6 +418,8 @@
   .picker { display: flex; gap: 6px; flex-wrap: wrap; }
   .picker button { border: 1.5px solid var(--line); background: transparent; border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
   .picker button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat); }
+  .picker button.cat-add { border-style: dashed; color: var(--primary); }
+  .picker button.cat-add:hover { background: var(--primary-soft); }
   .picker button.on { border-color: transparent; background: var(--cat-soft); color: var(--cat); }
   .picker-hint { flex-basis: 100%; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
   .picker button.on.s-진행중 { background: var(--primary-soft); color: var(--primary-text); }
@@ -1375,10 +1377,30 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const initial = s => (s || '').trim().charAt(0) || '?';
-  const normCat = t => CATEGORIES.includes(t) ? t : (LEGACY_CAT[t] || '기타');
+  // 직접 입력한 구분·분류: 공백·기호를 뺀 10자 이내 이름. 기본 목록에 없는 이름은 그대로 살리고 색은 이름에서 정한다
+  const CUSTOM_KEY = 'ictc.customCats';
+  const normCustom = (name, list) => { const n = String(name || '').replace(/\s+/g, '').replace(/[^\p{L}\p{N}_-]/gu, '').slice(0, 10); if (!n) return ''; const hit = (list || []).find(c => c.toLowerCase() === n.toLowerCase()); return hit || n; };
+  const customStore = () => { const o = lsGet(CUSTOM_KEY) || {}; return { schedule: Array.isArray(o.schedule) ? o.schedule : [], tasks: Array.isArray(o.tasks) ? o.tasks : [] }; };
+  const rememberCustom = (kind, name) => { const o = customStore(); if (!o[kind].includes(name)) { o[kind] = [name, ...o[kind]].slice(0, 20); lsSet(CUSTOM_KEY, o); } };
+  // 화면에 보일 사용자 정의 목록 = 기기에 기억한 것 + 지금 데이터에 들어 있는 것
+  const customCats = kind => { const base = kind === 'schedule' ? CATEGORIES : TASK_CATEGORIES; const set = new Set(customStore()[kind]);
+    if (kind === 'schedule') (state.schedule?.items || []).forEach(i => tagsOf(i).forEach(t => { if (!base.includes(t)) set.add(t); }));
+    else ['tasks', 'personal'].forEach(k => (state[k]?.items || []).forEach(i => { const c = tcatOf(i); if (!base.includes(c)) set.add(c); }));
+    return [...set]; };
+  const custHue = name => { let h = 0; for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360; return h; };
+  function ensureCatStyles() {
+    const names = new Set([...customCats('schedule'), ...customCats('tasks')]); if (!names.size) { const old = document.getElementById('customCatStyle'); if (old) old.textContent = ''; return; }
+    let light = '', dark = '';
+    names.forEach(n => { const h = custHue(n); const sel = `.cat-${CSS.escape(n)}, .tcat-${CSS.escape(n)}`;
+      light += `:root{--c-${CSS.escape(n)}:hsl(${h} 55% 36%);--c-${CSS.escape(n)}-soft:hsl(${h} 70% 93%);--t-${CSS.escape(n)}:hsl(${h} 55% 36%);--t-${CSS.escape(n)}-soft:hsl(${h} 70% 93%)}${sel}{--cat:var(--c-${CSS.escape(n)});--cat-soft:var(--c-${CSS.escape(n)}-soft)}`;
+      dark += `:root{--c-${CSS.escape(n)}:hsl(${h} 70% 72%);--c-${CSS.escape(n)}-soft:hsl(${h} 35% 18%);--t-${CSS.escape(n)}:hsl(${h} 70% 72%);--t-${CSS.escape(n)}-soft:hsl(${h} 35% 18%)}`; });
+    let el = document.getElementById('customCatStyle'); if (!el) { el = document.createElement('style'); el.id = 'customCatStyle'; document.head.appendChild(el); }
+    el.textContent = light + `@media (prefers-color-scheme: dark){${dark}}`;
+  }
+  const normCat = t => CATEGORIES.includes(t) ? t : (LEGACY_CAT[t] || normCustom(t) || '기타');
   const tagsOf = ev => { const raw = Array.isArray(ev.tags) && ev.tags.length ? ev.tags : [ev.tag]; return [...new Set(raw.map(normCat))]; };
   const catOf = ev => tagsOf(ev)[0];
-  const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : (LEGACY_TCAT[t.category] || '기타');
+  const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : (LEGACY_TCAT[t.category] || normCustom(t.category) || '기타');
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
   const endOf = ev => (ev.endDate && ev.endDate > ev.date) ? ev.endDate : ev.date;
@@ -1827,7 +1849,7 @@
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>
       <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>${wideBtn()}`;
     const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
-    renderChips(document.getElementById('scheduleFilters'), prioChips(CATEGORIES.map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
+    ensureCatStyles(); renderChips(document.getElementById('scheduleFilters'), prioChips([...CATEGORIES, ...customCats('schedule').filter(c => counts[c])].map(c => ({ key: c, color: cssVar('--c-' + c), count: counts[c] || 0 }))), state.scheduleTag, t => { state.scheduleTag = t; renderSchedule(); });
     markTabCal('schedule', state.view === 'calendar');
     document.getElementById('viewToggleBtn').textContent = state.view === 'calendar' ? '목록으로 보기' : '달력으로 보기';
     if (typeof updateWideBar === 'function') updateWideBar();
@@ -2012,7 +2034,7 @@
     if (state.taskStatus !== '전체' && !counts[state.taskStatus]) state.taskStatus = '전체';
     renderChips(document.getElementById('tasksFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.taskStatus, s => { state.taskStatus = s; renderTasks(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('tasksCatFilters'), prioChips(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.taskCat, c => { state.taskCat = c; renderTasks(); });
+    ensureCatStyles(); renderChips(document.getElementById('tasksCatFilters'), prioChips([...TASK_CATEGORIES, ...customCats('tasks').filter(c => catCounts[c])].map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.taskCat, c => { state.taskCat = c; renderTasks(); });
     const ownerCounts = {}; data.items.forEach(i => { const o = (i.owner || '').trim() || '미지정'; ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
     const owners = Object.keys(ownerCounts).sort((a, b) => ownerCounts[b] - ownerCounts[a] || a.localeCompare(b, 'ko'));
     if (state.taskOwner !== '전체' && !owners.includes(state.taskOwner)) state.taskOwner = '전체';
@@ -2051,7 +2073,7 @@
     if (state.pStatus !== '전체' && !counts[state.pStatus]) state.pStatus = '전체';
     renderChips(document.getElementById('personalFilters'), zerosLast(STATUSES.map(s => ({ key: s, count: counts[s] || 0 }))), state.pStatus, s => { state.pStatus = s; renderPersonal(); });
     const catCounts = {}; data.items.forEach(i => { const c = tcatOf(i); catCounts[c] = (catCounts[c] || 0) + 1; });
-    renderChips(document.getElementById('personalCatFilters'), prioChips(TASK_CATEGORIES.map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
+    ensureCatStyles(); renderChips(document.getElementById('personalCatFilters'), prioChips([...TASK_CATEGORIES, ...customCats('tasks').filter(c => catCounts[c])].map(c => ({ key: c, color: cssVar('--t-' + c), count: catCounts[c] || 0 }))), state.pCat, c => { state.pCat = c; renderPersonal(); });
     // 연도·월 (기한, 없으면 등록일 기준)
     const keyOf = t => (t.due || t.created || '').slice(0, 7);
     const yearOf = t => keyOf(t).slice(0, 4);
@@ -2247,8 +2269,10 @@
 
   function renderCatPicker(current) {
     const sel = Array.isArray(current) ? current : [current];
-    document.getElementById('catPicker').innerHTML = CATEGORIES.map(c => `<button type="button" class="cat-${c} ${sel.includes(c) ? 'on' : ''}" aria-pressed="${sel.includes(c)}" onclick="pickCat('${c}')"><span class="dot"></span>${c}</button>`).join('')
-      + '<div class="picker-hint">여러 개 선택 가능</div>';
+    ensureCatStyles(); const extra = [...new Set([...customCats('schedule'), ...sel.filter(c => !CATEGORIES.includes(c))])];
+    document.getElementById('catPicker').innerHTML = [...CATEGORIES, ...extra].map(c => `<button type="button" class="cat-${esc(c)} ${sel.includes(c) ? 'on' : ''}" aria-pressed="${sel.includes(c)}" onclick="pickCat('${esc(c)}')"><span class="dot"></span>${esc(c)}</button>`).join('')
+      + `<button type="button" class="cat-add" onclick="addCustomCat('schedule')">＋ 직접 입력</button>`
+      + '<div class="picker-hint">여러 개 선택 가능 · 직접 입력한 구분은 모두에게 보여요</div>';
     document.getElementById('scheduleForm').elements.tag.value = sel.join(',');
   }
   function pickCat(c) {
@@ -2304,10 +2328,21 @@
   }
   function pickStatus(s) { renderStatusPicker(s); }
   function renderTaskCatPicker(current) {
-    document.getElementById('taskCatPicker').innerHTML = TASK_CATEGORIES.map(c => `<button type="button" class="tcat-${c} ${c === current ? 'on' : ''}" onclick="pickTaskCat('${c}')"><span class="dot"></span>${c}</button>`).join('');
+    ensureCatStyles(); const extra = [...new Set([...customCats('tasks'), ...(current && !TASK_CATEGORIES.includes(current) ? [current] : [])])];
+    document.getElementById('taskCatPicker').innerHTML = [...TASK_CATEGORIES, ...extra].map(c => `<button type="button" class="tcat-${esc(c)} ${c === current ? 'on' : ''}" onclick="pickTaskCat('${esc(c)}')"><span class="dot"></span>${esc(c)}</button>`).join('')
+      + `<button type="button" class="cat-add" onclick="addCustomCat('tasks')">＋ 직접 입력</button>`;
     document.getElementById('taskForm').elements.category.value = current;
   }
   function pickTaskCat(c) { renderTaskCatPicker(c); }
+  // 직접 입력: 이름을 다듬어 목록에 넣고 바로 선택. 기본 목록과 같으면 그걸 고른다
+  function addCustomCat(kind) {
+    const base = kind === 'schedule' ? CATEGORIES : TASK_CATEGORIES;
+    const raw = prompt(`${kind === 'schedule' ? '구분' : '분류'} 이름을 넣어 주세요 (10자 이내, 띄어쓰기 없이)`); if (raw == null) return;
+    const n = normCustom(raw, [...base, ...customCats(kind)]); if (!n) { toast('이름은 글자나 숫자로 넣어 주세요'); return; }
+    if (!base.includes(n)) rememberCustom(kind, n);
+    if (kind === 'schedule') { const cur = (document.getElementById('scheduleForm').elements.tag.value || '').split(',').filter(Boolean); renderCatPicker(cur.includes(n) ? cur : [...cur, n]); }
+    else renderTaskCatPicker(n);
+  }
   function openTaskForm(id, scope, preset) {
     scope = scope || 'tasks';
     if (scope === 'personal' && !state.me) { showTab('personal'); return; }
