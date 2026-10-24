@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -543,6 +543,108 @@ begin
   if not found then raise exception 'CHAT_ROOM_NOT_FOUND'; end if;
 end $$;
 
+-- ---------- 아침 브리핑 (v6.6) ----------
+-- 평일 08:00(한국 시간) 톡방마다 "오늘·내일 일정 + 업무 기한" 요약 글을 '브리핑' 이름으로 올린다.
+-- 글 id 는 brief-<톡방>-<날짜> 하나뿐이라 몇 번 불러도 하루 한 번만 올라간다. 톡방 ↔ 대시보드는 이름이 같은 것으로 잇고, 없으면 main.
+create or replace function public.ictc_dt(p text)
+returns date language plpgsql immutable set search_path = public, extensions as $$
+begin return nullif(p, '')::date; exception when others then return null; end $$;
+
+create or replace function public.ictc_briefing_text(p_board text, p_room_name text, p_date date)
+returns text language plpgsql security definer set search_path = public, extensions as $$
+declare
+  dow text[] := array['일','월','화','수','목','금','토'];
+  txt text := ''; r record; d date; n int; k int; late int; today_due int; prog int; line text;
+begin
+  txt := '📋 ' || extract(month from p_date)::int || '월 ' || extract(day from p_date)::int || '일(' || dow[extract(dow from p_date)::int + 1] || ') 아침 브리핑 · ' || p_room_name;
+  foreach d in array array[p_date, p_date + 1] loop
+    select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
+      and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
+    txt := txt || E'\n' || (case when d = p_date then '오늘' else '내일' end) || ' 일정 ' || n || '건';
+    k := 0;
+    for r in
+      select i.data as it,
+             (coalesce(i.data->'tags', jsonb_build_array(i.data->'tag')) @> '["주요업무"]'::jsonb) as major,
+             public.ictc_dt(i.data->>'date') as sd, coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) as ed
+        from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
+         and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d
+       order by major desc, coalesce(i.data->>'start', '') , i.data->>'title'
+    loop
+      k := k + 1;
+      if k > 8 then txt := txt || E'\n … 외 ' || (n - 8) || '건'; exit; end if;
+      line := ' ' || coalesce(nullif(r.it->>'start', ''), '종일') || ' ' || (case when r.major then '★ ' else '' end) || coalesce(r.it->>'title', '');
+      if coalesce(r.it->>'place', '') <> '' then line := line || ' · ' || (r.it->>'place'); end if;
+      if coalesce(r.it->>'owner', '') <> '' then line := line || ' · ' || (r.it->>'owner'); end if;
+      if r.ed > r.sd then line := line || ' (' || (d - r.sd + 1) || '/' || (r.ed - r.sd + 1) || '일차)'; end if;
+      txt := txt || E'\n' || line;
+    end loop;
+  end loop;
+  select count(*) filter (where public.ictc_dt(i.data->>'due') < p_date),
+         count(*) filter (where public.ictc_dt(i.data->>'due') = p_date),
+         count(*) filter (where i.data->>'status' = '진행중')
+    into late, today_due, prog
+    from public.ictc_items i where i.kind = 'tasks' and i.board = p_board and coalesce(i.data->>'status', '') not in ('완료', '보류');
+  txt := txt || E'\n업무: 기한 지남 ' || late || '건 · 오늘 기한 ' || today_due || '건 · 진행중 ' || prog || '건';
+  k := 0;
+  for r in
+    select i.data as it, public.ictc_dt(i.data->>'due') as due from public.ictc_items i
+     where i.kind = 'tasks' and i.board = p_board and coalesce(i.data->>'status', '') not in ('완료', '보류') and public.ictc_dt(i.data->>'due') <= p_date
+     order by public.ictc_dt(i.data->>'due'), i.data->>'title'
+  loop
+    k := k + 1;
+    if k > 6 then txt := txt || E'\n … 외 ' || (late + today_due - 6) || '건'; exit; end if;
+    line := ' ! ' || coalesce(r.it->>'title', '');
+    if coalesce(r.it->>'owner', '') <> '' then line := line || ' · ' || (r.it->>'owner'); end if;
+    line := line || (case when r.due = p_date then ' · 오늘' else ' · D+' || (p_date - r.due) end);
+    txt := txt || E'\n' || line;
+  end loop;
+  return txt;
+end $$;
+
+create or replace function public.ictc_chat_briefing(p_date date default null)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+declare d date := coalesce(p_date, (now() at time zone 'Asia/Seoul')::date); r record; b text; mid text; cnt int := 0; txt text;
+begin
+  for r in select id, name from public.ictc_chat_rooms order by sort loop
+    mid := 'brief-' || r.id || '-' || to_char(d, 'YYYYMMDD');
+    if exists (select 1 from public.ictc_items where id = mid) then continue; end if;
+    select id into b from public.ictc_boards where name = r.name limit 1; b := coalesce(b, 'main');
+    txt := public.ictc_briefing_text(b, r.name, d);
+    insert into public.ictc_items (id, kind, board, data, updated_at)
+    values (mid, 'chat', r.id, jsonb_build_object('id', mid, 'text', txt, 'name', '브리핑', 'dev', 'bot', 'bot', true,
+            'created', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')), now());
+    delete from public.ictc_items where kind = 'chat' and board = r.id and id not in (
+      select id from public.ictc_items where kind = 'chat' and board = r.id order by updated_at desc limit 300);
+    cnt := cnt + 1;
+  end loop;
+  return cnt;
+end $$;
+
+-- 화면이 부르는 보충 게시: 예약 실행이 어떤 이유로 안 돌았을 때 8시 이후 처음 연 사람의 화면이 대신 올린다(평일 · 한국 시간)
+create or replace function public.ictc_chat_briefing_post(p_pin text)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+declare t timestamp := now() at time zone 'Asia/Seoul';
+begin
+  perform public.ictc_require_view(p_pin);
+  if extract(isodow from t) >= 6 or extract(hour from t) < 8 then return 0; end if;
+  return public.ictc_chat_briefing(t::date);
+end $$;
+
+-- 예약 실행(pg_cron): 평일 08:00 KST = UTC 일~목 23:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.
+-- Supabase 에서 create extension 이 거부되면 대시보드 → Database → Extensions 에서 pg_cron 을 켜고 이 파일을 한 번 더 실행하면 등록된다.
+do $$
+begin
+  begin
+    create extension if not exists pg_cron;
+  exception when others then raise notice 'pg_cron 을 만들지 못했습니다(%). 대시보드에서 켠 뒤 다시 실행하세요.', sqlerrm;
+  end;
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'sail41-briefing';
+    perform cron.schedule('sail41-briefing', '0 23 * * 0-4', 'select public.ictc_chat_briefing()');
+    raise notice 'pg_cron 예약 등록: sail41-briefing (평일 08:00 KST)';
+  end if;
+end $$;
+
 -- ---------- 첨부파일 저장소 (Supabase Storage, v6.1 · 일정·업무 사진 v6.5) ----------
 -- 버킷 sail41 (공개 읽기, 파일당 100MB 설정. 단 Supabase 무료 요금제는 프로젝트 전체 상한이 파일당 50MB 라 그 이상은 거부됨). 업로드는 anon 키로 chat/ 경로에만, 허용 형식 제한.
 -- 로컬 PostgreSQL 에는 storage 스키마가 없으므로 있을 때만 실행한다.
@@ -575,7 +677,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

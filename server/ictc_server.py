@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.5'
+VERSION = '5.6'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
@@ -127,6 +127,45 @@ def backup_db(path):
         print(f'[경고] 백업 실패: {e}')
 
 
+
+# ----- 아침 브리핑 문장 (supabase.sql ictc_briefing_text · index.html briefingText 와 같은 형식) -----
+import datetime as _dt
+def _d(s):
+    try: return _dt.date.fromisoformat((s or '')[:10]) if s else None
+    except ValueError: return None
+def briefing_text(sched, tasks, room_name, date):
+    dow = '일월화수목금토'
+    out = [f'📋 {date.month}월 {date.day}일({dow[(date.weekday() + 1) % 7]}) 아침 브리핑 · {room_name}']
+    for label, d in (('오늘', date), ('내일', date + _dt.timedelta(days=1))):
+        rows = []
+        for it in sched:
+            sd = _d(it.get('date')); ed = _d(it.get('endDate')) or sd
+            if sd and sd <= d <= ed:
+                tags = it.get('tags') if isinstance(it.get('tags'), list) else [it.get('tag')]
+                rows.append((0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
+        rows.sort(key=lambda r: (r[0], r[1], r[2]))
+        out.append(f'{label} 일정 {len(rows)}건')
+        for k, (major, start, title, it, sd, ed) in enumerate(rows):
+            if k >= 8: out.append(f' … 외 {len(rows) - 8}건'); break
+            line = f" {start or '종일'} {'★ ' if major == 0 else ''}{title}"
+            if it.get('place'): line += ' · ' + it['place']
+            if it.get('owner'): line += ' · ' + it['owner']
+            if ed > sd: line += f' ({(d - sd).days + 1}/{(ed - sd).days + 1}일차)'
+            out.append(line)
+    live = [t for t in tasks if (t.get('status') or '') not in ('완료', '보류')]
+    late = [t for t in live if _d(t.get('due')) and _d(t['due']) < date]
+    today = [t for t in live if _d(t.get('due')) == date]
+    prog = [t for t in live if t.get('status') == '진행중']
+    out.append(f'업무: 기한 지남 {len(late)}건 · 오늘 기한 {len(today)}건 · 진행중 {len(prog)}건')
+    due = sorted(late + today, key=lambda t: (_d(t['due']), t.get('title') or ''))
+    for k, t in enumerate(due):
+        if k >= 6: out.append(f' … 외 {len(due) - 6}건'); break
+        line = ' ! ' + (t.get('title') or '')
+        if t.get('owner'): line += ' · ' + t['owner']
+        line += ' · 오늘' if _d(t['due']) == date else f" · D+{(date - _d(t['due'])).days}"
+        out.append(line)
+    return '\n'.join(out)
+
 class DB:
     def __init__(self, path):
         self.path = path
@@ -193,6 +232,23 @@ class DB:
                 c.execute('''delete from items where kind='chat' and board=? and id not in
                              (select id from items where kind='chat' and board=? order by updated_at desc limit 300)''', (board, board))
         self._run(go)
+
+    # ----- 아침 브리핑: 톡방마다 하루 한 번(id brief-<톡방>-<날짜>) -----
+    def chat_briefing(self, date=None):
+        date = date or _dt.date.today(); cnt = 0
+        boards = {b['name']: b['id'] for b in self.boards()}
+        for r in self.chat_rooms():
+            mid = f"brief-{r['id']}-{date.strftime('%Y%m%d')}"
+            if self._run(lambda c: c.execute('select 1 from items where id=?', (mid,)).fetchone()): continue
+            board = boards.get(r['name'], 'main')
+            txt = briefing_text([x['data'] for x in self.list('schedule', board)], [x['data'] for x in self.list('tasks', board)], r['name'], date)
+            item = {'id': mid, 'text': txt, 'name': '브리핑', 'dev': 'bot', 'bot': True, 'created': _dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
+            self.save('chat', r['id'], item); cnt += 1
+        return cnt
+    def chat_briefing_if_due(self):   # 평일 08:00 이후에만(화면의 보충 호출·스케줄러 공용)
+        t = _dt.datetime.now()
+        if t.weekday() >= 5 or t.hour < 8: return 0
+        return self.chat_briefing(t.date())
 
     # ----- 41망 톡방 -----
     def chat_rooms(self):
@@ -562,6 +618,8 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.user_check(str(b.get('id', '')), str(b.get('user_pin', ''))); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
                 if fn == 'user_reset_pin':
                     self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
+                if fn == 'chat_briefing':   # 보충 게시: 평일 8시 이후면 오늘 브리핑이 없는 톡방에 올린다
+                    self.require_view(b.get('pin')); return self._json(200, db.chat_briefing_if_due())
                 if fn in ('chat_join', 'chat_list', 'chat_save', 'chat_delete'):
                     self.require_view(b.get('pin')); room = str(b.get('room', ''))
                     throttle.check(self._ip())
@@ -657,6 +715,12 @@ def main():
     read_pin(a.pin_file); read_pin(view_pin_path(a.pin_file), '0000', '조회')
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
+    def _brief_loop():   # 평일 08:00 아침 브리핑 (PC 시계 기준). 서버가 켜져 있는 동안 1분마다 확인하고, 꺼져 있었으면 화면이 처음 열릴 때 보충한다
+        while True:
+            try: db.chat_briefing_if_due()
+            except Exception as e: print('[오류] 브리핑:', e)
+            time.sleep(60)
+    threading.Thread(target=_brief_loop, daemon=True).start()
     print('=' * 56)
     print(f' SAIL:41 (지휘역량강화센터 일정·업무 보드) 서버 v{VERSION} 실행 중')
     print(f'   화면 폴더 : {static}')

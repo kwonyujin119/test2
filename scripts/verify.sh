@@ -30,6 +30,12 @@ if [[ " $* " != *" --no-sql "* ]]; then
     [ "$reg" = "검증" ] && echo "  개인업무 등록(pgcrypto) ok" || { echo "  개인업무 등록 실패: $reg"; ok=0; }
     [ "$($PS -d ictc_verify -At -c "select ictc_user_login('9999','1234')" 2>&1)" = "검증" ] && echo "  개인업무 로그인 ok" || { echo "  개인업무 로그인 실패"; ok=0; }
     short=$($PS -d ictc_verify -At -c "select ictc_user_set_pin('9999','1234','12')" 2>&1); [[ "$short" == *PIN_TOO_SHORT* ]] && echo "  4자리 미만 비밀번호 거부 ok" || { echo "  4자리 미만 비밀번호가 허용됨: $short"; ok=0; }
+    # --- v6.6 아침 브리핑: 톡방 4개에 하루 한 번만, 본문 형식 ---
+    $PS -d ictc_verify -At -c "select ictc_save('0000','schedule','{\"id\":\"vb1\",\"title\":\"브리핑검증\",\"date\":\"2026-10-27\",\"start\":\"09:00\",\"tags\":[\"주요업무\"]}'::jsonb,'main')" >/dev/null 2>&1
+    b1=$($PS -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); b2=$($PS -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1)
+    btxt=$($PS -d ictc_verify -At -c "select data->>'text' from ictc_items where id='brief-ictc-20261027'" 2>&1)
+    { [ "$b1" = "4" ] && [ "$b2" = "0" ] && [[ "$btxt" == *"10월 27일(화) 아침 브리핑 · 지휘역량강화센터"* ]] && [[ "$btxt" == *"09:00 ★ 브리핑검증"* ]]; } && echo "  아침 브리핑 생성(4개 톡방·중복 없음·형식) ok" || { echo "  아침 브리핑 검사 실패: $b1 / $b2 / $btxt"; ok=0; }
+    banon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); [[ "$banon" == *"permission denied"* ]] && echo "  브리핑 내부 함수 anon 거부 ok" || { echo "  브리핑 함수가 anon 에 열려 있음: $banon"; ok=0; }
     # --- v6.4 추가 검사 ---
     nosp=$($PS -d ictc_verify -At -c "select string_agg(p.proname, ',') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\\_%' and not exists (select 1 from unnest(coalesce(p.proconfig,'{}')) c where c like 'search_path=%extensions%')")
     [ -z "$nosp" ] && echo "  모든 함수 search_path=public, extensions ok" || { echo "  search_path 누락 함수: $nosp"; ok=0; }

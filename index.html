@@ -715,6 +715,8 @@
   .chat-msg.mine { align-self: flex-end; align-items: flex-end; }
   .chat-name { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-2); margin: 6px 0 3px 2px; }
   .chat-name .avatar { width: 22px; height: 22px; font-size: 11px; margin: 0; }
+  .chat-msg.bot .chat-bubble { border-left: 4px solid var(--gold); background: var(--gold-soft); font-variant-numeric: tabular-nums; }
+  .chat-msg.bot .chat-name .avatar { background: var(--gold); color: #1a1a1a; }
   .chat-row { display: flex; align-items: flex-end; gap: 6px; }
   .chat-msg.mine .chat-row { flex-direction: row-reverse; }
   .chat-bubble { background: var(--card); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 9px 13px; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; box-shadow: var(--shadow); }
@@ -1372,7 +1374,7 @@
   /* '오늘'은 켜 둔 채 날이 바뀌어도 맞아야 한다(사무실 PC·폰에 며칠씩 열어 둠). 1분마다 확인해 날짜가 바뀌면 다시 그린다 */
   const todayStr = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); };
   let TODAY = todayStr();
-  function tickToday() { const t = todayStr(); if (t === TODAY) return false; TODAY = t; try { ['schedule', 'tasks', 'personal'].forEach(k => { if (state[k]) render(k); }); } catch (e) {} return true; }
+  function tickToday() { const t = todayStr(); if (t === TODAY) return false; TODAY = t; setTimeout(maybeBriefing, 2000); try { ['schedule', 'tasks', 'personal'].forEach(k => { if (state[k]) render(k); }); } catch (e) {} return true; }
   setInterval(tickToday, 60 * 1000); document.addEventListener('visibilitychange', () => { if (!document.hidden) tickToday(); });
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1486,6 +1488,7 @@
       deletedList: (pin, kind, board) => rpc('ictc_deleted_list', { p_edit_pin: pin, p_kind: kind || null, p_board: board || null }),
       restore: (pin, seq) => rpc('ictc_restore', { p_edit_pin: pin, p_seq: seq }),
       chatRooms: () => rpc('ictc_chat_rooms', { p_pin: viewPin() }),
+      chatBriefing: () => rpc('ictc_chat_briefing_post', { p_pin: viewPin() }),
       chatJoin: (room, code) => rpc('ictc_chat_join', { p_pin: viewPin(), p_room: room, p_code: code }),
       chatList: async (room, code) => rows2(await rpc('ictc_chat_list', { p_pin: viewPin(), p_room: room, p_code: code })),
       chatSave: (room, code, item) => rpc('ictc_chat_save', { p_pin: viewPin(), p_room: room, p_code: code, p_item: item }),
@@ -1538,6 +1541,7 @@
       deletedList: (pin, kind, board) => post('/api/deleted_list', { pin, kind: kind || null, board: board || null }),
       restore: (pin, seq) => post('/api/restore', { pin, seq }),
       chatRooms: () => get('/api/chat_rooms'),
+      chatBriefing: () => post('/api/chat_briefing', { pin: viewPin() }),
       chatJoin: (room, code) => post('/api/chat_join', { pin: viewPin(), room, code }),
       chatList: async (room, code) => rows2(await post('/api/chat_list', { pin: viewPin(), room, code })),
       chatSave: (room, code, item) => post('/api/chat_save', { pin: viewPin(), room, code, item }),
@@ -1588,6 +1592,15 @@
       restore: async () => {},
       // 미리보기 톡방: 이 브라우저에만 저장. 기본 톡방·코드는 실제 서버와 같다
       chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
+      chatBriefing: async () => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
+        const t = new Date(); if (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8) return 0;
+        const d = todayStr(); let cnt = 0; const rooms = await api.chatRooms(); const boards = lsGet(LS.boards) || [{ id: 'main', name: '지휘역량강화센터' }];
+        for (const r of rooms) { const mid = `brief-${r.id}-${d.replace(/-/g, '')}`; const cur = getItems('chat', r.id); if (cur.some(m => m.id === mid)) continue;
+          const board = (boards.find(b => b.name === r.name) || {}).id || 'main';
+          const txt = briefingText(getItems('schedule', board), getItems('tasks', board), r.name, d);
+          setItems('chat', r.id, [...cur, { id: mid, text: txt, name: '브리핑', dev: 'bot', bot: true, created: new Date().toISOString() }].slice(-300)); cnt++; }
+        return cnt;
+      },
       chatJoin: async (room, code) => { const r = (lsGet('ictc.chat.rooms') || []).find(x => x.id === room); if (!r) throw new ApiError('CHAT_ROOM_NOT_FOUND'); if (r.code !== code) throw new ApiError('CHAT_CODE_INVALID'); return r.name; },
       chatList: async (room, code) => { await api.chatJoin(room, code); return { updated: null, items: getItems('chat', room) }; },
       chatSave: async (room, code, item) => { await api.chatJoin(room, code); await api.save('chat', item, room); const items = getItems('chat', room); if (items.length > 300) setItems('chat', room, items.slice(-300)); },
@@ -2479,7 +2492,7 @@
       const mine = chatIsMine(m); const key = (mine ? 'me' : (m.name || '')) + '|' + (m.created || '').slice(0, 16);
       const d = new Date(m.created); const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       const showName = !mine && key !== lastKey; lastKey = key;
-      html += `<div class="chat-msg ${mine ? 'mine' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
+      html += `<div class="chat-msg ${mine ? 'mine' : ''} ${m.bot ? 'bot' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
         <div class="chat-row"><div class="chat-body">${m.deleted ? `<div class="chat-bubble deleted">(삭제된 메시지)</div>` : `${chatQuoteHtml(m)}${m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files, m.id)}`}</div><div class="chat-meta"><span>${time}</span>${!m.deleted && (mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
     });
     list.innerHTML = html; list.dataset.room = room;
@@ -2563,6 +2576,31 @@
     bmp.close && bmp.close();
     return { main, thumb, w, h };
   }
+  /* ── 아침 브리핑 ── */
+  // 문장 형식은 supabase.sql ictc_briefing_text · ictc_server.py briefing_text 와 같다 (미리보기 모드용)
+  function briefingText(sched, tasks, roomName, dateStr) {
+    const D = s => { const x = new Date((s || '').slice(0, 10) + 'T00:00:00'); return isNaN(x) ? null : x; }; const date = D(dateStr); const days = (a, b) => Math.round((a - b) / 864e5);
+    const out = [`📋 ${date.getMonth() + 1}월 ${date.getDate()}일(${DOW[date.getDay()]}) 아침 브리핑 · ${roomName}`];
+    for (const [label, d] of [['오늘', date], ['내일', new Date(date.getTime() + 864e5)]]) {
+      const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
+        .sort((a, b) => a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));
+      out.push(`${label} 일정 ${rows.length}건`);
+      rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
+        let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
+    }
+    const live = tasks.filter(t => !['완료', '보류'].includes(t.status || '')); const late = live.filter(t => D(t.due) && D(t.due) < date), today = live.filter(t => D(t.due) && days(D(t.due), date) === 0), prog = live.filter(t => t.status === '진행중');
+    out.push(`업무: 기한 지남 ${late.length}건 · 오늘 기한 ${today.length}건 · 진행중 ${prog.length}건`);
+    [...late, ...today].sort((a, b) => (a.due || '').localeCompare(b.due || '') || (a.title || '').localeCompare(b.title || '')).forEach((t, k, arr) => { if (k > 6) return; if (k === 6) { out.push(` … 외 ${arr.length - 6}건`); return; }
+      let line = ' ! ' + (t.title || ''); if (t.owner) line += ' · ' + t.owner; line += days(D(t.due), date) === 0 ? ' · 오늘' : ` · D+${days(date, D(t.due))}`; out.push(line); });
+    return out.join('\n');
+  }
+  // 보충 게시: 평일 8시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다
+  async function maybeBriefing() {
+    const t = new Date(); if (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8) return; if (lsGet('ictc.brief.day') === TODAY) return;
+    if (!api.chatBriefing) return; lsSet('ictc.brief.day', TODAY);
+    try { const n = await api.chatBriefing(); if (n > 0) { await refreshChat(true); } } catch (e) {}
+  }
+
   /* ── 사진 뷰어 ── */
   const VIEW = { sets: {}, files: [], i: 0, drag: null };
   function regView(key, files) { VIEW.sets[key] = (files || []).filter(f => f && f.url && isImgFile(f)); return VIEW.sets[key]; }
@@ -3242,6 +3280,7 @@
     state.me = lsGet(LS.me);
     showTab(h.tab); if (!(history.state && history.state.app)) initHistory(); else updateHash();
     await Promise.all([refresh('schedule', true), refresh('tasks', true), refresh('personal', true), refreshChat(true)]);
+    setTimeout(maybeBriefing, 1500);
     const visits = (Number(lsGet('ictc.visits')) || 0) + 1; lsSet('ictc.visits', visits); updateInstallBtn(); updateAdminUI();
     if (!lsGet('ictc.hint.v2')) { lsSet('ictc.hint.v2', 1); lsSet('ictc.hint.v1', 1); setTimeout(() => toast('처음이세요? 누구나 추가·수정할 수 있어요.', 7000, openHelp, '사용 안내 보기'), 600); setTimeout(showTabTip, 1400); }
     if (location.hash === '#a2hs') { setTimeout(installApp, 600); }                       // 인앱 브라우저에서 '브라우저로 열기' 뒤 돌아온 경우
