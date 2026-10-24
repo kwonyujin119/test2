@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -628,6 +628,14 @@ begin
   perform public.ictc_require_view(p_pin);
   if extract(isodow from t) >= 6 or extract(hour from t) < 8 then return 0; end if;
   return public.ictc_chat_briefing(t::date);
+end $$;
+
+-- 관리자가 지금 바로 올리기(테스트·수동): 요일·시각 조건 없이 오늘 것이 없는 톡방에 올린다
+create or replace function public.ictc_chat_briefing_now(p_edit_pin text)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform public.ictc_require_edit(p_edit_pin);
+  return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date);
 end $$;
 
 -- 예약 실행(pg_cron): 평일 08:00 KST = UTC 일~목 23:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.

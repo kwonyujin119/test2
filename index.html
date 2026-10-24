@@ -1043,6 +1043,7 @@
   <button id="menuExcel" data-ico="upload" style="display:none" onclick="importExcel()"><span>엑셀로 개인업무 가져오기</span></button>
   <button id="menuUsers" data-ico="users" onclick="manageUsers()"><span>개인업무 사용자 관리</span></button>
   <button id="menuTrash" data-ico="trash" onclick="openTrash()"><span>휴지통</span></button>
+  <button id="menuBriefNow" data-ico="note" onclick="briefNow()"><span>브리핑 지금 올리기</span></button>
   <button id="menuWide" data-ico="view" onclick="toggleWide()"><span>넓게 보기</span></button>
   <button id="menuA2hs" data-ico="install" onclick="installApp()"><span>앱 설치</span></button>
   <button id="menuReset" data-ico="refresh" onclick="resetToDefault(currentTab())"><span>기본값으로 복원</span></button>
@@ -1489,6 +1490,7 @@
       restore: (pin, seq) => rpc('ictc_restore', { p_edit_pin: pin, p_seq: seq }),
       chatRooms: () => rpc('ictc_chat_rooms', { p_pin: viewPin() }),
       chatBriefing: () => rpc('ictc_chat_briefing_post', { p_pin: viewPin() }),
+      chatBriefingNow: (pin) => rpc('ictc_chat_briefing_now', { p_edit_pin: pin }),
       chatJoin: (room, code) => rpc('ictc_chat_join', { p_pin: viewPin(), p_room: room, p_code: code }),
       chatList: async (room, code) => rows2(await rpc('ictc_chat_list', { p_pin: viewPin(), p_room: room, p_code: code })),
       chatSave: (room, code, item) => rpc('ictc_chat_save', { p_pin: viewPin(), p_room: room, p_code: code, p_item: item }),
@@ -1542,6 +1544,7 @@
       restore: (pin, seq) => post('/api/restore', { pin, seq }),
       chatRooms: () => get('/api/chat_rooms'),
       chatBriefing: () => post('/api/chat_briefing', { pin: viewPin() }),
+      chatBriefingNow: (pin) => post('/api/chat_briefing_now', { pin }),
       chatJoin: (room, code) => post('/api/chat_join', { pin: viewPin(), room, code }),
       chatList: async (room, code) => rows2(await post('/api/chat_list', { pin: viewPin(), room, code })),
       chatSave: (room, code, item) => post('/api/chat_save', { pin: viewPin(), room, code, item }),
@@ -1592,8 +1595,9 @@
       restore: async () => {},
       // 미리보기 톡방: 이 브라우저에만 저장. 기본 톡방·코드는 실제 서버와 같다
       chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
-      chatBriefing: async () => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
-        const t = new Date(); if (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8) return 0;
+      chatBriefingNow: async (pin) => { if (pin !== (lsGet(LS.pin) || '1234')) throw new ApiError('PIN_INVALID'); return api.chatBriefing(true); },
+      chatBriefing: async (force) => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
+        const t = new Date(); if (!force && (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8)) return 0;
         const d = todayStr(); let cnt = 0; const rooms = await api.chatRooms(); const boards = lsGet(LS.boards) || [{ id: 'main', name: '지휘역량강화센터' }];
         for (const r of rooms) { const mid = `brief-${r.id}-${d.replace(/-/g, '')}`; const cur = getItems('chat', r.id); if (cur.some(m => m.id === mid)) continue;
           const board = (boards.find(b => b.name === r.name) || {}).id || 'main';
@@ -1720,7 +1724,7 @@
     const admin = document.body.classList.contains('admin') || !REMOTE;
     const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
     // 일반 사용자: 로그아웃 · 홈 화면 추가 · 새로고침 만
-    ['menuExport', 'menuImport', 'menuBoardRename', 'menuBoardDelete', 'menuUsers', 'menuTrash', 'menuPin', 'menuViewPin', 'menuAdminOff'].forEach(id => show(id, admin));
+    ['menuExport', 'menuImport', 'menuBoardRename', 'menuBoardDelete', 'menuUsers', 'menuTrash', 'menuBriefNow', 'menuPin', 'menuViewPin', 'menuAdminOff'].forEach(id => show(id, admin));
     show('menuBoardAdd', admin && window.innerWidth <= 640);   // 폰에서는 상단 + 가 숨겨지므로 메뉴에서
     show('menuTrash', admin && REMOTE);
     m.querySelectorAll('hr.admin-only').forEach(h => h.style.display = admin ? '' : 'none');
@@ -2201,6 +2205,13 @@
   /* ── 휴지통 ── */
   const TRASH_KIND = { schedule: '일정', tasks: '업무', personal: '개인업무', chat: '41망' };
   const TRASH_REASON = { delete: '삭제', replace: 'JSON 가져오기로 교체', board_delete: '대시보드 삭제', personal_delete: '삭제', user_delete: '사용자 삭제' };
+  // 관리자: 요일·시각과 상관없이 오늘 브리핑을 지금 올린다(테스트·수동). 톡방마다 하루 한 번이라 이미 있으면 0
+  async function briefNow() {
+    document.getElementById('menu').classList.remove('open'); let n = 0;
+    const ok = await withPin(async pin => { n = await api.chatBriefingNow(pin); }); if (!ok) return;
+    await refreshChat(true);
+    toast(n > 0 ? `${n}개 톡방에 오늘 브리핑을 올렸어요. 41망에서 확인하세요` : '오늘 브리핑은 이미 올라가 있어요(톡방마다 하루 한 번)', 4000);
+  }
   async function openTrash() {
     let rows;
     const ok = await withPin(async pin => { rows = await api.deletedList(pin, null, null); });

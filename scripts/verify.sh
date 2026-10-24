@@ -35,6 +35,7 @@ if [[ " $* " != *" --no-sql "* ]]; then
     b1=$($PS -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); b2=$($PS -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1)
     btxt=$($PS -d ictc_verify -At -c "select data->>'text' from ictc_items where id='brief-ictc-20261027'" 2>&1)
     { [ "$b1" = "4" ] && [ "$b2" = "0" ] && [[ "$btxt" == *"10월 27일(화) 아침 브리핑 · 지휘역량강화센터"* ]] && [[ "$btxt" == *"09:00 ★ 브리핑검증"* ]]; } && echo "  아침 브리핑 생성(4개 톡방·중복 없음·형식) ok" || { echo "  아침 브리핑 검사 실패: $b1 / $b2 / $btxt"; ok=0; }
+    bnow=$($PS -d ictc_verify -At -c "select ictc_chat_briefing_now('1234')" 2>&1); bnow2=$($PS -d ictc_verify -At -c "select ictc_chat_briefing_now('1234')" 2>&1); { [ "$bnow" = "4" ] && [ "$bnow2" = "0" ]; } && echo "  브리핑 지금 올리기(관리자, 오늘 1회) ok" || { echo "  브리핑 지금 올리기 실패: $bnow / $bnow2"; ok=0; }
     banon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); [[ "$banon" == *"permission denied"* ]] && echo "  브리핑 내부 함수 anon 거부 ok" || { echo "  브리핑 함수가 anon 에 열려 있음: $banon"; ok=0; }
     # --- v6.4 추가 검사 ---
     nosp=$($PS -d ictc_verify -At -c "select string_agg(p.proname, ',') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'ictc\\_%' and not exists (select 1 from unnest(coalesce(p.proconfig,'{}')) c where c like 'search_path=%extensions%')")

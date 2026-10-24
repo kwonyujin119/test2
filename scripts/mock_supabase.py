@@ -66,9 +66,12 @@ class H(BaseHTTPRequestHandler):
                 rows=[{'data':v['data'],'updated_at':v['u']} for v in ITEMS.values() if v['kind']==g('p_kind') and v['board']==board]
                 return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
             if fn=='ictc_boards': view(g('p_pin') or ''); return self._send(200,json.dumps(BOARDS).encode())
-            if fn=='ictc_chat_briefing_post':   # 평일 8시 이후, 톡방마다 하루 한 번
-                view(g('p_pin') or ''); t=datetime.datetime.now(); cnt=0
-                if t.weekday()>=5 or t.hour<8: return self._send(200,b'0')
+            if fn in ('ictc_chat_briefing_post','ictc_chat_briefing_now'):   # 평일 8시 이후 보충 / 관리자 즉시. 톡방마다 하루 한 번
+                t=datetime.datetime.now(); cnt=0
+                if fn=='ictc_chat_briefing_now': edit(g('p_edit_pin'))
+                else:
+                    view(g('p_pin') or '')
+                    if t.weekday()>=5 or t.hour<8: return self._send(200,b'0')
                 for rid,room in ROOMS.items():
                     mid=f"brief-{rid}-{t.strftime('%Y%m%d')}"
                     if mid in ITEMS: continue
