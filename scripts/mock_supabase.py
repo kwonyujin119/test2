@@ -67,16 +67,16 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200,json.dumps(sorted(rows,key=lambda r:r['updated_at'],reverse=True)).encode())
             if fn=='ictc_boards': view(g('p_pin') or ''); return self._send(200,json.dumps(BOARDS).encode())
             if fn in ('ictc_chat_briefing_post','ictc_chat_briefing_now'):   # 평일 8시 이후 보충 / 관리자 즉시. 톡방마다 하루 한 번
-                t=datetime.datetime.now(); cnt=0
-                if fn=='ictc_chat_briefing_now': edit(g('p_edit_pin'))
+                t=datetime.datetime.now(); cnt=0; manual=(fn=='ictc_chat_briefing_now')
+                if manual: edit(g('p_edit_pin'))
                 else:
                     view(g('p_pin') or '')
                     if t.weekday()>=5 or t.hour<8: return self._send(200,b'0')
                 for rid,room in ROOMS.items():
-                    mid=f"brief-{rid}-{t.strftime('%Y%m%d')}"
-                    if mid in ITEMS: continue
+                    mid=f"brief-{rid}-{t.strftime('%Y%m%d')}"+(f"-m{int(t.timestamp()*1000)}" if manual else '')
+                    if not manual and mid in ITEMS: continue
                     board=next((b['id'] for b in BOARDS if b['name']==room['name']),'main')
-                    txt=briefing_text([v['data'] for v in ITEMS.values() if v['kind']=='schedule' and v['board']==board],[v['data'] for v in ITEMS.values() if v['kind']=='tasks' and v['board']==board],room['name'],t.date())
+                    txt=briefing_text([v['data'] for v in ITEMS.values() if v['kind']=='schedule' and v['board']==board],[v['data'] for v in ITEMS.values() if v['kind']=='tasks' and v['board']==board],room['name'],t.date(),manual)
                     ITEMS[mid]={'kind':'chat','board':rid,'data':{'id':mid,'text':txt,'name':'브리핑','dev':'bot','bot':True,'created':now()},'u':now()}; cnt+=1
                 return self._send(200,str(cnt).encode())
             if fn=='ictc_chat_rooms': view(g('p_pin') or ''); return self._send(200,json.dumps([{'id':k,'name':v['name'],'sort':v['sort']} for k,v in sorted(ROOMS.items(),key=lambda kv:kv[1]['sort'])]).encode())

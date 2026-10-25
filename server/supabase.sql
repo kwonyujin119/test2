@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -550,13 +550,15 @@ create or replace function public.ictc_dt(p text)
 returns date language plpgsql immutable set search_path = public, extensions as $$
 begin return nullif(p, '')::date; exception when others then return null; end $$;
 
-create or replace function public.ictc_briefing_text(p_board text, p_room_name text, p_date date)
+drop function if exists public.ictc_briefing_text(text, text, date);
+drop function if exists public.ictc_chat_briefing(date);
+create or replace function public.ictc_briefing_text(p_board text, p_room_name text, p_date date, p_manual boolean default false)
 returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   dow text[] := array['일','월','화','수','목','금','토'];
   txt text := ''; r record; d date; n int; k int; late int; today_due int; prog int; line text;
 begin
-  txt := '📋 ' || extract(month from p_date)::int || '월 ' || extract(day from p_date)::int || '일(' || dow[extract(dow from p_date)::int + 1] || ') 아침 브리핑 · ' || p_room_name;
+  txt := '📋 ' || extract(month from p_date)::int || '월 ' || extract(day from p_date)::int || '일(' || dow[extract(dow from p_date)::int + 1] || ') 아침 브리핑 · ' || p_room_name || (case when p_manual then ' · 수동 게시' else '' end);
   foreach d in array array[p_date, p_date + 1] loop
     select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
       and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
@@ -602,15 +604,16 @@ begin
   return txt;
 end $$;
 
-create or replace function public.ictc_chat_briefing(p_date date default null)
+-- p_manual=true(관리자 '브리핑 테스트'): 하루 한 번 제한 없이 매번 새 글(id 에 시각 포함)로 올리고, 자동 08:00 게시에는 영향 없음
+create or replace function public.ictc_chat_briefing(p_date date default null, p_manual boolean default false)
 returns int language plpgsql security definer set search_path = public, extensions as $$
 declare d date := coalesce(p_date, (now() at time zone 'Asia/Seoul')::date); r record; b text; mid text; cnt int := 0; txt text;
 begin
   for r in select id, name from public.ictc_chat_rooms order by sort loop
-    mid := 'brief-' || r.id || '-' || to_char(d, 'YYYYMMDD');
-    if exists (select 1 from public.ictc_items where id = mid) then continue; end if;
+    mid := 'brief-' || r.id || '-' || to_char(d, 'YYYYMMDD') || (case when p_manual then '-m' || (extract(epoch from clock_timestamp()) * 1000)::bigint else '' end);
+    if not p_manual and exists (select 1 from public.ictc_items where id = mid) then continue; end if;
     select id into b from public.ictc_boards where name = r.name limit 1; b := coalesce(b, 'main');
-    txt := public.ictc_briefing_text(b, r.name, d);
+    txt := public.ictc_briefing_text(b, r.name, d, p_manual);
     insert into public.ictc_items (id, kind, board, data, updated_at)
     values (mid, 'chat', r.id, jsonb_build_object('id', mid, 'text', txt, 'name', '브리핑', 'dev', 'bot', 'bot', true,
             'created', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')), now());
@@ -636,7 +639,7 @@ create or replace function public.ictc_chat_briefing_now(p_edit_pin text)
 returns int language plpgsql security definer set search_path = public, extensions as $$
 begin
   perform public.ictc_require_edit(p_edit_pin);
-  return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date);
+  return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date, true);
 end $$;
 
 -- 예약 실행(pg_cron): 평일 08:00 KST = UTC 일~목 23:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.
