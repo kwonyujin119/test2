@@ -2046,6 +2046,24 @@
   ['tasks', 'personal'].forEach(t => { if (lsGet('ictc.filters.' + t)) document.getElementById(t + 'FiltersBox').classList.add('expanded'); });
   function sortTasks(items) { return items.slice().sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b) || (a.due || '9999').localeCompare(b.due || '9999')); }
 
+  // 업무 목록 공통 순서: 오늘 → 가까운 기한 → 먼 기한 → 기한 미정. 지난 기한은 접어 두고 맨 위 버튼으로 펼친다(검색 중에는 펼침)
+  state.showPastTasks = state.showPastTasks || { tasks: false, personal: false };
+  function renderDueGroups(scope, items, list, filterKey) {
+    const q = Q[scope] || '';
+    const byDue = (a, b) => (a.due || '').localeCompare(b.due || '') || (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b);
+    const past = items.filter(t => t.due && t.due < TODAY).sort((a, b) => byDue(b, a));
+    const todays = items.filter(t => t.due === TODAY).sort(byDue), upcoming = items.filter(t => t.due && t.due > TODAY).sort(byDue), undated = items.filter(t => !t.due).sort(byDue);
+    const pastOpen = !!q || !!state.showPastTasks[scope]; const pastUndone = past.filter(t => t.status !== '완료' && t.status !== '보류').length;
+    const groups = [['지난 기한', pastOpen ? past : []], ['오늘', todays], ['다가오는 기한', upcoming], ['기한 미정', undated]].filter(([, arr]) => arr.length);
+    const flat = groups.flatMap(([, arr]) => arr);
+    let head = '';
+    if (past.length && !q) head = `<div class="grid-span"><button type="button" class="past-toggle" onclick="state.showPastTasks['${scope}']=${pastOpen ? 'false' : 'true'};render('${scope}')">지난 기한 ${past.length}건${pastUndone ? ` · 미완료 ${pastUndone}건` : ''} ${pastOpen ? '접기' : '펼치기'}</button></div>`;
+    if (!flat.length) { list.innerHTML = head + `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>오늘 이후 기한인 ${scope === 'personal' ? '개인업무' : '업무'}가 없어요<br>위 버튼으로 지난 기한을 펼치거나 새 업무를 추가해 보세요</div>`; return; }
+    const pg = paginate(scope, flat, [...filterKey, pastOpen], state.focusTask ? flat.findIndex(t => t.id === state.focusTask) : -1);
+    const inPage = new Set(pg.slice.map(t => t.id));
+    list.innerHTML = head + groups.map(([name, arr]) => { const here = arr.filter(t => inPage.has(t.id)); if (!here.length) return ''; return `<div class="month-head grid-span">${name} <span class="cnt">${here.length}${here.length < arr.length ? ` / ${arr.length}` : ''}건</span></div>` + taskCards(here, scope); }).join('') + pg.html;
+    if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }
   function renderTasks() {
     const data = state.tasks, list = document.getElementById('taskList'); if (!data) return;
     const counts = {}; data.items.forEach(i => counts[i.status] = (counts[i.status] || 0) + 1);
@@ -2072,9 +2090,7 @@
       return;
     }
     if (state.tview.tasks === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); renderTaskCalendar('tasks', items, list); return; }
-    const pg = paginate('tasks', items, [state.board, state.taskStatus, state.taskCat, state.taskOwner, Q.tasks], state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1);
-    list.innerHTML = taskCards(pg.slice, 'tasks') + pg.html;
-    if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    renderDueGroups('tasks', items, list, [state.board, state.taskStatus, state.taskCat, state.taskOwner, Q.tasks]);
   }
 
   /* ── 개인업무 ── */
@@ -2119,20 +2135,7 @@
     if (state.tview.personal === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); const all = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat) && qMatch(i, Q.personal))); renderTaskCalendar('personal', all, list); return; }
     if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${Q.personal ? `'${esc(Q.personal)}' 로 찾은 개인업무가 없어요<br>다른 단어로 찾거나 <button type="button" class="linklike" onclick="setQ('personal','')">검색을 지워</button> 보세요` : data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 선택을 \'전체\'로 바꿔 보세요' : '아직 개인업무가 없어요<br>\'+ 개인업무 추가\' 버튼으로 첫 업무를 넣거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
     const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth, Q.personal];
-    // 정렬: 오늘 → 가까운 다음날 → 먼 다음날 → 기한 미정. 지난 기한은 접어 두고 맨 위 버튼으로 펼친다(검색 중에는 펼침)
-    const byDue = (a, b) => (a.due || '').localeCompare(b.due || '') || (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b);
-    const past = items.filter(t => t.due && t.due < TODAY).sort((a, b) => byDue(b, a));
-    const todays = items.filter(t => t.due === TODAY).sort(byDue), upcoming = items.filter(t => t.due && t.due > TODAY).sort(byDue), undated = items.filter(t => !t.due).sort(byDue);
-    const pastOpen = !!Q.personal || !!state.pShowPast; const pastUndone = past.filter(t => t.status !== '완료' && t.status !== '보류').length;
-    const groups = [['지난 기한', pastOpen ? past : []], ['오늘', todays], ['다가오는 기한', upcoming], ['기한 미정', undated]].filter(([, arr]) => arr.length);
-    const flat = groups.flatMap(([, arr]) => arr);
-    let head = '';
-    if (past.length && !Q.personal) head = `<div class="grid-span"><button type="button" class="past-toggle" onclick="state.pShowPast=${pastOpen ? 'false' : 'true'};renderPersonal()">지난 기한 ${past.length}건${pastUndone ? ` · 미완료 ${pastUndone}건` : ''} ${pastOpen ? '접기' : '펼치기'}</button></div>`;
-    if (!flat.length) { list.innerHTML = head + `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>오늘 이후 기한인 개인업무가 없어요<br>위 버튼으로 지난 기한을 펼치거나 새 업무를 추가해 보세요</div>`; return; }
-    const pg = paginate('personal', flat, [...filterKey, pastOpen], state.focusTask ? flat.findIndex(t => t.id === state.focusTask) : -1);
-    const inPage = new Set(pg.slice.map(t => t.id));
-    list.innerHTML = head + groups.map(([name, arr]) => { const here = arr.filter(t => inPage.has(t.id)); if (!here.length) return ''; return `<div class="month-head grid-span">${name} <span class="cnt">${here.length}${here.length < arr.length ? ` / ${arr.length}` : ''}건</span></div>` + taskCards(here, 'personal'); }).join('') + pg.html;
-    if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    renderDueGroups('personal', items, list, filterKey);
   }
   function renderLoginForm() {}
   const PW_RE = /^\d{4}$/;

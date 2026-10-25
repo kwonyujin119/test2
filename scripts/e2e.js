@@ -132,10 +132,10 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   // 브리핑 테스트(관리자 PIN): 톡방 4개, 누를 때마다 새 글
   r.briefNow = await P.evaluate(() => api.chatBriefingNow('1234')); r.briefAgain = await P.evaluate(() => api.chatBriefingNow('1234'));
   // 페이지 나누기: 주요업무 5개씩 → 카드 5개 + 쪽 표시, 다음 쪽으로 이동, 기본값(10)으로 복귀
-  await P.evaluate(() => setPageSize('tasks', 5)); await P.waitForTimeout(200);
+  await P.evaluate(() => { state.showPastTasks.tasks = true; setPageSize('tasks', 5); }); await P.waitForTimeout(200);   // 예시 데이터의 지난 기한 업무도 포함해 세기 위해 펼침
   r.pageCards = await P.locator('#taskList .task').count(); r.pageLabel = await P.locator('#taskList .pager-nav span').innerText().catch(() => '');
   await P.evaluate(() => gotoPage('tasks', 2)); await P.waitForTimeout(300); r.page2Label = await P.locator('#taskList .pager-nav span').innerText().catch(() => '');
-  await P.evaluate(() => setPageSize('tasks', 10)); await P.waitForTimeout(200);
+  await P.evaluate(() => { setPageSize('tasks', 10); state.showPastTasks.tasks = false; renderTasks(); }); await P.waitForTimeout(200);
   await P.click('.segment [data-tab=personal]'); await P.waitForTimeout(300);
   await P.fill('#loginForm [name=uid]', '032-870-1234'); await P.fill('#loginForm [name=upw]', '1111'); await P.click('#loginSubmit'); await P.waitForTimeout(900);   // 처음 → confirm 수락 → 자동 등록
   r.personalDefaultName = await P.locator('#personalSummary .name').innerText().catch(() => '');
@@ -152,9 +152,9 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.xlAddLabel = await P.locator('#xlAddBtn').innerText();
   await P.click('#xlAddBtn'); await P.waitForTimeout(1500);
   r.xlAdded = await P.locator('#personalList .task-title', { hasText: '장비 점검표 갱신' }).count();
-  await P.evaluate(() => { state.pShowPast = true; renderPersonal(); }); await P.waitForTimeout(300);   // 완료 건은 지난 기한이라 접혀 있음 → 펼쳐서 확인
+  await P.evaluate(() => { state.showPastTasks.personal = true; renderPersonal(); }); await P.waitForTimeout(300);   // 완료 건은 지난 기한이라 접혀 있음 → 펼쳐서 확인
   r.xlDone = await P.locator('#personalList .task.done .task-title', { hasText: '결과보고' }).count();
-  await P.evaluate(() => { state.pShowPast = false; renderPersonal(); });
+  await P.evaluate(() => { state.showPastTasks.personal = false; renderPersonal(); });
   await P.evaluate(() => importExcel()); await P.waitForTimeout(300);
   await P.setInputFiles('#xlFile', require('path').join(__dirname, 'fixtures', 'personal-sample.xlsx')); await P.waitForTimeout(1200);
   r.xlDupCount = await P.locator('#xlRows .xl-flag', { hasText: '이미 있음' }).count();
