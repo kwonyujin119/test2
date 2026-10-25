@@ -2430,10 +2430,12 @@
   const chatSeen = room => (lsGet('ictc.chat.seen') || {})[room] || '';
   const chatMarkSeen = (room, iso) => { const s = lsGet('ictc.chat.seen') || {}; if ((s[room] || '') < iso) { s[room] = iso; lsSet('ictc.chat.seen', s); } };
   const chatMsgs = room => (CHAT.msgs[room] || []).slice().sort((a, b) => (a.created || '').localeCompare(b.created || ''));
-  const chatUnread = room => { const seen = chatSeen(room); return chatMsgs(room).filter(m => (m.created || '') > seen && !chatIsMine(m)).length; };
+  const chatUnread = room => { const seen = chatSeen(room); return chatMsgs(room).filter(m => m.created && m.created > seen && !chatIsMine(m) && !m.deleted).length; };   // 시각 없는 글·삭제 자리표시는 세지 않음
   const chatRoomName = room => (CHAT.rooms.find(r => r.id === room) || {}).name || room;
   // 입장한 모든 톡방의 새 글을 읽음 처리(이 기기 기준) → 빨간 숫자 제거
-  function chatMarkAllSeen() { CHAT.rooms.forEach(r => { if (!chatCode(r.id)) return; const m = chatMsgs(r.id); const last = m[m.length - 1]; if (last) chatMarkSeen(r.id, last.created || ''); }); updateChatBadge(); renderChat(); toast('모두 읽음 처리했어요'); }
+  // 읽음 기준 = 그 방의 마지막 글 시각과 '지금' 중 늦은 쪽. 글 목록을 아직 못 받은 방도 지금까지의 글은 읽은 것으로 본다(나중에 받아도 다시 세지 않음)
+  const seenMark = room => { const m = chatMsgs(room); const last = m[m.length - 1]; const now = new Date().toISOString(); return last && (last.created || '') > now ? last.created : now; };
+  function chatMarkAllSeen() { CHAT.rooms.forEach(r => { if (chatCode(r.id)) chatMarkSeen(r.id, seenMark(r.id)); }); updateChatBadge(); renderChat(); toast('모두 읽음 처리했어요'); }
   function updateChatBadge() {
     const n = CHAT.rooms.reduce((a, r) => a + (chatCode(r.id) ? chatUnread(r.id) : 0), 0);
     const b = document.getElementById('chatBadge'); if (!b) return;
@@ -2523,7 +2525,7 @@
     });
     list.innerHTML = html; list.dataset.room = room;
     if (atBottom) list.scrollTop = list.scrollHeight;
-    const last = msgs[msgs.length - 1]; if (last) { chatMarkSeen(room, last.created || ''); updateChatBadge(); }
+    if (msgs.length) { chatMarkSeen(room, seenMark(room)); updateChatBadge(); }   // 방을 보고 있으면 지금까지의 글은 읽음
   }
   function chatSetNick() {
     if (state.me) return;
