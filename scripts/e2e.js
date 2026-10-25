@@ -152,7 +152,9 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.xlAddLabel = await P.locator('#xlAddBtn').innerText();
   await P.click('#xlAddBtn'); await P.waitForTimeout(1500);
   r.xlAdded = await P.locator('#personalList .task-title', { hasText: '장비 점검표 갱신' }).count();
+  await P.evaluate(() => { state.pShowPast = true; renderPersonal(); }); await P.waitForTimeout(300);   // 완료 건은 지난 기한이라 접혀 있음 → 펼쳐서 확인
   r.xlDone = await P.locator('#personalList .task.done .task-title', { hasText: '결과보고' }).count();
+  await P.evaluate(() => { state.pShowPast = false; renderPersonal(); });
   await P.evaluate(() => importExcel()); await P.waitForTimeout(300);
   await P.setInputFiles('#xlFile', require('path').join(__dirname, 'fixtures', 'personal-sample.xlsx')); await P.waitForTimeout(1200);
   r.xlDupCount = await P.locator('#xlRows .xl-flag', { hasText: '이미 있음' }).count();

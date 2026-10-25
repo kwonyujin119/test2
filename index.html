@@ -2119,15 +2119,19 @@
     if (state.tview.personal === 'calendar') { if (!state.calMonth) state.calMonth = TODAY.slice(0, 7); const all = sortTasks(data.items.filter(i => (state.pStatus === '전체' || i.status === state.pStatus) && (state.pCat === '전체' || tcatOf(i) === state.pCat) && qMatch(i, Q.personal))); renderTaskCalendar('personal', all, list); return; }
     if (!items.length) { list.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>${Q.personal ? `'${esc(Q.personal)}' 로 찾은 개인업무가 없어요<br>다른 단어로 찾거나 <button type="button" class="linklike" onclick="setQ('personal','')">검색을 지워</button> 보세요` : data.items.length ? '이 조건에 맞는 개인업무가 없어요<br>상태·연도·월 선택을 \'전체\'로 바꿔 보세요' : '아직 개인업무가 없어요<br>\'+ 개인업무 추가\' 버튼으로 첫 업무를 넣거나, <button type="button" class="linklike" onclick="importExcel()">엑셀 파일로 가져올</button> 수 있어요'}</div>`; return; }
     const filterKey = [state.me.id, state.pStatus, state.pCat, state.pYear, state.pMonth, Q.personal];
-    if (state.pMonth === '전체') {
-      // 월별 묶음 (최근 월부터). 묶음 순서대로 한 줄로 세운 뒤 쪽을 나누고, 이 쪽에 있는 월만 머리글을 붙인다
-      const groups = {}; items.forEach(i => { const k = keyOf(i) || '미정'; (groups[k] = groups[k] || []).push(i); });
-      const keys = Object.keys(groups).sort((a, b) => a === '미정' ? 1 : b === '미정' ? -1 : b.localeCompare(a));
-      const flat = keys.flatMap(k => groups[k]);
-      const pg = paginate('personal', flat, filterKey, state.focusTask ? flat.findIndex(t => t.id === state.focusTask) : -1);
-      const pageGroups = {}; pg.slice.forEach(i => { const k = keyOf(i) || '미정'; (pageGroups[k] = pageGroups[k] || []).push(i); });
-      list.innerHTML = keys.filter(k => pageGroups[k]).map(k => `<div class="month-head grid-span">${k === '미정' ? '날짜 미정' : `${Number(k.slice(0, 4))}년 ${Number(k.slice(5, 7))}월`} <span class="cnt">${pageGroups[k].length}${pageGroups[k].length < groups[k].length ? ` / ${groups[k].length}` : ''}건</span></div>` + taskCards(pageGroups[k], 'personal')).join('') + pg.html;
-    } else { const pg = paginate('personal', items, filterKey, state.focusTask ? items.findIndex(t => t.id === state.focusTask) : -1); list.innerHTML = taskCards(pg.slice, 'personal') + pg.html; }
+    // 정렬: 오늘 → 가까운 다음날 → 먼 다음날 → 기한 미정. 지난 기한은 접어 두고 맨 위 버튼으로 펼친다(검색 중에는 펼침)
+    const byDue = (a, b) => (a.due || '').localeCompare(b.due || '') || (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b);
+    const past = items.filter(t => t.due && t.due < TODAY).sort((a, b) => byDue(b, a));
+    const todays = items.filter(t => t.due === TODAY).sort(byDue), upcoming = items.filter(t => t.due && t.due > TODAY).sort(byDue), undated = items.filter(t => !t.due).sort(byDue);
+    const pastOpen = !!Q.personal || !!state.pShowPast; const pastUndone = past.filter(t => t.status !== '완료' && t.status !== '보류').length;
+    const groups = [['지난 기한', pastOpen ? past : []], ['오늘', todays], ['다가오는 기한', upcoming], ['기한 미정', undated]].filter(([, arr]) => arr.length);
+    const flat = groups.flatMap(([, arr]) => arr);
+    let head = '';
+    if (past.length && !Q.personal) head = `<div class="grid-span"><button type="button" class="past-toggle" onclick="state.pShowPast=${pastOpen ? 'false' : 'true'};renderPersonal()">지난 기한 ${past.length}건${pastUndone ? ` · 미완료 ${pastUndone}건` : ''} ${pastOpen ? '접기' : '펼치기'}</button></div>`;
+    if (!flat.length) { list.innerHTML = head + `<div class="empty" style="grid-column:1/-1"><div class="ico">${I.note}</div>오늘 이후 기한인 개인업무가 없어요<br>위 버튼으로 지난 기한을 펼치거나 새 업무를 추가해 보세요</div>`; return; }
+    const pg = paginate('personal', flat, [...filterKey, pastOpen], state.focusTask ? flat.findIndex(t => t.id === state.focusTask) : -1);
+    const inPage = new Set(pg.slice.map(t => t.id));
+    list.innerHTML = head + groups.map(([name, arr]) => { const here = arr.filter(t => inPage.has(t.id)); if (!here.length) return ''; return `<div class="month-head grid-span">${name} <span class="cnt">${here.length}${here.length < arr.length ? ` / ${arr.length}` : ''}건</span></div>` + taskCards(here, 'personal'); }).join('') + pg.html;
     if (state.focusTask) { const el = list.querySelector(`.task[data-id="${state.focusTask}"]`); state.focusTask = null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
   function renderLoginForm() {}
