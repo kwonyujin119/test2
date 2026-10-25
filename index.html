@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0A2F7E">
 <title>SAIL:41 · 지휘역량강화센터</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -75,7 +75,9 @@
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }  /* 두 번 탭 확대 끄기(핀치 확대는 유지) */
+  html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }  /* 두 손가락 확대·두 번 탭 확대 끄기(앱처럼). 사진 뷰어 안에서만 확대 허용 */
+  body.scroll-lock { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; }   /* 창(시트·팝오버·뷰어)이 떠 있는 동안 뒤 화면 스크롤 잠금 */
+  .sheet, #chatList, .trash-list, .users-list { overscroll-behavior: contain; }
   body { background: var(--bg); color: var(--text); font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; font-size: 15px; line-height: 1.5; min-height: 100vh; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   a { color: inherit; text-decoration: none; }
   button { font: inherit; color: inherit; cursor: pointer; }
@@ -1049,7 +1051,7 @@
   <button id="menuReset" data-ico="refresh" onclick="resetToDefault(currentTab())"><span>기본값으로 복원</span></button>
   <hr id="menuAdminHr">
   <button id="menuPin" data-ico="key" style="display:none" onclick="changePin()"><span>관리자 로그인</span></button>
-  <button id="menuAdminOff" data-ico="shieldOff" style="display:none" onclick="adminOff()"><span>관리자 모드 해제</span></button>
+  <button id="menuAdminOff" data-ico="logout" style="display:none" onclick="adminOff()"><span>관리자 로그아웃</span></button>
 </div>
 
 <div class="dropdown" id="boardMenu"></div>
@@ -1633,7 +1635,7 @@
     try { await api.usersList(pin); savePin(pin); toast('관리자 모드로 들어왔어요'); renderNotice(); } catch (e) { toast(e.message); }
     updateAdminUI();
   }
-  function adminOff() { lsDel(LS.pin); updateAdminUI(); renderNotice(); toast('관리자 모드를 해제했어요'); }
+  function adminOff() { document.getElementById('menu').classList.remove('open'); lsDel(LS.pin); updateAdminUI(); renderNotice(); if (typeof refreshMenu === 'function') refreshMenu(); toast('관리자에서 로그아웃했어요. 일정·업무 보기와 추가·수정은 그대로 돼요'); }
   async function withPin(fn) {
     const pin = getPin(); if (!pin) { toast('관리자 PIN이 필요해요'); return false; }
     try { await fn(pin); savePin(pin); return true; } catch (e) { toast(e.message); return false; }
@@ -1732,7 +1734,7 @@
       show('menuBoardDelete', state.board !== 'main'); show('menuImport', currentTab() !== 'personal');
       show('menuViewPin', REMOTE);
     }
-    // 맨 아래: 관리자 로그인(일반 사용자) / 관리자 모드 해제(관리자). 미리보기 모드에는 없음
+    // 맨 아래: 관리자 로그인(일반 사용자) / 관리자 로그아웃(관리자). 미리보기 모드에는 없음
     const isAdminDevice = document.body.classList.contains('admin');
     show('menuPin', REMOTE && !isAdminDevice); show('menuAdminOff', REMOTE && isAdminDevice); show('menuAdminHr', REMOTE);
     show('menuLogout', !!state.me); show('menuMyPin', !!state.me); show('menuMyName', !!state.me);
@@ -3281,6 +3283,19 @@
   /* ── 상단 바 높이(필터 고정 기준) ── */
   // 과이름▾ 자리: PC(1024px~)는 심벌 옆 한 줄, 폰은 탭 줄 왼쪽
   const placeBoardTitle = () => { const bt = document.getElementById('boardTitle'); const pc = window.innerWidth >= 1024; const target = pc ? document.querySelector('.hdr-left') : document.querySelector('.hdr-row2'); if (bt.parentElement !== target) { if (pc) target.appendChild(bt); else target.prepend(bt); } };
+  /* ── 창이 떠 있는 동안 뒤 화면 고정 · 두 손가락 확대 차단 ── */
+  let lockY = 0;
+  function syncScrollLock() {
+    const open = !!document.querySelector('.sheet-bg.open, .pop.open, #imgViewer.open, .lock.open');
+    const locked = document.body.classList.contains('scroll-lock');
+    if (open && !locked) { lockY = window.scrollY; document.body.style.top = -lockY + 'px'; document.body.classList.add('scroll-lock'); }
+    else if (!open && locked) { document.body.classList.remove('scroll-lock'); document.body.style.top = ''; void document.body.offsetHeight; window.scrollTo(0, lockY); requestAnimationFrame(() => window.scrollTo(0, lockY)); }   // 고정을 푼 직후엔 문서 높이가 아직 짧아 한 번 더
+  }
+  new MutationObserver(syncScrollLock).observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
+  // iOS Safari 는 viewport 의 user-scalable 을 무시하므로 제스처 자체를 막는다. 사진 뷰어 안에서는 허용
+  const inViewer = e => e.target && e.target.closest && e.target.closest('#imgViewer');
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => { if (!inViewer(e)) e.preventDefault(); }, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1 && !inViewer(e)) e.preventDefault(); }, { passive: false });
   placeBoardTitle(); window.addEventListener('resize', placeBoardTitle); window.addEventListener('resize', measureFab); window.addEventListener('load', measureFab);
   const setAppbarH = () => { const h = document.querySelector('.appbar').offsetHeight; document.documentElement.style.setProperty('--appbar-h', h + 'px'); };
   window.addEventListener('resize', setAppbarH); window.addEventListener('load', setAppbarH); setAppbarH();
