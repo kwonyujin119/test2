@@ -145,6 +145,7 @@ def briefing_text(sched, tasks, room_name, date):
                 rows.append((0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
         rows.sort(key=lambda r: (r[0], r[1], r[2]))
         out.append(f'{label} 일정 {len(rows)}건')
+        if d != date: continue   # 내일은 건수만, 목록은 오늘 일정만
         for k, (major, start, title, it, sd, ed) in enumerate(rows):
             if k >= 8: out.append(f' … 외 {len(rows) - 8}건'); break
             line = f" {start or '종일'} {'★ ' if major == 0 else ''}{title}"

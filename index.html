@@ -2596,6 +2596,7 @@
       const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
         .sort((a, b) => a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));
       out.push(`${label} 일정 ${rows.length}건`);
+      if (d !== date) continue;   // 내일은 건수만, 목록은 오늘 일정만
       rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
         let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
     }

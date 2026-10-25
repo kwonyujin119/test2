@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -561,6 +561,7 @@ begin
     select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
       and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
     txt := txt || E'\n' || (case when d = p_date then '오늘' else '내일' end) || ' 일정 ' || n || '건';
+    if d <> p_date then continue; end if;   -- 내일은 건수만, 목록은 오늘 일정만
     k := 0;
     for r in
       select i.data as it,
