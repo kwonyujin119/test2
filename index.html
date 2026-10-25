@@ -704,6 +704,7 @@
   .chat-head > div:first-child, .chat-head .chat-title-wrap { flex: 1; min-width: 0; }
   .chat-head .chat-back + .chat-title-wrap { flex: 1; }
   .chat-sub { font-size: 12px; color: var(--text-3); }
+  .chat-readall { padding: 6px 12px; font-size: 13px; white-space: nowrap; margin-left: auto; margin-right: 4px; }
   .chat-who { margin-left: auto; font-size: 12.5px; color: var(--text-3); text-align: right; }
   .chat-who b { color: var(--text-2); }
   .chat-who .linklike { font-size: 12.5px; }
@@ -836,9 +837,12 @@
   .v-btns { display: flex; gap: 2px; }
   .v-btn { width: 44px; height: 44px; border: 0; background: transparent; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .v-btn:hover { background: rgba(255,255,255,.15); }
-  .v-stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: pan-y pinch-zoom; cursor: default; }
+  .v-stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; cursor: zoom-in; }
+  .viewer.zoomed .v-stage { cursor: grab; } .viewer.zoomed .v-stage:active { cursor: grabbing; }
+  .viewer.zoomed .v-nav, .viewer.zoomed .v-dots { display: none; }
   .v-stage img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .18s ease, opacity .18s; will-change: transform; }
-  .v-stage img.swap { opacity: 0; transition: none; }
+  .v-stage img.swap, .v-stage img.drag { transition: none; }
+  .v-stage img.swap { opacity: 0; }
   .v-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }
   .v-nav:hover { background: rgba(255,255,255,.28); } .v-nav.prev { left: 16px; } .v-nav.next { right: 16px; }
   .v-nav:disabled { opacity: .25; cursor: default; }
@@ -2421,6 +2425,8 @@
   const chatMsgs = room => (CHAT.msgs[room] || []).slice().sort((a, b) => (a.created || '').localeCompare(b.created || ''));
   const chatUnread = room => { const seen = chatSeen(room); return chatMsgs(room).filter(m => (m.created || '') > seen && !chatIsMine(m)).length; };
   const chatRoomName = room => (CHAT.rooms.find(r => r.id === room) || {}).name || room;
+  // 입장한 모든 톡방의 새 글을 읽음 처리(이 기기 기준) → 빨간 숫자 제거
+  function chatMarkAllSeen() { CHAT.rooms.forEach(r => { if (!chatCode(r.id)) return; const m = chatMsgs(r.id); const last = m[m.length - 1]; if (last) chatMarkSeen(r.id, last.created || ''); }); updateChatBadge(); renderChat(); toast('모두 읽음 처리했어요'); }
   function updateChatBadge() {
     const n = CHAT.rooms.reduce((a, r) => a + (chatCode(r.id) ? chatUnread(r.id) : 0), 0);
     const b = document.getElementById('chatBadge'); if (!b) return;
@@ -2476,7 +2482,7 @@
     const admin = document.body.classList.contains('admin') || !REMOTE;
     const head = document.getElementById('chatHead'), list = document.getElementById('chatList'), input = document.getElementById('chatInputBar');
     if (!CHAT.room) {
-      head.innerHTML = `<div><h2 id="chatTitle">41망</h2><div class="chat-sub">부서 톡방 · 입장코드는 담당자에게</div></div><button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
+      head.innerHTML = `<div><h2 id="chatTitle">41망</h2><div class="chat-sub">부서 톡방 · 입장코드는 담당자에게</div></div>${CHAT.rooms.some(r => chatCode(r.id) && chatUnread(r.id)) ? `<button type="button" class="btn ghost chat-readall" onclick="chatMarkAllSeen()">모두 읽음</button>` : ''}<button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
       input.style.display = 'none'; list.classList.add('rooms');
       if (CHAT.source.rooms === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>톡방 목록을 불러오지 못했어요<br><button type="button" class="retry-btn" onclick="openChat()">다시 시도</button></div>`; return; }
       if (!CHAT.rooms.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${CHAT.source.rooms ? '톡방이 없어요' : '불러오는 중…'}</div>`; return; }
@@ -2626,7 +2632,7 @@
   }
   function viewerShow(dir) {
     const f = VIEW.files[VIEW.i], n = VIEW.files.length, img = document.getElementById('vImg');
-    img.classList.add('swap'); img.style.transform = dir ? `translateX(${dir > 0 ? 40 : -40}px)` : ''; img.src = f.url;
+    vReset(false); img.classList.add('swap'); img.style.transform = dir ? `translateX(${dir > 0 ? 40 : -40}px)` : ''; img.src = f.url;
     requestAnimationFrame(() => requestAnimationFrame(() => { img.classList.remove('swap'); img.style.transform = ''; }));
     document.getElementById('vCnt').textContent = n > 1 ? `${VIEW.i + 1} / ${n}` : '';
     document.getElementById('vDots').innerHTML = n > 1 && n <= 12 ? VIEW.files.map((_, k) => `<i class="${k === VIEW.i ? 'on' : ''}"></i>`).join('') : '';
@@ -2636,16 +2642,52 @@
   function viewerGo(d) { const n = VIEW.files.length; if (n < 2) return; VIEW.i = (VIEW.i + d + n) % n; viewerShow(d); }
   function closeViewer(viaHistory) {
     const v = document.getElementById('imgViewer'); if (!v.classList.contains('open')) return;
-    v.classList.remove('open'); document.body.classList.remove('viewing'); closeVMenu(); VIEW.drag = null;
+    v.classList.remove('open'); document.body.classList.remove('viewing'); closeVMenu(); VIEW.drag = null; vReset(false);
     if (!viaHistory && history.state && history.state.overlay === 'imgViewer') history.back();
   }
-  // 손가락으로 밀기: 오른쪽으로 밀면 다음, 왼쪽으로 밀면 이전 (요청대로). 세로로 끌면 무시
+  // 확대·축소·이동: 두 손가락 벌리기, 두 번 탭(1배 ↔ 2.5배), PC 는 휠·두 번 클릭. 확대 상태에서는 한 손가락으로 이동, 1배일 때만 좌우로 밀어 넘김
+  const VZ = { s: 1, tx: 0, ty: 0, max: 5, ptrs: new Map(), start: null, lastTap: 0, tapX: 0, tapY: 0 };
+  function vApply(anim) { const img = document.getElementById('vImg'); img.classList.toggle('drag', !anim); img.style.transform = VZ.s === 1 && !VZ.tx && !VZ.ty ? '' : `translate(${VZ.tx}px, ${VZ.ty}px) scale(${VZ.s})`; document.getElementById('imgViewer').classList.toggle('zoomed', VZ.s > 1); }
+  function vReset(anim) { VZ.s = 1; VZ.tx = 0; VZ.ty = 0; VZ.ptrs.clear(); VZ.start = null; vApply(anim); }
+  function vClamp() {   // 확대된 사진이 화면 밖으로 완전히 나가지 않게
+    const st = document.getElementById('vStage'), img = document.getElementById('vImg'); const w = img.clientWidth * VZ.s, h = img.clientHeight * VZ.s;
+    const mx = Math.max(0, (w - st.clientWidth) / 2), my = Math.max(0, (h - st.clientHeight) / 2);
+    VZ.tx = Math.min(mx, Math.max(-mx, VZ.tx)); VZ.ty = Math.min(my, Math.max(-my, VZ.ty)); }
+  function vZoomTo(ns, cx, cy) {   // (cx, cy): 화면 좌표 기준 확대 중심. 그 점이 제자리에 있도록 이동값 보정
+    const st = document.getElementById('vStage').getBoundingClientRect(); const ox = cx - (st.left + st.width / 2), oy = cy - (st.top + st.height / 2);
+    ns = Math.min(VZ.max, Math.max(1, ns)); const k = ns / VZ.s; VZ.tx = ox - (ox - VZ.tx) * k; VZ.ty = oy - (oy - VZ.ty) * k; VZ.s = ns; if (ns === 1) { VZ.tx = 0; VZ.ty = 0; } vClamp(); }
   (() => { const st = document.getElementById('vStage'); if (!st) return;
-    st.addEventListener('pointerdown', e => { if (e.button !== 0 && e.pointerType === 'mouse') return; closeVMenu(); VIEW.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false }; st.setPointerCapture && st.setPointerCapture(e.pointerId); });
-    st.addEventListener('pointermove', e => { const d = VIEW.drag; if (!d || d.id !== e.pointerId) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) > 6) d.moved = true; if (Math.abs(dx) > Math.abs(dy)) document.getElementById('vImg').style.transform = `translateX(${dx * 0.6}px)`; });
-    const end = e => { const d = VIEW.drag; if (!d || d.id !== e.pointerId) return; VIEW.drag = null; const dx = e.clientX - d.x, dy = e.clientY - d.y; const img = document.getElementById('vImg'); img.style.transform = '';
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) viewerGo(dx > 0 ? 1 : -1); };
-    st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end); })();
+    const dist = () => { const [a, b] = [...VZ.ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    const mid = () => { const [a, b] = [...VZ.ptrs.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+    st.addEventListener('pointerdown', e => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return; closeVMenu(); try { st.setPointerCapture(e.pointerId); } catch (x) {}
+      VZ.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (VZ.ptrs.size === 2) { VZ.start = { mode: 'pinch', d: dist(), s: VZ.s, m: mid(), tx: VZ.tx, ty: VZ.ty }; VIEW.drag = null; }
+      else if (VZ.ptrs.size === 1) { VZ.start = { mode: VZ.s > 1 ? 'pan' : 'swipe', x: e.clientX, y: e.clientY, tx: VZ.tx, ty: VZ.ty, moved: false, t: Date.now() }; }
+    });
+    st.addEventListener('pointermove', e => {
+      if (!VZ.ptrs.has(e.pointerId)) return; VZ.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); const g = VZ.start; if (!g) return;
+      if (g.mode === 'pinch' && VZ.ptrs.size === 2) { const m = mid(); const ns = Math.min(VZ.max, Math.max(1, g.s * dist() / g.d)); const k = ns / g.s;
+        VZ.s = ns;   // 두 손가락 가운데 점이 제자리에 있도록 이동값 보정(무대 중심 기준 좌표)
+        const r = st.getBoundingClientRect(); const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; VZ.tx = (m.x - c.x) - ((g.m.x - c.x) - g.tx) * k; VZ.ty = (m.y - c.y) - ((g.m.y - c.y) - g.ty) * k;
+        vClamp(); vApply(false); return; }
+      const dx = e.clientX - g.x, dy = e.clientY - g.y; if (Math.hypot(dx, dy) > 6) g.moved = true;
+      if (g.mode === 'pan') { VZ.tx = g.tx + dx; VZ.ty = g.ty + dy; vClamp(); vApply(false); }
+      else if (Math.abs(dx) > Math.abs(dy)) { document.getElementById('vImg').style.transform = `translateX(${dx * 0.6}px)`; }
+    });
+    const end = e => {
+      if (!VZ.ptrs.has(e.pointerId)) return; const g = VZ.start; VZ.ptrs.delete(e.pointerId);
+      if (!g) return;
+      if (g.mode === 'pinch') { if (VZ.ptrs.size < 2) { VZ.start = null; if (VZ.s < 1.05) vReset(true); else vApply(true); } return; }
+      VZ.start = null; const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (g.mode === 'swipe') { document.getElementById('vImg').style.transform = ''; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) { viewerGo(dx > 0 ? 1 : -1); return; } }
+      else vApply(true);
+      // 두 번 탭: 1배 ↔ 2.5배 (탭한 자리를 중심으로)
+      if (!g.moved && Date.now() - g.t < 350) { const now = Date.now(); if (now - VZ.lastTap < 320 && Math.hypot(e.clientX - VZ.tapX, e.clientY - VZ.tapY) < 40) { VZ.lastTap = 0; if (VZ.s > 1) vReset(true); else { vZoomTo(2.5, e.clientX, e.clientY); vApply(true); } } else { VZ.lastTap = now; VZ.tapX = e.clientX; VZ.tapY = e.clientY; } }
+    };
+    st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end); st.addEventListener('lostpointercapture', e => { VZ.ptrs.delete(e.pointerId); if (!VZ.ptrs.size) VZ.start = null; });
+    st.addEventListener('wheel', e => { e.preventDefault(); vZoomTo(VZ.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); vApply(true); }, { passive: false });
+  })();
   // ⋮ 메뉴: 41망으로 공유 · 카카오톡 등 다른 앱으로 공유 · 이미지 복사 · 사진 저장
   function viewerMenu(e) { e.stopPropagation(); const m = document.getElementById('vMenu'); if (m.classList.contains('open')) { closeVMenu(); return; }
     m.innerHTML = [`<button type="button" onclick="viewerDo('chat')">${chatIco()} 41망으로 공유</button>`, `<button type="button" onclick="viewerDo('share')">${I.share || ''}카카오톡·다른 앱으로 공유</button>`, `<button type="button" onclick="viewerDo('copy')">이미지 복사</button>`, `<button type="button" onclick="viewerDo('save')">사진 저장</button>`].join('');
