@@ -157,13 +157,12 @@ def briefing_text(sched, tasks, room_name, date):
     today = [t for t in live if _d(t.get('due')) == date]
     prog = [t for t in live if t.get('status') == '진행중']
     out.append(f'업무: 기한 지남 {len(late)}건 · 오늘 기한 {len(today)}건 · 진행중 {len(prog)}건')
-    due = sorted(late + today, key=lambda t: (_d(t['due']), t.get('title') or ''))
+    due = sorted(today, key=lambda t: t.get('title') or '')   # 목록에는 오늘 기한만 (기한 지난 업무는 건수만)
     for k, t in enumerate(due):
         if k >= 6: out.append(f' … 외 {len(due) - 6}건'); break
         line = ' ! ' + (t.get('title') or '')
         if t.get('owner'): line += ' · ' + t['owner']
-        line += ' · 오늘' if _d(t['due']) == date else f" · D+{(date - _d(t['due'])).days}"
-        out.append(line)
+        out.append(line + ' · 오늘')
     return '\n'.join(out)
 
 class DB:

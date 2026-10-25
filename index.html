@@ -2601,8 +2601,8 @@
     }
     const live = tasks.filter(t => !['완료', '보류'].includes(t.status || '')); const late = live.filter(t => D(t.due) && D(t.due) < date), today = live.filter(t => D(t.due) && days(D(t.due), date) === 0), prog = live.filter(t => t.status === '진행중');
     out.push(`업무: 기한 지남 ${late.length}건 · 오늘 기한 ${today.length}건 · 진행중 ${prog.length}건`);
-    [...late, ...today].sort((a, b) => (a.due || '').localeCompare(b.due || '') || (a.title || '').localeCompare(b.title || '')).forEach((t, k, arr) => { if (k > 6) return; if (k === 6) { out.push(` … 외 ${arr.length - 6}건`); return; }
-      let line = ' ! ' + (t.title || ''); if (t.owner) line += ' · ' + t.owner; line += days(D(t.due), date) === 0 ? ' · 오늘' : ` · D+${days(date, D(t.due))}`; out.push(line); });
+    today.slice().sort((a, b) => (a.title || '').localeCompare(b.title || '')).forEach((t, k, arr) => { if (k > 6) return; if (k === 6) { out.push(` … 외 ${arr.length - 6}건`); return; }   // 목록에는 오늘 기한만
+      let line = ' ! ' + (t.title || ''); if (t.owner) line += ' · ' + t.owner; out.push(line + ' · 오늘'); });
     return out.join('\n');
   }
   // 보충 게시: 평일 8시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다
