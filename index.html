@@ -284,6 +284,10 @@
   .task.trip .task-title { font-size: 17px; }
   .task.trip .atts a { width: 84px; height: 84px; border-radius: 12px; }
   .task.trip .task-foot { color: var(--text-3); }
+  .task.trip .trip-info { font-size: 14.5px; font-weight: 600; color: var(--text-2); margin: -2px 0 8px; line-height: 1.5; }
+  .trip-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; margin-top: 10px; }
+  .trip-fields .field { margin-bottom: 10px; }
+  .trip-fields .field:first-child { grid-column: 1 / -1; }
   .tcat-기타 { --cat: var(--t-기타); --cat-soft: var(--t-기타-soft); }
   .filter-label { font-size: 12px; font-weight: 700; color: var(--text-3); margin: 2px 4px 6px; }
   .chips + .filter-label { margin-top: 2px; }
@@ -1140,12 +1144,12 @@
     <input type="hidden" name="id"><input type="hidden" name="status" value="예정"><input type="hidden" name="category" value="기타"><input type="hidden" name="scope" value="tasks">
     <div class="field"><label>업무명</label><input name="title" required maxlength="100" placeholder="예) 2027년 교육계획 수립"></div>
     <div class="field"><label>분류</label><div class="picker" id="taskCatPicker"></div></div>
-    <div class="field"><label>상태</label><div class="picker" id="statusPicker"></div></div>
+    <div class="field" id="taskStatusField"><label>상태</label><div class="picker" id="statusPicker"></div></div>
     <div class="row">
       <div class="field" id="taskOwnerField"><label>담당</label><input name="owner" list="ownerList" maxlength="30"><datalist id="ownerList"></datalist></div>
       <div class="field" id="taskDueField"><label>기한</label><input name="due" type="date"></div>
     </div>
-    <div class="field" id="tripField" style="display:none"><label>여행 종류</label><div class="picker trip-picker" id="tripPicker"></div><input type="hidden" name="trip"></div>
+    <div class="field" id="tripField" style="display:none"><label>여행 종류</label><div class="picker trip-picker" id="tripPicker"></div><input type="hidden" name="trip"><input type="hidden" name="tripInfo"><div class="trip-fields" id="tripFields"></div></div>
     <div class="field"><label>상세</label><textarea name="detail" maxlength="1000"></textarea></div>
     <div class="field att-field"><label>사진 <small style="font-weight:500;color:var(--text-3)">(붙여넣기 Ctrl+V · 끌어다 놓기)</small></label>
       <div class="att-box" id="att_task"><div class="att-grid" id="attGrid_task"></div>
@@ -1341,7 +1345,7 @@
   const Q = { schedule: '', tasks: '', personal: '' };
   const qNorm = v => String(v || '').toLowerCase().replace(/\s+/g, '');
   const qTerms = q => String(q || '').trim().split(/\s+/).filter(Boolean);   // 공백으로 나눈 단어 모두 들어가야 일치(AND)
-  const qMatch = (it, q) => { const ts = qTerms(q); if (!ts.length) return true; const hay = [it.title, it.place, it.owner, it.note, it.detail, it.category, it.date, it.due, ...(it.tags || [])].map(qNorm); return ts.every(t => { const n = qNorm(t); return hay.some(v => v.includes(n)); }); };
+  const qMatch = (it, q) => { const ts = qTerms(q); if (!ts.length) return true; const hay = [it.title, it.place, it.owner, it.note, it.detail, it.category, it.date, it.due, it.trip, ...Object.values(it.tripInfo || {}), ...(it.tags || [])].map(qNorm); return ts.every(t => { const n = qNorm(t); return hay.some(v => v.includes(n)); }); };
   // 강조는 원문에서 찾은 뒤 조각마다 이스케이프한다(이스케이프한 글에서 찾으면 &amp; 같은 엔티티 안이 깨질 수 있음)
   const qMark = (text, q) => { const raw = String(text == null ? '' : text); const ts = qTerms(q); if (!ts.length) return esc(raw);
     try { const re = new RegExp(ts.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'); let out = '', last = 0, m; while ((m = re.exec(raw))) { if (!m[0]) { re.lastIndex++; continue; } out += esc(raw.slice(last, m.index)) + `<mark>${esc(m[0])}</mark>`; last = m.index + m[0].length; } return out + esc(raw.slice(last)); } catch (x) { return esc(raw); } };
@@ -1352,6 +1356,19 @@
   const TASK_CATEGORIES = ['ICTC', '지휘역량팀', '시민체험팀', '교육운영', '행정', '시설장비', '대외협력', '예산', '여행', '기타'];   // 여행은 개인업무 전용(기한 없음, 종류·상세·사진)
   const TRIP_TYPES = [['이동', '🚗'], ['식사', '🍽️'], ['카페', '☕'], ['호텔', '🏨'], ['공원', '🌳'], ['관람', '🎟️']];
   const tripIco = v => (TRIP_TYPES.find(t => t[0] === v) || ['', '📍'])[1];
+  // 종류별 입력칸 [키, 이름, 형식, 자리표시]. 날짜는 공통(선택). 카드에는 채운 칸만 한 줄로 보인다
+  const TRIP_FIELDS = {
+    '이동': [['from', '출발', 'text', '예) 서울역'], ['to', '도착', 'text', '예) 부산역'], ['via', '교통편', 'text', '예) KTX 101'], ['time', '출발 시간', 'time', ''], ['cost', '비용', 'text', '예) 59,800원']],
+    '식사': [['place', '식당', 'text', '예) 돼지국밥집'], ['menu', '메뉴', 'text', '예) 국밥 2'], ['time', '시간', 'time', ''], ['cost', '비용', 'text', '']],
+    '카페': [['place', '카페', 'text', '예) 블루보틀 성수'], ['menu', '메뉴', 'text', '예) 라떼'], ['time', '시간', 'time', ''], ['cost', '비용', 'text', '']],
+    '호텔': [['place', '호텔', 'text', '예) 파크하얏트'], ['checkin', '체크인', 'date', ''], ['checkout', '체크아웃', 'date', ''], ['room', '객실', 'text', '예) 1203호'], ['cost', '비용', 'text', '']],
+    '공원': [['place', '공원', 'text', '예) 해운대 동백공원'], ['where', '위치', 'text', '예) 입구 주차장'], ['time', '시간', 'time', ''], ['stay', '머문 시간', 'text', '예) 1시간']],
+    '관람': [['place', '장소', 'text', '예) 국립중앙박물관'], ['show', '공연·전시', 'text', '예) 특별전'], ['time', '시간', 'time', ''], ['ticket', '티켓·비용', 'text', '']],
+  };
+  const tripInfoText = t => { const f = TRIP_FIELDS[t.trip] || []; const i = t.tripInfo || {}; const parts = [];
+    if (t.trip === '이동' && (i.from || i.to)) parts.push(`${esc(i.from || '?')} → ${esc(i.to || '?')}`);
+    f.forEach(([k, label]) => { if (!i[k] || (t.trip === '이동' && (k === 'from' || k === 'to'))) return; parts.push(k === 'place' || k === 'menu' || k === 'via' || k === 'show' || k === 'room' || k === 'where' ? esc(i[k]) : `${label} ${esc(i[k])}`); });
+    return parts.join(' · '); };
   const LEGACY_TCAT = { '시민체험': '시민체험팀', 'ictc': 'ICTC' };
   const taskPrio = t => t.fromSchedule ? 0 : (TEAM_PRIO[tcatOf(t)] ?? PRIO_REST);
   const STATUSES = ['예정', '진행중', '완료', '보류'];
@@ -2041,8 +2058,9 @@
       if (tc === '여행') return `<div class="task trip tcat-여행 ${state.focusTask === t.id ? 'flash' : ''}" data-id="${esc(t.id)}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
         <div class="task-top"><span class="trip-chip">${tripIco(t.trip)} ${esc(t.trip || '여행')}</span><span class="task-cat"><span class="dot"></span>여행</span></div>
         <div class="task-title">${qMark(t.title, Q[scope] || '')}</div>
+        ${tripInfoText(t) ? `<div class="trip-info">${tripInfoText(t)}</div>` : ''}
         ${t.detail ? `<div class="task-detail">${esc(t.detail)}</div>` : ''}${attsHtml(t.files, 4, 'task:' + t.id)}
-        <div class="task-foot"><span>${I.cal}${esc((t.created || '').slice(5).replace('-', '/') || '')} 기록</span></div></div>`;
+        <div class="task-foot"><span>${I.cal}${(t.tripInfo && t.tripInfo.date) ? esc(t.tripInfo.date.slice(5).replace('-', '/')) + ' 여행' : esc((t.created || '').slice(5).replace('-', '/') || '') + ' 기록'}</span></div></div>`;
       return `<div class="task tcat-${tc} ${done ? 'done' : ''} ${t.fromSchedule ? 'linked-major' : ''} ${state.focusTask === t.id ? 'flash' : ''}" data-id="${esc(t.id)}" onclick="openTaskForm('${esc(t.id)}','${scope}')">
         <div class="task-top"><span class="task-cat"><span class="dot"></span>${esc(tc)}</span>
           <button class="status s-${esc(t.status)}" title="상태 변경 (수정 창)" onclick="event.stopPropagation();openTaskForm('${esc(t.id)}','${scope}')">${STATUS_ICON[t.status] || ''}${esc(t.status)}</button></div>
@@ -2068,7 +2086,8 @@
   function renderDueGroups(scope, items, list, filterKey) {
     const q = Q[scope] || '';
     const byDue = (a, b) => (a.due || '').localeCompare(b.due || '') || (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || taskPrio(a) - taskPrio(b);
-    const trips = scope === 'personal' ? items.filter(t => tcatOf(t) === '여행').sort((a, b) => (b.ts || b.created || '').localeCompare(a.ts || a.created || '')) : [];   // 여행 기록은 최근 것부터 따로
+    const tkey = t => ((t.tripInfo && t.tripInfo.date) || (t.ts || t.created || '').slice(0, 10)) + '|' + (t.ts || t.created || '');
+    const trips = scope === 'personal' ? items.filter(t => tcatOf(t) === '여행').sort((a, b) => tkey(b).localeCompare(tkey(a))) : [];   // 여행 기록은 여행 날짜(없으면 기록일) 최근 것부터
     items = items.filter(t => !(scope === 'personal' && tcatOf(t) === '여행'));
     const past = items.filter(t => t.due && t.due < TODAY).sort((a, b) => byDue(b, a));
     const todays = items.filter(t => t.due === TODAY).sort(byDue), upcoming = items.filter(t => t.due && t.due > TODAY).sort(byDue), undated = items.filter(t => !t.due).sort(byDue);
@@ -2392,8 +2411,14 @@
   }
   function pickTaskCat(c) { renderTaskCatPicker(c); }
   // 여행: 기한 대신 종류(이동·식사·카페·호텔·공원·관람). 상세·사진은 그대로
-  function syncTaskFormMode(cat) { const trip = cat === '여행'; document.getElementById('taskDueField').style.display = trip ? 'none' : ''; document.getElementById('tripField').style.display = trip ? '' : 'none'; if (trip && !document.getElementById('taskForm').elements.trip.value) renderTripPicker('이동'); }
-  function renderTripPicker(current) { document.getElementById('tripPicker').innerHTML = TRIP_TYPES.map(([v, ico]) => `<button type="button" class="tcat-여행 ${v === current ? 'on' : ''}" onclick="renderTripPicker('${v}')"><span>${ico}</span>${v}</button>`).join(''); document.getElementById('taskForm').elements.trip.value = current; }
+  function syncTaskFormMode(cat) { const trip = cat === '여행'; document.getElementById('taskDueField').style.display = trip ? 'none' : ''; document.getElementById('taskStatusField').style.display = trip ? 'none' : ''; document.getElementById('tripField').style.display = trip ? '' : 'none'; if (trip && !document.getElementById('taskForm').elements.trip.value) renderTripPicker('이동'); }
+  function renderTripPicker(current) {
+    const form = document.getElementById('taskForm'); document.getElementById('tripPicker').innerHTML = TRIP_TYPES.map(([v, ico]) => `<button type="button" class="tcat-여행 ${v === current ? 'on' : ''}" onclick="renderTripPicker('${v}')"><span>${ico}</span>${v}</button>`).join('');
+    form.elements.trip.value = current; let info = {}; try { info = JSON.parse(form.elements.tripInfo.value || '{}') || {}; } catch (e) {}
+    const fields = [['date', '날짜', 'date', ''], ...(TRIP_FIELDS[current] || [])];
+    document.getElementById('tripFields').innerHTML = fields.map(([k, label, type, ph]) => `<div class="field"><label>${label}</label><input type="${type}" data-tk="${k}" value="${esc(info[k] || '')}" placeholder="${esc(ph)}" maxlength="60" oninput="tripInfoChanged()"></div>`).join('');
+  }
+  function tripInfoChanged() { const form = document.getElementById('taskForm'); let info = {}; try { info = JSON.parse(form.elements.tripInfo.value || '{}') || {}; } catch (e) {} document.querySelectorAll('#tripFields [data-tk]').forEach(el => { const v = el.value.trim(); if (v) info[el.dataset.tk] = v; else delete info[el.dataset.tk]; }); form.elements.tripInfo.value = JSON.stringify(info); }
   // 직접 입력: 이름을 다듬어 목록에 넣고 바로 선택. 기본 목록과 같으면 그걸 고른다
   function addCustomCat(kind) {
     const base = kind === 'schedule' ? CATEGORIES : TASK_CATEGORIES;
@@ -2414,7 +2439,7 @@
     document.getElementById('taskCopy').style.display = item ? '' : 'none';
     document.getElementById('taskOwnerField').style.display = scope === 'personal' ? 'none' : '';
     const base = item || preset || {};
-    fillForm(form, base); form.elements.trip.value = base.trip || ''; renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영'); if (tcatOf(base) === '여행') renderTripPicker(base.trip || '이동'); attReset('task', base.files);
+    fillForm(form, base); form.elements.trip.value = base.trip || ''; form.elements.tripInfo.value = JSON.stringify(base.tripInfo || {}); renderStatusPicker(item ? item.status : '예정'); renderTaskCatPicker(base.category ? tcatOf(base) : '교육운영'); if (tcatOf(base) === '여행') renderTripPicker(base.trip || '이동'); attReset('task', base.files);
     openModal('taskModal'); if (!item) setTimeout(() => ((preset && !dueOnly) ? form.due : form.title).focus(), 300);
   }
   async function copyTask() {
@@ -2426,7 +2451,9 @@
   async function saveTask(e) {
     e.preventDefault();
     const form = document.getElementById('taskForm'); const v = readForm(form); const scope = v.scope; delete v.scope;
-    if (v.category === '여행') { v.due = ''; v.trip = v.trip || '이동'; const prev = state[scope].items.find(i => i.id === v.id); v.ts = (prev && prev.ts) || new Date().toISOString(); } else { delete v.trip; delete v.ts; }   // 여행은 기한 없이 종류만. ts = 기록 순서(최근 것이 위)
+    if (v.category === '여행') { v.due = ''; v.trip = v.trip || '이동'; const prev = state[scope].items.find(i => i.id === v.id); v.ts = (prev && prev.ts) || new Date().toISOString();
+      let info = {}; try { info = JSON.parse(v.tripInfo || '{}') || {}; } catch (e2) {} const keep = new Set(['date', ...(TRIP_FIELDS[v.trip] || []).map(f => f[0])]); v.tripInfo = Object.fromEntries(Object.entries(info).filter(([k, val]) => keep.has(k) && val)); }
+    else { delete v.trip; delete v.ts; delete v.tripInfo; }   // 여행은 기한 없이 종류·종류별 내용. ts = 기록 순서(최근 것이 위)
     if (!v.id) { v.id = uid(); v.created = TODAY; } else { const prev = state[scope].items.find(i => i.id === v.id); if (prev?.created) v.created = prev.created; }
     setBusy(form, true);
     try { v.files = await attUpload('task', scope); } catch (e2) { setBusy(form, false); toast(e2.message || '사진을 올리지 못했어요'); return; }
