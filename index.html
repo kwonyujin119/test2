@@ -661,11 +661,11 @@
   /* ── 보드 드롭다운 ── */
   .dropdown { position: fixed; z-index: 60; background: var(--card); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 6px; min-width: 240px; max-width: 320px; display: none; }
   .dropdown.open { display: block; animation: fade .15s ease; }
-  .dropdown .dd-label { font-size: 12px; font-weight: 700; color: var(--text-3); padding: 8px 12px 4px; }
-  .dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: transparent; text-align: left; padding: 10px 12px; border-radius: 10px; font-size: 15px; font-weight: 500; }
+  .dropdown .dd-label { font-size: 13px; font-weight: 700; color: var(--text-3); padding: 10px 14px 4px; letter-spacing: .2px; }
+  .dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: transparent; text-align: left; padding: 13px 14px; border-radius: 12px; font-size: 17px; font-weight: 600; letter-spacing: -.2px; }
   .dropdown button:hover { background: var(--card-2); }
   .dropdown button.on { font-weight: 700; color: var(--primary-text); }
-  .dropdown button.on::before { content: '✓'; font-size: 12px; }
+  .dropdown button.on::before { content: '✓'; font-size: 14px; }
   .dropdown button.add { color: var(--primary-text); font-weight: 600; }
   .dropdown hr { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
   .dropdown button.danger { color: var(--red); }
@@ -700,11 +700,12 @@
   .chat-sheet { display: flex; flex-direction: column; padding: 10px 0 0; max-height: 92vh; max-height: 92dvh; height: 92dvh; max-width: 620px; }
   @media (min-width: 640px) { .chat-sheet { height: min(720px, 86vh); padding-top: 14px; } }
   .chat-head { display: flex; align-items: center; gap: 12px; padding: 4px 18px 10px; border-bottom: 1px solid var(--line); }
-  .chat-head h2 { font-size: 19px; font-weight: 800; color: var(--primary-text); letter-spacing: .3px; }
+  .chat-head h2 { font-size: 22px; font-weight: 800; color: var(--primary-text); letter-spacing: .3px; }
+  .chat-manage { padding: 6px 12px; font-size: 13.5px; margin-right: 4px; } .chat-manage.on { background: var(--primary-soft); color: var(--primary-text); }
   .chat-head > div:first-child, .chat-head .chat-title-wrap { flex: 1; min-width: 0; }
   .chat-head .chat-back + .chat-title-wrap { flex: 1; }
   .chat-sub { font-size: 12px; color: var(--text-3); }
-  .chat-readall { padding: 6px 12px; font-size: 13px; white-space: nowrap; margin-left: auto; margin-right: 4px; }
+  .chat-readall { padding: 8px 14px; font-size: 15px; font-weight: 700; white-space: nowrap; margin-left: auto; margin-right: 4px; }
   .chat-who { margin-left: auto; font-size: 12.5px; color: var(--text-3); text-align: right; }
   .chat-who b { color: var(--text-2); }
   .chat-who .linklike { font-size: 12.5px; }
@@ -730,12 +731,13 @@
   .chat-del { border: none; background: none; color: var(--text-3); font-size: 11px; padding: 0; opacity: .7; }
   .chat-del:hover { color: var(--red); opacity: 1; }
   .chat-list.rooms { gap: 8px; padding: 14px 16px; }
-  .room-row { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px 8px 6px 14px; box-shadow: var(--shadow); }
+  .room-row { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 10px 10px 16px; box-shadow: var(--shadow); }
   .room-main { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 8px 0; display: flex; flex-direction: column; gap: 3px; color: var(--text); }
-  .room-name { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .room-name { font-size: 18.5px; font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: -.2px; }
   .room-unread { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #E5484D; color: #fff; font-size: 11.5px; font-weight: 800; line-height: 20px; text-align: center; }
-  .room-last { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .room-row:not(.joined) .room-last { color: var(--gold-text, #8A6A00); font-weight: 600; }
+  .room-last { font-size: 14.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-top: 2px; }
+  .room-row:not(.joined) .room-last { color: var(--text-3); font-weight: 600; }
+  .room-row:not(.joined) .room-name { color: var(--text-2); }
   .room-ico, .room-admin { width: 42px; height: 42px; border-radius: 12px; border: 0; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
   .room-admin { background: transparent; color: var(--text-3); width: 36px; }
   .room-admin svg { width: 18px; height: 18px; }
@@ -1765,12 +1767,13 @@
     m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, r.left) + 'px';
     const pen = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     const bin = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+    const adm = document.body.classList.contains('admin') || !REMOTE;   // 이름 변경·삭제·추가는 관리자에게만 보인다
     m.innerHTML = '<div class="dd-label">대시보드</div>' + state.boards.map(b => `<div class="dd-row">
         <button class="${b.id === state.board ? 'on' : ''}" onclick="switchBoard('${esc(b.id)}')"><span>${esc(b.name)}</span></button>
-        <button class="dd-act" title="이름 변경" aria-label="${esc(b.name)} 이름 변경" onclick="event.stopPropagation();renameBoard('${esc(b.id)}')">${pen}</button>
-        ${b.id === 'main' ? '' : `<button class="dd-act del" title="삭제" aria-label="${esc(b.name)} 삭제" onclick="event.stopPropagation();deleteBoard('${esc(b.id)}')">${bin}</button>`}
+        ${adm ? `<button class="dd-act" title="이름 변경" aria-label="${esc(b.name)} 이름 변경" onclick="event.stopPropagation();renameBoard('${esc(b.id)}')">${pen}</button>` : ''}
+        ${adm && b.id !== 'main' ? `<button class="dd-act del" title="삭제" aria-label="${esc(b.name)} 삭제" onclick="event.stopPropagation();deleteBoard('${esc(b.id)}')">${bin}</button>` : ''}
       </div>`).join('') +
-      '<hr><button class="add" onclick="addBoard()">+ 새 대시보드</button>' + (REMOTE ? '<div class="dd-hint">이름 변경·삭제는 관리자 PIN이 필요합니다</div>' : '');
+      (adm ? '<hr><button class="add" onclick="addBoard()">+ 새 대시보드</button>' : '');
     m.classList.add('open');
   }
   function closeBoardMenu() { document.getElementById('boardMenu').classList.remove('open'); }
@@ -2435,7 +2438,7 @@
   // 입장한 모든 톡방의 새 글을 읽음 처리(이 기기 기준) → 빨간 숫자 제거
   // 읽음 기준 = 그 방의 마지막 글 시각과 '지금' 중 늦은 쪽. 글 목록을 아직 못 받은 방도 지금까지의 글은 읽은 것으로 본다(나중에 받아도 다시 세지 않음)
   const seenMark = room => { const m = chatMsgs(room); const last = m[m.length - 1]; const now = new Date().toISOString(); return last && (last.created || '') > now ? last.created : now; };
-  function chatMarkAllSeen() { CHAT.rooms.forEach(r => { if (chatCode(r.id)) chatMarkSeen(r.id, seenMark(r.id)); }); updateChatBadge(); renderChat(); toast('모두 읽음 처리했어요'); }
+  function chatMarkAllSeen() { const mark = () => CHAT.rooms.forEach(r => { if (chatCode(r.id)) chatMarkSeen(r.id, seenMark(r.id)); }); mark(); updateChatBadge(); renderChat(); toast('모두 읽음 처리했어요'); refreshChat(true).then(() => { mark(); updateChatBadge(); if (!CHAT.room) renderChat(); }); }   // 새로 받아온 글까지 한 번 더
   function updateChatBadge() {
     const n = CHAT.rooms.reduce((a, r) => a + (chatCode(r.id) ? chatUnread(r.id) : 0), 0);
     const b = document.getElementById('chatBadge'); if (!b) return;
@@ -2491,17 +2494,17 @@
     const admin = document.body.classList.contains('admin') || !REMOTE;
     const head = document.getElementById('chatHead'), list = document.getElementById('chatList'), input = document.getElementById('chatInputBar');
     if (!CHAT.room) {
-      head.innerHTML = `<div><h2 id="chatTitle">41망</h2><div class="chat-sub">부서 톡방 · 입장코드는 담당자에게</div></div>${CHAT.rooms.some(r => chatCode(r.id) && chatUnread(r.id)) ? `<button type="button" class="btn ghost chat-readall" onclick="chatMarkAllSeen()">모두 읽음</button>` : ''}<button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
+      head.innerHTML = `<div><h2 id="chatTitle">41망</h2></div>${CHAT.rooms.some(r => chatCode(r.id) && chatUnread(r.id)) ? `<button type="button" class="btn ghost chat-readall" onclick="chatMarkAllSeen()">모두 읽음</button>` : ''}${admin ? `<button type="button" class="btn ghost chat-manage ${CHAT.manage ? 'on' : ''}" onclick="CHAT.manage=!CHAT.manage;renderChat()" title="톡방 추가 · 입장코드 변경">관리</button>` : ''}<button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
       input.style.display = 'none'; list.classList.add('rooms');
       if (CHAT.source.rooms === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>톡방 목록을 불러오지 못했어요<br><button type="button" class="retry-btn" onclick="openChat()">다시 시도</button></div>`; return; }
       if (!CHAT.rooms.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${CHAT.source.rooms ? '톡방이 없어요' : '불러오는 중…'}</div>`; return; }
       list.innerHTML = CHAT.rooms.map(r => { const joined = !!chatCode(r.id); const n = joined ? chatUnread(r.id) : 0; const last = joined ? chatMsgs(r.id).slice(-1)[0] : null;
         return `<div class="room-row ${joined ? 'joined' : ''}"><button type="button" class="room-main" onclick="enterRoom('${esc(r.id)}')">
           <span class="room-name">${esc(r.name)}${n ? `<span class="room-unread">${n > 99 ? '99+' : n}</span>` : ''}</span>
-          <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc(chatPreviewText(last).slice(0, 40))}` : '아직 글이 없어요') : '입장코드 4자리가 필요해요'}</span></button>
-          ${admin ? `<button type="button" class="room-admin" title="입장코드 변경" aria-label="${esc(r.name)} 입장코드 변경" onclick="chatSetCode('${esc(r.id)}')">${I.key || '코드'}</button>` : ''}
+          <span class="room-last">${joined ? (last ? `${esc(last.name || '')}: ${esc(chatPreviewText(last).slice(0, 40))}` : '아직 글이 없어요') : '입장 전'}</span></button>
+          ${admin && CHAT.manage ? `<button type="button" class="room-admin" title="입장코드 변경" aria-label="${esc(r.name)} 입장코드 변경" onclick="chatSetCode('${esc(r.id)}')">${I.key || '코드'}</button>` : ''}
           <button type="button" class="room-ico" aria-label="${esc(r.name)} 톡방 열기" onclick="enterRoom('${esc(r.id)}')">${chatIco()}</button></div>`; }).join('')
-        + (admin ? `<button type="button" class="room-add" onclick="chatRoomAdd()">+ 톡방 추가</button>` : '');
+        + (admin && CHAT.manage ? `<button type="button" class="room-add" onclick="chatRoomAdd()">+ 톡방 추가</button>` : '');
       return;
     }
     const room = CHAT.room, nm = chatName(), msgs = chatMsgs(room);
