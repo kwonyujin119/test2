@@ -876,6 +876,7 @@
   .bv-body .brief-card { cursor: default; border-radius: 22px; }
   .bv-body .bc-date { font-size: 32px; } .bv-body .bc-room { font-size: 18px; } .bv-body .bc-label { font-size: 21px; } .bv-body .bc-n { font-size: 40px; }
   .bv-body .bc-list li { grid-template-columns: 76px 1fr; padding: 12px 14px; } .bv-body .bc-list li .t { font-size: 21px; } .bv-body .bc-list li .ttl { font-size: 22px; } .bv-body .bc-list li .sub { font-size: 17px; }
+  .bv-body .bc-list.tasks li { grid-template-columns: 1fr; }
   .bv-body .bc-row { font-size: 19px; } .bv-body .bc-row b { font-size: 24px; } .bv-body .bc-stats b { font-size: 34px; } .bv-body .bc-stats span { font-size: 15px; }
   .bv-body .bc-foot { display: none; }
   .bv-bar { display: flex; gap: 10px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
@@ -2742,16 +2743,16 @@
   function closeBriefView(viaHistory) { const v = document.getElementById('briefView'); if (!v.classList.contains('open')) return; v.classList.remove('open'); if (!viaHistory && history.state && history.state.overlay === 'briefView') history.back(); }
   // 이미지: 앱이 캔버스에 직접 그린다(1080px 폭, 내용 길이만큼 세로). 서버 없이 폰에서 만든다
   function briefCanvas(b) {
-    const W = 1080, P = 56; const c = document.createElement('canvas'); const g = c.getContext('2d');
+    let W = 1080; const P = 56; const c = document.createElement('canvas'); const g = c.getContext('2d');
     const F = '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'; const font = (w, px) => { g.font = `${w} ${px}px ${F}`; };
     const wrap = (txt, px, w, maxLines) => { font(800, px); const out = []; let cur = ''; for (const ch of String(txt)) { const t = cur + ch; if (g.measureText(t).width > w && cur) { out.push(cur); cur = ch; } else cur = t; } if (cur) out.push(cur); if (maxLines && out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].slice(0, -1) + '…'; } return out; };
     // 1차: 높이 계산 (같은 그리기 함수를 측정 모드로)
     const draw = (measure) => {
-      let y = 0; const txt = (t, x, yy, px, w, col, align) => { if (measure) return; font(w, px); g.fillStyle = col; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic'; g.fillText(t, x, yy); };
+      let y = 0; const txt = (t, x, yy, w, px, col, align) => { if (measure) return; font(w, px); g.fillStyle = col; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic'; g.fillText(t, x, yy); };
       const box = (x, yy, w, h, col, r) => { if (measure) return; g.fillStyle = col; g.beginPath(); g.roundRect(x, yy, w, h, r); g.fill(); };
       // 머리
       const H = 230; if (!measure) { g.fillStyle = '#0A2F7E'; g.fillRect(0, 0, W, H); }
-      txt(`${b.month}월 ${b.day}일 ${b.dow}요일`, P, 118, 900, 76, '#fff'); txt(`아침 브리핑 · ${b.room}${b.manual ? ' · 수동 게시' : ''}`, P, 178, 600, 36, 'rgba(255,255,255,.9)');
+      txt(`${b.month}월 ${b.day}일 ${b.dow}요일`, P, 118, 900, 76, '#fff'); { const sub = `아침 브리핑 · ${b.room}${b.manual ? ' · 수동 게시' : ''}`; let px = 36; font(600, px); while (px > 22 && g.measureText(sub).width > W - P * 2) { px -= 2; font(600, px); } txt(sub, P, 178, 600, px, 'rgba(255,255,255,.9)'); }   // 긴 과 이름은 글자를 줄여 한 줄에
       y = H + 48;
       // 오늘 일정
       txt('오늘 일정', P, y + 10, 800, 40, '#4B5563'); txt(`${b.todayN}`, W - P - 60, y + 14, 900, 68, '#123A8C', 'right'); txt('건', W - P, y + 14, 700, 34, '#6B7280', 'right'); y += 48;
@@ -2769,7 +2770,9 @@
       y += 30; txt('SAIL:41 · 41망 아침 브리핑', W / 2, y + 30, 700, 26, '#9AA4B8', 'center'); y += 70;
       return y;
     };
-    const h = Math.max(1920, draw(true)); c.width = W; c.height = h; g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, h); draw(false);
+    // 내용이 짧으면 글자를 키워 폰 화면(1080×1920)을 채운다: 폭을 1/k 로 좁혀 그린 뒤 k 배 확대
+    const h0 = draw(true); const k = Math.min(1.5, Math.max(1, 1920 / h0)); W = 1080 / k;
+    const h = Math.max(1920, Math.ceil(draw(true) * k)); c.width = 1080; c.height = h; g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 1080, h); g.save(); g.scale(k, k); draw(false); g.restore();
     return c;
   }
   async function briefImage(mode) {
