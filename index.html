@@ -841,6 +841,45 @@
   .chat-msg, .chat-msg img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .chat-bubble { user-select: text; -webkit-user-select: text; }
   /* 우클릭·길게 누르기 메뉴 */
+  /* 브리핑 카드(41망) · 크게 보기 */
+  .chat-msg.bot.brief { max-width: 100%; width: 100%; }
+  .chat-msg.bot.brief .chat-body { width: 100%; align-items: stretch; }
+  .brief-card { width: 100%; background: var(--card); border: 1.5px solid var(--gold); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); cursor: pointer; font-variant-numeric: tabular-nums; }
+  .bc-head { background: var(--navy, #0A2F7E); color: #fff; padding: 14px 16px 12px; }
+  .bc-date { font-size: 24px; font-weight: 900; letter-spacing: -.3px; line-height: 1.2; }
+  .bc-room { font-size: 15px; opacity: .9; margin-top: 3px; font-weight: 600; }
+  .bc-room .manual { background: var(--gold); color: #1a1a1a; border-radius: 999px; padding: 1px 8px; font-size: 12.5px; margin-left: 6px; font-weight: 800; }
+  .bc-body { padding: 12px 14px 10px; }
+  .bc-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 6px; }
+  .bc-label { font-size: 17px; font-weight: 800; color: var(--text-2); }
+  .bc-n { font-size: 30px; font-weight: 900; color: var(--primary-text); line-height: 1; } .bc-n small { font-size: 15px; font-weight: 700; color: var(--text-3); margin-left: 2px; }
+  .bc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .bc-list li { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: start; background: var(--card-2); border-radius: 12px; padding: 9px 12px; }
+  .bc-list li .t { font-size: 17px; font-weight: 900; color: var(--primary-text); padding-top: 1px; }
+  .bc-list li.major { background: var(--gold-soft); } .bc-list li.major .t { color: #8A6A00; }
+  .bc-list li .ttl { font-size: 18px; font-weight: 800; line-height: 1.3; word-break: keep-all; }
+  .bc-list li .sub { display: block; font-size: 14.5px; color: var(--text-2); margin-top: 3px; font-weight: 500; }
+  .bc-list li .dayidx { display: inline-block; font-size: 12.5px; font-weight: 800; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .bc-list.tasks li { grid-template-columns: 1fr; } .bc-list.tasks li .ttl::before { content: '!'; color: var(--red); font-weight: 900; margin-right: 8px; }
+  .bc-more, .bc-none { font-size: 14.5px; color: var(--text-3); font-weight: 600; padding: 4px 2px; }
+  .bc-row { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 4px; padding: 10px 12px; background: var(--card-2); border-radius: 12px; font-size: 16px; font-weight: 700; color: var(--text-2); }
+  .bc-row b { font-size: 20px; color: var(--text); }
+  .bc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 8px; }
+  .bc-stats div { background: var(--card-2); border-radius: 12px; padding: 10px 6px; text-align: center; }
+  .bc-stats b { display: block; font-size: 26px; font-weight: 900; line-height: 1.1; } .bc-stats span { font-size: 13px; font-weight: 700; color: var(--text-3); }
+  .bc-stats .late b { color: var(--red); } .bc-stats .today b { color: #8A6A00; } .bc-stats .prog b { color: var(--primary-text); }
+  .bc-foot { font-size: 12.5px; color: var(--text-3); text-align: center; padding: 6px 0 10px; }
+  .brief-view { position: fixed; inset: 0; z-index: 150; background: var(--bg); display: none; flex-direction: column; }
+  .brief-view.open { display: flex; }
+  .bv-top { display: flex; justify-content: flex-end; padding: calc(4px + env(safe-area-inset-top)) 6px 0; }
+  .bv-body { flex: 1; overflow: auto; padding: 0 12px 12px; -webkit-overflow-scrolling: touch; }
+  .bv-body .brief-card { cursor: default; border-radius: 22px; }
+  .bv-body .bc-date { font-size: 32px; } .bv-body .bc-room { font-size: 18px; } .bv-body .bc-label { font-size: 21px; } .bv-body .bc-n { font-size: 40px; }
+  .bv-body .bc-list li { grid-template-columns: 76px 1fr; padding: 12px 14px; } .bv-body .bc-list li .t { font-size: 21px; } .bv-body .bc-list li .ttl { font-size: 22px; } .bv-body .bc-list li .sub { font-size: 17px; }
+  .bv-body .bc-row { font-size: 19px; } .bv-body .bc-row b { font-size: 24px; } .bv-body .bc-stats b { font-size: 34px; } .bv-body .bc-stats span { font-size: 15px; }
+  .bv-body .bc-foot { display: none; }
+  .bv-bar { display: flex; gap: 10px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
+  .bv-bar .btn { flex: 1; padding: 14px; font-size: 16px; }
   /* 사진 뷰어 */
   .viewer { position: fixed; inset: 0; background: #000; z-index: 150; display: none; flex-direction: column; color: #fff; user-select: none; -webkit-user-select: none; }
   .viewer.open { display: flex; }
@@ -1196,6 +1235,12 @@
     </div>
     <div class="sheet-foot"><button type="button" class="btn ghost" onclick="closeModal('xlsxModal')">닫기</button><button type="button" class="btn primary" id="xlAddBtn" style="display:none;flex:1" onclick="xlCommit()">추가</button></div>
   </div>
+</div>
+<!-- 브리핑 크게 보기: 폰 화면 가득 + 이미지 저장·공유 -->
+<div class="brief-view" id="briefView" role="dialog" aria-modal="true" aria-label="브리핑 크게 보기">
+  <div class="bv-top"><button type="button" class="v-btn" aria-label="닫기" onclick="closeBriefView()"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="bv-body" id="bvBody"></div>
+  <div class="bv-bar"><button type="button" class="btn primary" onclick="briefImage('save')">이미지로 저장</button><button type="button" class="btn ghost" onclick="briefImage('share')">공유</button></div>
 </div>
 <!-- 사진 뷰어: 좌우로 밀어 넘기기, × 닫기, ⋮ 공유·복사·저장 -->
 <div class="viewer" id="imgViewer" role="dialog" aria-modal="true" aria-label="사진 보기">
@@ -1631,7 +1676,7 @@
       chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
       chatBriefingNow: async (pin) => { if (pin !== (lsGet(LS.pin) || '1234')) throw new ApiError('PIN_INVALID'); return api.chatBriefing(true); },
       chatBriefing: async (force) => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
-        const t = new Date(); if (!force && (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8)) return 0;
+        const t = new Date(); if (!force && (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 7)) return 0;
         const d = todayStr(); let cnt = 0; const rooms = await api.chatRooms(); const boards = lsGet(LS.boards) || [{ id: 'main', name: '지휘역량강화센터' }];
         for (const r of rooms) { const mid = `brief-${r.id}-${d.replace(/-/g, '')}` + (force ? '-m' + Date.now() : ''); const cur = getItems('chat', r.id); if (!force && cur.some(m => m.id === mid)) continue;
           const board = (boards.find(b => b.name === r.name) || {}).id || 'main';
@@ -1719,7 +1764,7 @@
   function closeOverlaysDirect() {
     const had = document.querySelectorAll('.sheet-bg.open').length;
     document.querySelectorAll('.sheet-bg.open').forEach(m => m.classList.remove('open'));
-    closeViewer(true);
+    closeViewer(true); closeBriefView(true);
     document.getElementById('popBg').classList.remove('open'); document.getElementById('pop').classList.remove('open');
     closeBoardMenu(); document.getElementById('menu').classList.remove('open');
     if (had && typeof restoreFocus === 'function') restoreFocus();
@@ -1733,6 +1778,7 @@
   window.addEventListener('popstate', e => {
     const n = e.state;
     if (document.getElementById('imgViewer').classList.contains('open')) { closeViewer(true); return; }   // 뒤로 가기는 뷰어만 닫는다
+    if (document.getElementById('briefView').classList.contains('open')) { closeBriefView(true); return; }
     if (!n || n.root) {
       closeOverlaysDirect();
       if (exitTimer) return;                       // 안내 중 한 번 더 누름 → 브라우저가 페이지를 벗어남
@@ -2256,12 +2302,12 @@
   /* ── 휴지통 ── */
   const TRASH_KIND = { schedule: '일정', tasks: '업무', personal: '개인업무', chat: '41망' };
   const TRASH_REASON = { delete: '삭제', replace: 'JSON 가져오기로 교체', board_delete: '대시보드 삭제', personal_delete: '삭제', user_delete: '사용자 삭제' };
-  // 관리자 '브리핑 테스트': 요일·시각·횟수 제한 없이 지금 데이터로 매번 새 글을 올린다(첫 줄에 '수동 게시'). 자동 08:00 게시와 별개
+  // 관리자 '브리핑 테스트': 요일·시각·횟수 제한 없이 지금 데이터로 매번 새 글을 올린다(첫 줄에 '수동 게시'). 자동 07:00 게시와 별개
   async function briefNow() {
     document.getElementById('menu').classList.remove('open'); let n = 0;
     const ok = await withPin(async pin => { n = await api.chatBriefingNow(pin); }); if (!ok) return;
     await refreshChat(true);
-    toast(n > 0 ? `${n}개 톡방에 브리핑을 올렸어요(수동 게시 표시). 평일 08:00 자동 게시와는 별개예요` : '올릴 톡방이 없어요', 4000);
+    toast(n > 0 ? `${n}개 톡방에 브리핑을 올렸어요(수동 게시 표시). 평일 07:00 자동 게시와는 별개예요` : '올릴 톡방이 없어요', 4000);
   }
   async function openTrash() {
     let rows;
@@ -2579,8 +2625,9 @@
       const mine = chatIsMine(m); const key = (mine ? 'me' : (m.name || '')) + '|' + (m.created || '').slice(0, 16);
       const d = new Date(m.created); const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       const showName = !mine && key !== lastKey; lastKey = key;
-      html += `<div class="chat-msg ${mine ? 'mine' : ''} ${m.bot ? 'bot' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
-        <div class="chat-row"><div class="chat-body">${m.deleted ? `<div class="chat-bubble deleted">(삭제된 메시지)</div>` : `${chatQuoteHtml(m)}${m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files, m.id)}`}</div><div class="chat-meta"><span>${time}</span>${!m.deleted && (mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
+      const brief = m.bot && !m.deleted ? parseBrief(m.text) : null;
+      html += `<div class="chat-msg ${mine ? 'mine' : ''} ${m.bot ? 'bot' : ''} ${brief ? 'brief' : ''}" data-id="${esc(m.id)}">${showName ? `<div class="chat-name"><span class="avatar">${esc(initial(m.name || '?'))}</span>${esc(m.name || '이름 없음')}</div>` : ''}
+        <div class="chat-row"><div class="chat-body">${m.deleted ? `<div class="chat-bubble deleted">(삭제된 메시지)</div>` : `${chatQuoteHtml(m)}${brief ? briefCardHtml(brief, m.id) : m.text ? `<div class="chat-bubble">${linkify(m.text)}</div>` : ''}${chatFilesHtml(m.files, m.id)}`}</div><div class="chat-meta"><span>${time}</span>${!m.deleted && (mine || admin) ? `<button type="button" class="chat-del" onclick="chatDelete('${esc(m.id)}')" aria-label="삭제">삭제</button>` : ''}</div></div></div>`;
     });
     list.innerHTML = html; list.dataset.room = room;
     if (atBottom) list.scrollTop = list.scrollHeight;
@@ -2663,6 +2710,75 @@
     bmp.close && bmp.close();
     return { main, thumb, w, h };
   }
+  /* ── 브리핑 카드: 글(text)을 읽어 큰 글씨 카드로, 크게 보기 + 이미지 저장·공유 ── */
+  function parseBrief(text) {
+    const L = String(text || '').split('\n'); const h = (L[0] || '').replace(/^📋\s*/, '').match(/^(\d+)월 (\d+)일\((.)\) 아침 브리핑 · (.+?)( · 수동 게시)?$/); if (!h) return null;
+    const b = { month: +h[1], day: +h[2], dow: h[3], room: h[4], manual: !!h[5], todayN: 0, today: [], more: 0, tomorrowN: 0, late: 0, dueToday: 0, prog: 0, tasks: [], taskMore: 0 };
+    let sec = '';
+    for (const line of L.slice(1)) { let m;
+      if ((m = line.match(/^오늘 일정 (\d+)건/))) { sec = 'today'; b.todayN = +m[1]; }
+      else if ((m = line.match(/^내일 일정 (\d+)건/))) { sec = 'tmr'; b.tomorrowN = +m[1]; }
+      else if ((m = line.match(/^업무: 기한 지남 (\d+)건 · 오늘 기한 (\d+)건 · 진행중 (\d+)건/))) { sec = 'task'; b.late = +m[1]; b.dueToday = +m[2]; b.prog = +m[3]; }
+      else if ((m = line.match(/^ … 외 (\d+)건/))) { if (sec === 'today') b.more = +m[1]; else if (sec === 'task') b.taskMore = +m[1]; }
+      else if (sec === 'today' && (m = line.match(/^ (\S+) (★ )?(.*)$/))) { let rest = m[3]; const d = rest.match(/ \((\d+\/\d+일차)\)$/); if (d) rest = rest.slice(0, d.index); const parts = rest.split(' · '); b.today.push({ time: m[1], major: !!m[2], title: parts[0], sub: parts.slice(1).join(' · '), dayIdx: d ? d[1] : '' }); }
+      else if (sec === 'task' && (m = line.match(/^ ! (.*) · 오늘$/))) { const parts = m[1].split(' · '); b.tasks.push({ title: parts[0], owner: parts.slice(1).join(' · ') }); }
+    }
+    return b;
+  }
+  function briefCardHtml(b, mid) {
+    return `<div class="brief-card" ${mid ? `onclick="openBriefView('${esc(mid)}')"` : ''}>
+      <div class="bc-head"><div class="bc-date">${b.month}월 ${b.day}일 ${esc(b.dow)}요일</div><div class="bc-room">아침 브리핑 · ${esc(b.room)}${b.manual ? '<span class="manual">수동 게시</span>' : ''}</div></div>
+      <div class="bc-body">
+        <div class="bc-sec"><span class="bc-label">오늘 일정</span><span class="bc-n">${b.todayN}<small>건</small></span></div>
+        ${b.today.length ? `<ul class="bc-list">${b.today.map(e => `<li class="${e.major ? 'major' : ''}"><b class="t">${esc(e.time)}</b><div><span class="ttl">${e.major ? '★ ' : ''}${esc(e.title)}${e.dayIdx ? `<span class="dayidx">${esc(e.dayIdx)}</span>` : ''}</span>${e.sub ? `<span class="sub">${esc(e.sub)}</span>` : ''}</div></li>`).join('')}</ul>${b.more ? `<div class="bc-more">… 외 ${b.more}건</div>` : ''}` : '<div class="bc-none">오늘 일정 없음</div>'}
+        <div class="bc-row"><span>내일 일정</span><b>${b.tomorrowN}건</b></div>
+        <div class="bc-stats"><div class="late"><b>${b.late}</b><span>기한 지남</span></div><div class="today"><b>${b.dueToday}</b><span>오늘 기한</span></div><div class="prog"><b>${b.prog}</b><span>진행중</span></div></div>
+        ${b.tasks.length ? `<ul class="bc-list tasks">${b.tasks.map(t => `<li><div><span class="ttl">${esc(t.title)}</span>${t.owner ? `<span class="sub">${esc(t.owner)}</span>` : ''}</div></li>`).join('')}</ul>${b.taskMore ? `<div class="bc-more">… 외 ${b.taskMore}건</div>` : ''}` : ''}
+        ${mid ? '<div class="bc-foot">누르면 크게 보기 · 이미지로 저장</div>' : ''}
+      </div></div>`;
+  }
+  const BV = { b: null };
+  function openBriefView(mid) { const m = chatMsgs(CHAT.room).find(x => x.id === mid); const b = m && parseBrief(m.text); if (!b) return; BV.b = b; document.getElementById('bvBody').innerHTML = briefCardHtml(b, null); document.getElementById('briefView').classList.add('open'); document.getElementById('bvBody').scrollTop = 0; pushNav({ overlay: 'briefView' }); }
+  function closeBriefView(viaHistory) { const v = document.getElementById('briefView'); if (!v.classList.contains('open')) return; v.classList.remove('open'); if (!viaHistory && history.state && history.state.overlay === 'briefView') history.back(); }
+  // 이미지: 앱이 캔버스에 직접 그린다(1080px 폭, 내용 길이만큼 세로). 서버 없이 폰에서 만든다
+  function briefCanvas(b) {
+    const W = 1080, P = 56; const c = document.createElement('canvas'); const g = c.getContext('2d');
+    const F = '"Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'; const font = (w, px) => { g.font = `${w} ${px}px ${F}`; };
+    const wrap = (txt, px, w, maxLines) => { font(800, px); const out = []; let cur = ''; for (const ch of String(txt)) { const t = cur + ch; if (g.measureText(t).width > w && cur) { out.push(cur); cur = ch; } else cur = t; } if (cur) out.push(cur); if (maxLines && out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].slice(0, -1) + '…'; } return out; };
+    // 1차: 높이 계산 (같은 그리기 함수를 측정 모드로)
+    const draw = (measure) => {
+      let y = 0; const txt = (t, x, yy, px, w, col, align) => { if (measure) return; font(w, px); g.fillStyle = col; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic'; g.fillText(t, x, yy); };
+      const box = (x, yy, w, h, col, r) => { if (measure) return; g.fillStyle = col; g.beginPath(); g.roundRect(x, yy, w, h, r); g.fill(); };
+      // 머리
+      const H = 230; if (!measure) { g.fillStyle = '#0A2F7E'; g.fillRect(0, 0, W, H); }
+      txt(`${b.month}월 ${b.day}일 ${b.dow}요일`, P, 118, 900, 76, '#fff'); txt(`아침 브리핑 · ${b.room}${b.manual ? ' · 수동 게시' : ''}`, P, 178, 600, 36, 'rgba(255,255,255,.9)');
+      y = H + 48;
+      // 오늘 일정
+      txt('오늘 일정', P, y + 10, 800, 40, '#4B5563'); txt(`${b.todayN}`, W - P - 60, y + 14, 900, 68, '#123A8C', 'right'); txt('건', W - P, y + 14, 700, 34, '#6B7280', 'right'); y += 48;
+      if (!b.today.length) { txt('오늘 일정 없음', P, y + 36, 700, 34, '#6B7280'); y += 60; }
+      for (const e of b.today) { const lines = wrap((e.major ? '★ ' : '') + e.title + (e.dayIdx ? `  (${e.dayIdx})` : ''), 40, W - P * 2 - 200, 2); const subLines = e.sub ? wrap(e.sub, 30, W - P * 2 - 200, 1) : []; const h = 30 + lines.length * 50 + subLines.length * 40;
+        box(P, y, W - P * 2, h, e.major ? '#FFF6D1' : '#F2F4F7', 20); txt(e.time, P + 26, y + 58, 900, 38, e.major ? '#8A6A00' : '#123A8C'); let ly = y + 58; for (const l of lines) { txt(l, P + 200, ly, 800, 40, '#111827'); ly += 50; } for (const l of subLines) { txt(l, P + 200, ly - 6, 500, 30, '#4B5563'); ly += 40; } y += h + 14; }
+      if (b.more) { txt(`… 외 ${b.more}건`, P, y + 30, 700, 30, '#6B7280'); y += 50; }
+      y += 20;
+      // 내일
+      box(P, y, W - P * 2, 92, '#F2F4F7', 20); txt('내일 일정', P + 28, y + 60, 700, 36, '#4B5563'); txt(`${b.tomorrowN}건`, W - P - 28, y + 62, 900, 44, '#111827', 'right'); y += 116;
+      // 업무 통계
+      const cw = (W - P * 2 - 24) / 3; [[b.late, '기한 지남', '#C42B38'], [b.dueToday, '오늘 기한', '#8A6A00'], [b.prog, '진행중', '#123A8C']].forEach(([n, label, col], i) => { const x = P + i * (cw + 12); box(x, y, cw, 150, '#F2F4F7', 20); txt(String(n), x + cw / 2, y + 86, 900, 64, col, 'center'); txt(label, x + cw / 2, y + 128, 700, 28, '#6B7280', 'center'); }); y += 174;
+      for (const t of b.tasks) { const lines = wrap('! ' + t.title + (t.owner ? ' · ' + t.owner : ''), 36, W - P * 2 - 56, 2); const h = 26 + lines.length * 46; box(P, y, W - P * 2, h, '#FFEEF0', 20); let ly = y + 52; for (const l of lines) { txt(l, P + 28, ly, 800, 36, '#111827'); ly += 46; } y += h + 12; }
+      if (b.taskMore) { txt(`… 외 ${b.taskMore}건`, P, y + 30, 700, 30, '#6B7280'); y += 50; }
+      y += 30; txt('SAIL:41 · 41망 아침 브리핑', W / 2, y + 30, 700, 26, '#9AA4B8', 'center'); y += 70;
+      return y;
+    };
+    const h = Math.max(1920, draw(true)); c.width = W; c.height = h; g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, h); draw(false);
+    return c;
+  }
+  async function briefImage(mode) {
+    const b = BV.b; if (!b) return; let blob; try { if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
+    const name = `브리핑-${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}-${b.room}.png`; const file = new File([blob], name, { type: 'image/png' });
+    if (mode === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast(mode === 'share' ? '이 브라우저는 바로 공유가 안 되어 이미지를 저장했어요. 갤러리에서 보내세요' : '이미지를 저장했어요', 3500);
+  }
+
   /* ── 아침 브리핑 ── */
   // 문장 형식은 supabase.sql ictc_briefing_text · ictc_server.py briefing_text 와 같다 (미리보기 모드용)
   function briefingText(sched, tasks, roomName, dateStr, manual) {
@@ -2682,9 +2798,9 @@
       let line = ' ! ' + (t.title || ''); if (t.owner) line += ' · ' + t.owner; out.push(line + ' · 오늘'); });
     return out.join('\n');
   }
-  // 보충 게시: 평일 8시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다
+  // 보충 게시: 평일 7시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다
   async function maybeBriefing() {
-    const t = new Date(); if (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 8) return; if (lsGet('ictc.brief.day') === TODAY) return;
+    const t = new Date(); if (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 7) return; if (lsGet('ictc.brief.day') === TODAY) return;
     if (!api.chatBriefing) return; lsSet('ictc.brief.day', TODAY);
     try { const n = await api.chatBriefing(); if (n > 0) { await refreshChat(true); } } catch (e) {}
   }
@@ -3209,6 +3325,7 @@
       // 가장 위에 있는 것 하나만 닫는다: 우클릭 메뉴 → 답장 표시줄 → 사진 편집·첨부 시트 → 열린 창(시트·팝오버) → 드롭다운
       if (document.querySelector('#vMenu.open')) { closeVMenu(); return; }
       if (document.querySelector('#imgViewer.open')) { closeViewer(); return; }
+      if (document.querySelector('#briefView.open')) { closeBriefView(); return; }
       if (document.querySelector('#ctxMenu.open')) { closeCtx(); return; }
       if (CHAT.replyTo && document.activeElement === document.getElementById('chatText')) { CHAT.replyTo = null; renderReplyBar(); return; }
       const sub = document.querySelector('#imgEditModal.open') || document.querySelector('#attachModal.open'); if (sub) { sub.classList.remove('open'); return; }
@@ -3396,7 +3513,7 @@
   /* ── 창이 떠 있는 동안 뒤 화면 고정 · 두 손가락 확대 차단 ── */
   let lockY = 0;
   function syncScrollLock() {
-    const open = !!document.querySelector('.sheet-bg.open, .pop.open, #imgViewer.open, .lock.open');
+    const open = !!document.querySelector('.sheet-bg.open, .pop.open, #imgViewer.open, #briefView.open, .lock.open');
     const locked = document.body.classList.contains('scroll-lock');
     if (open && !locked) { lockY = window.scrollY; document.body.style.top = -lockY + 'px'; document.body.classList.add('scroll-lock'); }
     else if (!open && locked) { document.body.classList.remove('scroll-lock'); document.body.style.top = ''; void document.body.offsetHeight; window.scrollTo(0, lockY); requestAnimationFrame(() => window.scrollTo(0, lockY)); }   // 고정을 푼 직후엔 문서 높이가 아직 짧아 한 번 더

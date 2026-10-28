@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -544,7 +544,7 @@ begin
 end $$;
 
 -- ---------- 아침 브리핑 (v6.6) ----------
--- 평일 08:00(한국 시간) 톡방마다 "오늘·내일 일정 + 업무 기한" 요약 글을 '브리핑' 이름으로 올린다.
+-- 평일 07:00(한국 시간) 톡방마다 "오늘·내일 일정 + 업무 기한" 요약 글을 '브리핑' 이름으로 올린다.
 -- 글 id 는 brief-<톡방>-<날짜> 하나뿐이라 몇 번 불러도 하루 한 번만 올라간다. 톡방 ↔ 대시보드는 이름이 같은 것으로 잇고, 없으면 main.
 create or replace function public.ictc_dt(p text)
 returns date language plpgsql immutable set search_path = public, extensions as $$
@@ -624,13 +624,13 @@ begin
   return cnt;
 end $$;
 
--- 화면이 부르는 보충 게시: 예약 실행이 어떤 이유로 안 돌았을 때 8시 이후 처음 연 사람의 화면이 대신 올린다(평일 · 한국 시간)
+-- 화면이 부르는 보충 게시: 예약 실행이 어떤 이유로 안 돌았을 때 7시 이후 처음 연 사람의 화면이 대신 올린다(평일 · 한국 시간)
 create or replace function public.ictc_chat_briefing_post(p_pin text)
 returns int language plpgsql security definer set search_path = public, extensions as $$
 declare t timestamp := now() at time zone 'Asia/Seoul';
 begin
   perform public.ictc_require_view(p_pin);
-  if extract(isodow from t) >= 6 or extract(hour from t) < 8 then return 0; end if;
+  if extract(isodow from t) >= 6 or extract(hour from t) < 7 then return 0; end if;
   return public.ictc_chat_briefing(t::date);
 end $$;
 
@@ -642,7 +642,7 @@ begin
   return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date, true);
 end $$;
 
--- 예약 실행(pg_cron): 평일 08:00 KST = UTC 일~목 23:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.
+-- 예약 실행(pg_cron): 평일 07:00 KST = UTC 일~목 22:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.
 -- Supabase 에서 create extension 이 거부되면 대시보드 → Database → Extensions 에서 pg_cron 을 켜고 이 파일을 한 번 더 실행하면 등록된다.
 do $$
 begin
@@ -652,8 +652,8 @@ begin
   end;
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     perform cron.unschedule(jobid) from cron.job where jobname = 'sail41-briefing';
-    perform cron.schedule('sail41-briefing', '0 23 * * 0-4', 'select public.ictc_chat_briefing()');
-    raise notice 'pg_cron 예약 등록: sail41-briefing (평일 08:00 KST)';
+    perform cron.schedule('sail41-briefing', '0 22 * * 0-4', 'select public.ictc_chat_briefing()');
+    raise notice 'pg_cron 예약 등록: sail41-briefing (평일 07:00 KST)';
   end if;
 end $$;
 

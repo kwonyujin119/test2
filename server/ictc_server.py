@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.8'
+VERSION = '5.9'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
@@ -245,9 +245,9 @@ class DB:
             item = {'id': mid, 'text': txt, 'name': '브리핑', 'dev': 'bot', 'bot': True, 'created': _dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
             self.save('chat', r['id'], item); cnt += 1
         return cnt
-    def chat_briefing_if_due(self):   # 평일 08:00 이후에만(화면의 보충 호출·스케줄러 공용)
+    def chat_briefing_if_due(self):   # 평일 07:00 이후에만(화면의 보충 호출·스케줄러 공용)
         t = _dt.datetime.now()
-        if t.weekday() >= 5 or t.hour < 8: return 0
+        if t.weekday() >= 5 or t.hour < 7: return 0
         return self.chat_briefing(t.date())
 
     # ----- 41망 톡방 -----
@@ -620,7 +620,7 @@ def make_handler(db, static_dir, pin_path, poll):
                     self.require_edit(b.get('pin')); db.user_set_pin(str(b.get('id', '')), str(b.get('new_pin', ''))); return self._json(204)
                 if fn == 'chat_briefing_now':   # 관리자: 요일·시각과 상관없이 오늘 브리핑을 지금 올린다(이미 있으면 0)
                     self.require_edit(b.get('pin')); return self._json(200, db.chat_briefing(manual=True))
-                if fn == 'chat_briefing':   # 보충 게시: 평일 8시 이후면 오늘 브리핑이 없는 톡방에 올린다
+                if fn == 'chat_briefing':   # 보충 게시: 평일 7시 이후면 오늘 브리핑이 없는 톡방에 올린다
                     self.require_view(b.get('pin')); return self._json(200, db.chat_briefing_if_due())
                 if fn in ('chat_join', 'chat_list', 'chat_save', 'chat_delete'):
                     self.require_view(b.get('pin')); room = str(b.get('room', ''))
@@ -717,7 +717,7 @@ def main():
     read_pin(a.pin_file); read_pin(view_pin_path(a.pin_file), '0000', '조회')
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(db, static, a.pin_file, a.poll))
     srv.daemon_threads = True
-    def _brief_loop():   # 평일 08:00 아침 브리핑 (PC 시계 기준). 서버가 켜져 있는 동안 1분마다 확인하고, 꺼져 있었으면 화면이 처음 열릴 때 보충한다
+    def _brief_loop():   # 평일 07:00 아침 브리핑 (PC 시계 기준). 서버가 켜져 있는 동안 1분마다 확인하고, 꺼져 있었으면 화면이 처음 열릴 때 보충한다
         while True:
             try: db.chat_briefing_if_due()
             except Exception as e: print('[오류] 브리핑:', e)
