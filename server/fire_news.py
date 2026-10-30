@@ -76,10 +76,10 @@ def pick_top(items, day, n=3):
     def score(c):
         presses = {x['press'] for x in c['items']}
         major = sum(1 for p in presses if any(m in p for m in MAJOR))          # 주요 언론사 수
-        title = max(c['items'], key=lambda x: x['ts'])['title']
-        foreign = any(f in title for f in FOREIGN)                             # 해외 사건은 뒤로
-        incident = any(w in title for w in INCIDENT)                           # 사고·인명 기사는 앞으로
-        pr = any(w in title for w in PR) and not incident
+        titles = ' / '.join(x['title'] for x in c['items'])
+        foreign = any(f in titles for f in FOREIGN)                            # 해외 사건은 뒤로
+        pr = any(w in titles for w in PR)                                      # 행사·홍보성(훈련 개최 등)은 '구조' 같은 단어가 있어도 사고로 보지 않음
+        incident = (not pr) and any(w in titles for w in INCIDENT)             # 사고·인명 기사는 앞으로
         s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
