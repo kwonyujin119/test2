@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 3개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 18:00 ~ 당일 07:00 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순.
+기준: 한국 시간 전날 18:00 ~ 당일 07:00 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(언론사 수 ×2 + 주요 언론사 수 ×2 + 기사 수 ×0.5 + 사고·인명 기사 +3, 해외 사건 −6).
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 3개
@@ -10,8 +10,10 @@ import argparse, datetime, json, re, sys, urllib.parse, urllib.request, xml.etre
 from email.utils import parsedate_to_datetime
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
-QUERIES = ['소방', '소방관', '화재']
+QUERIES = ['소방', '소방관', '화재', '119 구조', '소방서', '화재 사망 OR 화재 부상 OR 화재 대피']
 MAJOR = ['연합뉴스', 'KBS', 'MBC', 'SBS', 'YTN', 'JTBC', '조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '뉴시스', '뉴스1', '한국일보', '서울신문', '국민일보', '세계일보', '문화일보', '매일경제', '한국경제', '연합뉴스TV', 'MBN', 'TV조선', '채널A']
+FOREIGN = ['홍콩', '중국', '일본', '미국', '대만', '영국', '프랑스', '독일', '러시아', '우크라이나', '인도', '호주', '캐나다', '유럽', '해외', '베트남', '태국', '필리핀', '인도네시아', '이스라엘', '이란', '터키', '튀르키예', '브라질', '멕시코', '뉴욕', '도쿄', 'LA', '파리', '런던']
+INCIDENT = ['화재', '불', '사망', '숨져', '순직', '부상', '구조', '대피', '폭발', '붕괴', '사고', '진화', '전소', '화상', '참사', '이송', '인명']
 STOP = set('소방 소방관 소방서 소방청 소방본부 화재 불 발생 관련 오늘 내일 어제 속보 단독 영상 사진 종합 기자 뉴스 등 및 의 는 을 를 이 가 에 서 로 도 한 명 중 명이 명을 명의'.split())
 
 def window(day):
@@ -64,7 +66,12 @@ def pick_top(items, day, n=3):
             clusters.append({'tok': set(t), 'items': [i]})
     def score(c):
         presses = {x['press'] for x in c['items']}
-        return (len(presses), len(c['items']), max(x['ts'] for x in c['items']))
+        major = sum(1 for p in presses if any(m in p for m in MAJOR))          # 주요 언론사 수
+        title = max(c['items'], key=lambda x: x['ts'])['title']
+        foreign = any(f in title for f in FOREIGN)                             # 해외 사건은 뒤로
+        incident = any(w in title for w in INCIDENT)                           # 사고·인명 기사는 앞으로
+        s = len(presses) * 2 + major * 2 + len(c['items']) * 0.5 + (3 if incident else 0) - (6 if foreign else 0)
+        return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []
     for c in clusters[:n]:
