@@ -1,6 +1,6 @@
 name: Briefing test (manual post)
 # 실제 DB 에 '수동 게시' 브리핑을 톡방마다 하나씩 올리고 본문을 실행 주석(notice)으로 보여 준다.
-# 실행: Actions 탭 → Run workflow, 또는 이 파일을 수정해 푸시. 직원에게 보이는 글이 올라가므로 테스트 뒤 톡방에서 지워도 된다.
+# 실행: Actions 탭 → Run workflow, 또는 이 파일을 수정해 푸시(수정 1). 직원에게 보이는 글이 올라가므로 테스트 뒤 톡방에서 지워도 된다.
 on:
   workflow_dispatch:
   push:
