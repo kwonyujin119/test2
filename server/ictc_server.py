@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.9'
+VERSION = '5.10'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
@@ -133,37 +133,28 @@ import datetime as _dt
 def _d(s):
     try: return _dt.date.fromisoformat((s or '')[:10]) if s else None
     except ValueError: return None
-def briefing_text(sched, tasks, room_name, date, manual=False):
+def briefing_text(sched, tasks, room_name, date, manual=False, news=None):
+    """오늘 일정 + 소방 뉴스 3개. tasks 는 호환용(지금은 쓰지 않음)"""
     dow = '일월화수목금토'
     out = [f'📋 {date.month}월 {date.day}일({dow[(date.weekday() + 1) % 7]}) 아침 브리핑 · {room_name}' + (' · 수동 게시' if manual else '')]
-    for label, d in (('오늘', date), ('내일', date + _dt.timedelta(days=1))):
-        rows = []
-        for it in sched:
-            sd = _d(it.get('date')); ed = _d(it.get('endDate')) or sd
-            if sd and sd <= d <= ed:
-                tags = it.get('tags') if isinstance(it.get('tags'), list) else [it.get('tag')]
-                rows.append((0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
-        rows.sort(key=lambda r: (r[0], r[1], r[2]))
-        out.append(f'{label} 일정 {len(rows)}건')
-        if d != date: continue   # 내일은 건수만, 목록은 오늘 일정만
-        for k, (major, start, title, it, sd, ed) in enumerate(rows):
-            if k >= 8: out.append(f' … 외 {len(rows) - 8}건'); break
-            line = f" {start or '종일'} {'★ ' if major == 0 else ''}{title}"
-            if it.get('place'): line += ' · ' + it['place']
-            if it.get('owner'): line += ' · ' + it['owner']
-            if ed > sd: line += f' ({(d - sd).days + 1}/{(ed - sd).days + 1}일차)'
-            out.append(line)
-    live = [t for t in tasks if (t.get('status') or '') not in ('완료', '보류')]
-    late = [t for t in live if _d(t.get('due')) and _d(t['due']) < date]
-    today = [t for t in live if _d(t.get('due')) == date]
-    prog = [t for t in live if t.get('status') == '진행중']
-    out.append(f'업무: 기한 지남 {len(late)}건 · 오늘 기한 {len(today)}건 · 진행중 {len(prog)}건')
-    due = sorted(today, key=lambda t: t.get('title') or '')   # 목록에는 오늘 기한만 (기한 지난 업무는 건수만)
-    for k, t in enumerate(due):
-        if k >= 6: out.append(f' … 외 {len(due) - 6}건'); break
-        line = ' ! ' + (t.get('title') or '')
-        if t.get('owner'): line += ' · ' + t['owner']
-        out.append(line + ' · 오늘')
+    d = date; rows = []
+    for it in sched:
+        sd = _d(it.get('date')); ed = _d(it.get('endDate')) or sd
+        if sd and sd <= d <= ed:
+            tags = it.get('tags') if isinstance(it.get('tags'), list) else [it.get('tag')]
+            rows.append((0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
+    rows.sort(key=lambda r: (r[0], r[1], r[2]))
+    out.append(f'오늘 일정 {len(rows)}건')
+    for k, (major, start, title, it, sd, ed) in enumerate(rows):
+        if k >= 8: out.append(f' … 외 {len(rows) - 8}건'); break
+        line = f" {start or '종일'} {'★ ' if major == 0 else ''}{title}"
+        if it.get('place'): line += ' · ' + it['place']
+        if it.get('owner'): line += ' · ' + it['owner']
+        if ed > sd: line += f' ({(d - sd).days + 1}/{(ed - sd).days + 1}일차)'
+        out.append(line)
+    if news:
+        out.append('소방 뉴스')
+        for k, nw in enumerate(news[:3], 1): out.append(f" {k}. {nw.get('title', '')} ({nw.get('press', '')}) {nw.get('url', '')}")
     return '\n'.join(out)
 
 class DB:
@@ -241,10 +232,19 @@ class DB:
             mid = f"brief-{r['id']}-{date.strftime('%Y%m%d')}" + (f"-m{int(time.time() * 1000)}" if manual else '')
             if not manual and self._run(lambda c: c.execute('select 1 from items where id=?', (mid,)).fetchone()): continue
             board = boards.get(r['name'], 'main')
-            txt = briefing_text([x['data'] for x in self.list('schedule', board)], [x['data'] for x in self.list('tasks', board)], r['name'], date, manual)
+            txt = briefing_text([x['data'] for x in self.list('schedule', board)], [], r['name'], date, manual, self.news_for(date))
             item = {'id': mid, 'text': txt, 'name': '브리핑', 'dev': 'bot', 'bot': True, 'created': _dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}
             self.save('chat', r['id'], item); cnt += 1
         return cnt
+    _news_cache = {}
+    def news_for(self, date):   # 소방 뉴스 3개(전날 18:00~당일 07:00). 하루 한 번만 받아 오고, 인터넷이 안 되면 빈 목록
+        if date not in self._news_cache:
+            try:
+                from fire_news import fetch_fire_news
+                self._news_cache[date] = fetch_fire_news(date, timeout=10)
+            except Exception as e:
+                print('[뉴스] 가져오지 못함:', e); self._news_cache[date] = []
+        return self._news_cache[date]
     def chat_briefing_if_due(self):   # 평일 07:00 이후에만(화면의 보충 호출·스케줄러 공용)
         t = _dt.datetime.now()
         if t.weekday() >= 5 or t.hour < 7: return 0

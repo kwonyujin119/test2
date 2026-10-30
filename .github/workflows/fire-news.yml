@@ -1,0 +1,36 @@
+name: Fire news for briefing
+# 평일 06:40 · 07:00(KST) 에 '전날 18:00~당일 07:00' 소방 뉴스 3개를 골라 DB 에 넣고, 이미 올라간 그날 브리핑 글에도 붙인다.
+# 두 번 도는 이유: 06:40 결과로 07:00 브리핑에 뉴스가 실리고, 07:00 결과로 창(07:00까지)이 완성된다. GitHub 예약은 몇 분~수십 분 늦을 수 있다.
+on:
+  schedule:
+    - cron: '40 21 * * 0-4'   # UTC 21:40 = KST 06:40 (월~금)
+    - cron: '0 22 * * 0-4'    # UTC 22:00 = KST 07:00
+  workflow_dispatch:
+
+concurrency:
+  group: fire-news
+  cancel-in-progress: false
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 뉴스 고르기
+        id: pick
+        run: |
+          DAY=$(TZ=Asia/Seoul date +%F)
+          echo "day=$DAY" >> "$GITHUB_OUTPUT"
+          python3 server/fire_news.py --date "$DAY" --json > news.json
+          echo "## 소방 뉴스 ($DAY, 전날 18:00~07:00 KST)" >> "$GITHUB_STEP_SUMMARY"
+          python3 server/fire_news.py --date "$DAY" | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
+          [ "$(cat news.json)" != "[]" ] || echo "- (창 안의 기사가 없거나 RSS 실패)" >> "$GITHUB_STEP_SUMMARY"
+      - name: DB 에 넣고 오늘 브리핑에 붙이기
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+          DAY: ${{ steps.pick.outputs.day }}
+        run: |
+          if [ -z "$PGURL" ]; then echo "- Secret SUPABASE_DB_URL 이 없어 DB 에 넣지 않음" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
+          psql "$PGURL" -v ON_ERROR_STOP=1 -v day="$DAY" -v items="$(cat news.json)" -At -c "select 'briefings updated: ' || public.ictc_news_set(:'day'::date, :'items'::jsonb);" | tee -a "$GITHUB_STEP_SUMMARY"

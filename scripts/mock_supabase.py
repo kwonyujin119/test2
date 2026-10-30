@@ -76,7 +76,7 @@ class H(BaseHTTPRequestHandler):
                     mid=f"brief-{rid}-{t.strftime('%Y%m%d')}"+(f"-m{int(t.timestamp()*1000)}" if manual else '')
                     if not manual and mid in ITEMS: continue
                     board=next((b['id'] for b in BOARDS if b['name']==room['name']),'main')
-                    txt=briefing_text([v['data'] for v in ITEMS.values() if v['kind']=='schedule' and v['board']==board],[v['data'] for v in ITEMS.values() if v['kind']=='tasks' and v['board']==board],room['name'],t.date(),manual)
+                    txt=briefing_text([v['data'] for v in ITEMS.values() if v['kind']=='schedule' and v['board']==board],[],room['name'],t.date(),manual,[{'title':'아파트 화재로 주민 20명 대피','press':'연합뉴스','url':'https://example.com/news/1'},{'title':'소방관 구조 활동 중 부상','press':'KBS','url':'https://example.com/news/2'},{'title':'전통시장 화재 예방 점검','press':'YTN','url':'https://example.com/news/3'}])   # 모의 뉴스 3개
                     ITEMS[mid]={'kind':'chat','board':rid,'data':{'id':mid,'text':txt,'name':'브리핑','dev':'bot','bot':True,'created':now()},'u':now()}; cnt+=1
                 return self._send(200,str(cnt).encode())
             if fn=='ictc_chat_rooms': view(g('p_pin') or ''); return self._send(200,json.dumps([{'id':k,'name':v['name'],'sort':v['sort']} for k,v in sorted(ROOMS.items(),key=lambda kv:kv[1]['sort'])]).encode())

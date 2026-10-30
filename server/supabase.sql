@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -544,11 +544,33 @@ begin
 end $$;
 
 -- ---------- 아침 브리핑 (v6.6) ----------
--- 평일 07:00(한국 시간) 톡방마다 "오늘·내일 일정 + 업무 기한" 요약 글을 '브리핑' 이름으로 올린다.
+-- 평일 07:00(한국 시간) 톡방마다 "오늘 일정 + 소방 뉴스 3개" 글을 '브리핑' 이름으로 올린다.
 -- 글 id 는 brief-<톡방>-<날짜> 하나뿐이라 몇 번 불러도 하루 한 번만 올라간다. 톡방 ↔ 대시보드는 이름이 같은 것으로 잇고, 없으면 main.
 create or replace function public.ictc_dt(p text)
 returns date language plpgsql immutable set search_path = public, extensions as $$
 begin return nullif(p, '')::date; exception when others then return null; end $$;
+
+-- 소방 뉴스(v6.12): GitHub Actions(fire-news.yml)가 평일 아침 골라 넣는다. anon 은 못 읽고(RLS), 브리핑 함수가 읽어 글에 붙인다
+create table if not exists public.ictc_news (day date primary key, items jsonb not null default '[]'::jsonb, updated_at timestamptz not null default now());
+alter table public.ictc_news enable row level security;
+revoke all on public.ictc_news from anon, authenticated;
+create or replace function public.ictc_news_set(p_day date, p_items jsonb)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+declare r record; cnt int := 0; b text; mid text;
+begin
+  insert into public.ictc_news (day, items, updated_at) values (p_day, coalesce(p_items, '[]'::jsonb), now())
+  on conflict (day) do update set items = excluded.items, updated_at = now();
+  -- 이미 올라간 그날 자동 브리핑 글의 본문을 뉴스가 붙은 문장으로 바꾼다(id 그대로 → 읽음 상태 유지)
+  for r in select id, name from public.ictc_chat_rooms loop
+    mid := 'brief-' || r.id || '-' || to_char(p_day, 'YYYYMMDD');
+    if exists (select 1 from public.ictc_items where id = mid and kind = 'chat') then
+      select id into b from public.ictc_boards where name = r.name limit 1; b := coalesce(b, 'main');
+      update public.ictc_items set data = data || jsonb_build_object('text', public.ictc_briefing_text(b, r.name, p_day, false)) where id = mid and kind = 'chat';
+      cnt := cnt + 1;
+    end if;
+  end loop;
+  return cnt;
+end $$;
 
 drop function if exists public.ictc_briefing_text(text, text, date);
 drop function if exists public.ictc_chat_briefing(date);
@@ -556,51 +578,39 @@ create or replace function public.ictc_briefing_text(p_board text, p_room_name t
 returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   dow text[] := array['일','월','화','수','목','금','토'];
-  txt text := ''; r record; d date; n int; k int; late int; today_due int; prog int; line text;
+  txt text := ''; r record; d date; n int; k int; line text; news jsonb;
 begin
   txt := '📋 ' || extract(month from p_date)::int || '월 ' || extract(day from p_date)::int || '일(' || dow[extract(dow from p_date)::int + 1] || ') 아침 브리핑 · ' || p_room_name || (case when p_manual then ' · 수동 게시' else '' end);
-  foreach d in array array[p_date, p_date + 1] loop
-    select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
-      and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
-    txt := txt || E'\n' || (case when d = p_date then '오늘' else '내일' end) || ' 일정 ' || n || '건';
-    if d <> p_date then continue; end if;   -- 내일은 건수만, 목록은 오늘 일정만
-    k := 0;
-    for r in
-      select i.data as it,
-             (coalesce(i.data->'tags', jsonb_build_array(i.data->'tag')) @> '["주요업무"]'::jsonb) as major,
-             public.ictc_dt(i.data->>'date') as sd, coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) as ed
-        from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
-         and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d
-       order by major desc, coalesce(i.data->>'start', '') , i.data->>'title'
-    loop
-      k := k + 1;
-      if k > 8 then txt := txt || E'\n … 외 ' || (n - 8) || '건'; exit; end if;
-      line := ' ' || coalesce(nullif(r.it->>'start', ''), '종일') || ' ' || (case when r.major then '★ ' else '' end) || coalesce(r.it->>'title', '');
-      if coalesce(r.it->>'place', '') <> '' then line := line || ' · ' || (r.it->>'place'); end if;
-      if coalesce(r.it->>'owner', '') <> '' then line := line || ' · ' || (r.it->>'owner'); end if;
-      if r.ed > r.sd then line := line || ' (' || (d - r.sd + 1) || '/' || (r.ed - r.sd + 1) || '일차)'; end if;
-      txt := txt || E'\n' || line;
-    end loop;
-  end loop;
-  select count(*) filter (where public.ictc_dt(i.data->>'due') < p_date),
-         count(*) filter (where public.ictc_dt(i.data->>'due') = p_date),
-         count(*) filter (where i.data->>'status' = '진행중')
-    into late, today_due, prog
-    from public.ictc_items i where i.kind = 'tasks' and i.board = p_board and coalesce(i.data->>'status', '') not in ('완료', '보류');
-  txt := txt || E'\n업무: 기한 지남 ' || late || '건 · 오늘 기한 ' || today_due || '건 · 진행중 ' || prog || '건';
+  d := p_date;
+  select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
+    and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
+  txt := txt || E'\n오늘 일정 ' || n || '건';
   k := 0;
   for r in
-    select i.data as it, public.ictc_dt(i.data->>'due') as due from public.ictc_items i
-     where i.kind = 'tasks' and i.board = p_board and coalesce(i.data->>'status', '') not in ('완료', '보류') and public.ictc_dt(i.data->>'due') = p_date
-     order by i.data->>'title'   -- 목록에는 오늘 기한만 (기한 지난 업무는 건수만)
+    select i.data as it,
+           (coalesce(i.data->'tags', jsonb_build_array(i.data->'tag')) @> '["주요업무"]'::jsonb) as major,
+           public.ictc_dt(i.data->>'date') as sd, coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) as ed
+      from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
+       and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d
+     order by major desc, coalesce(i.data->>'start', '') , i.data->>'title'
   loop
     k := k + 1;
-    if k > 6 then txt := txt || E'\n … 외 ' || (today_due - 6) || '건'; exit; end if;
-    line := ' ! ' || coalesce(r.it->>'title', '');
+    if k > 8 then txt := txt || E'\n … 외 ' || (n - 8) || '건'; exit; end if;
+    line := ' ' || coalesce(nullif(r.it->>'start', ''), '종일') || ' ' || (case when r.major then '★ ' else '' end) || coalesce(r.it->>'title', '');
+    if coalesce(r.it->>'place', '') <> '' then line := line || ' · ' || (r.it->>'place'); end if;
     if coalesce(r.it->>'owner', '') <> '' then line := line || ' · ' || (r.it->>'owner'); end if;
-    line := line || ' · 오늘';
+    if r.ed > r.sd then line := line || ' (' || (d - r.sd + 1) || '/' || (r.ed - r.sd + 1) || '일차)'; end if;
     txt := txt || E'\n' || line;
   end loop;
+  -- 소방 뉴스(전날 18:00~당일 07:00, GitHub Actions 가 골라 ictc_news 에 넣음). 없으면 이 절은 생략
+  select items into news from public.ictc_news where day = p_date;
+  if news is not null and jsonb_array_length(news) > 0 then
+    txt := txt || E'\n소방 뉴스'; k := 0;
+    for r in select value as it from jsonb_array_elements(news) loop
+      k := k + 1; if k > 3 then exit; end if;
+      txt := txt || E'\n ' || k || '. ' || coalesce(r.it->>'title', '') || ' (' || coalesce(r.it->>'press', '') || ') ' || coalesce(r.it->>'url', '');
+    end loop;
+  end if;
   return txt;
 end $$;
 
@@ -689,7 +699,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

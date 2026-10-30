@@ -869,6 +869,13 @@
   .bc-stats b { display: block; font-size: 26px; font-weight: 900; line-height: 1.1; } .bc-stats span { font-size: 13px; font-weight: 700; color: var(--text-3); }
   .bc-stats .late b { color: var(--red); } .bc-stats .today b { color: #8A6A00; } .bc-stats .prog b { color: var(--primary-text); }
   .bc-foot { font-size: 12.5px; color: var(--text-3); text-align: center; padding: 6px 0 10px; }
+  .bc-sec.news { margin-top: 14px; align-items: baseline; } .bc-sub { font-size: 12.5px; color: var(--text-3); font-weight: 600; }
+  .bc-news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .bc-news a { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; background: var(--card-2); border-radius: 12px; padding: 10px 12px; color: inherit; text-decoration: none; }
+  .bc-news .no { width: 26px; height: 26px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 900; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .bc-news .ttl { display: block; font-size: 16.5px; font-weight: 800; line-height: 1.35; word-break: keep-all; color: var(--text); }
+  .bc-news .press { display: block; font-size: 13px; color: var(--primary-text); font-weight: 700; margin-top: 3px; }
+  .bv-body .bc-news .ttl { font-size: 20px; } .bv-body .bc-news .press { font-size: 15px; } .bv-body .bc-news a { padding: 12px 14px; grid-template-columns: 34px 1fr; }
   .brief-view { position: fixed; inset: 0; z-index: 150; background: var(--bg); display: none; flex-direction: column; }
   .brief-view.open { display: flex; }
   .bv-top { display: flex; justify-content: flex-end; padding: calc(4px + env(safe-area-inset-top)) 6px 0; }
@@ -2714,15 +2721,15 @@
   /* ── 브리핑 카드: 글(text)을 읽어 큰 글씨 카드로, 크게 보기 + 이미지 저장·공유 ── */
   function parseBrief(text) {
     const L = String(text || '').split('\n'); const h = (L[0] || '').replace(/^📋\s*/, '').match(/^(\d+)월 (\d+)일\((.)\) 아침 브리핑 · (.+?)( · 수동 게시)?$/); if (!h) return null;
-    const b = { month: +h[1], day: +h[2], dow: h[3], room: h[4], manual: !!h[5], todayN: 0, today: [], more: 0, tomorrowN: 0, late: 0, dueToday: 0, prog: 0, tasks: [], taskMore: 0 };
+    const b = { month: +h[1], day: +h[2], dow: h[3], room: h[4], manual: !!h[5], todayN: 0, today: [], more: 0, news: [] };
     let sec = '';
     for (const line of L.slice(1)) { let m;
       if ((m = line.match(/^오늘 일정 (\d+)건/))) { sec = 'today'; b.todayN = +m[1]; }
-      else if ((m = line.match(/^내일 일정 (\d+)건/))) { sec = 'tmr'; b.tomorrowN = +m[1]; }
-      else if ((m = line.match(/^업무: 기한 지남 (\d+)건 · 오늘 기한 (\d+)건 · 진행중 (\d+)건/))) { sec = 'task'; b.late = +m[1]; b.dueToday = +m[2]; b.prog = +m[3]; }
-      else if ((m = line.match(/^ … 외 (\d+)건/))) { if (sec === 'today') b.more = +m[1]; else if (sec === 'task') b.taskMore = +m[1]; }
+      else if (/^내일 일정|^업무:/.test(line)) { sec = 'skip'; }   // 옛 형식의 절은 건너뜀
+      else if (/^소방 뉴스/.test(line)) { sec = 'news'; }
+      else if (sec === 'today' && (m = line.match(/^ … 외 (\d+)건/))) { b.more = +m[1]; }
       else if (sec === 'today' && (m = line.match(/^ (\S+) (★ )?(.*)$/))) { let rest = m[3]; const d = rest.match(/ \((\d+\/\d+일차)\)$/); if (d) rest = rest.slice(0, d.index); const parts = rest.split(' · '); b.today.push({ time: m[1], major: !!m[2], title: parts[0], sub: parts.slice(1).join(' · '), dayIdx: d ? d[1] : '' }); }
-      else if (sec === 'task' && (m = line.match(/^ ! (.*) · 오늘$/))) { const parts = m[1].split(' · '); b.tasks.push({ title: parts[0], owner: parts.slice(1).join(' · ') }); }
+      else if (sec === 'news' && (m = line.match(/^ (\d)\. (.*) \(([^()]*)\) (https?:\/\/\S+)$/))) { b.news.push({ n: +m[1], title: m[2], press: m[3], url: m[4] }); }
     }
     return b;
   }
@@ -2732,9 +2739,7 @@
       <div class="bc-body">
         <div class="bc-sec"><span class="bc-label">오늘 일정</span><span class="bc-n">${b.todayN}<small>건</small></span></div>
         ${b.today.length ? `<ul class="bc-list">${b.today.map(e => `<li class="${e.major ? 'major' : ''}"><b class="t">${esc(e.time)}</b><div><span class="ttl">${e.major ? '★ ' : ''}${esc(e.title)}${e.dayIdx ? `<span class="dayidx">${esc(e.dayIdx)}</span>` : ''}</span>${e.sub ? `<span class="sub">${esc(e.sub)}</span>` : ''}</div></li>`).join('')}</ul>${b.more ? `<div class="bc-more">… 외 ${b.more}건</div>` : ''}` : '<div class="bc-none">오늘 일정 없음</div>'}
-        <div class="bc-row"><span>내일 일정</span><b>${b.tomorrowN}건</b></div>
-        <div class="bc-stats"><div class="late"><b>${b.late}</b><span>기한 지남</span></div><div class="today"><b>${b.dueToday}</b><span>오늘 기한</span></div><div class="prog"><b>${b.prog}</b><span>진행중</span></div></div>
-        ${b.tasks.length ? `<ul class="bc-list tasks">${b.tasks.map(t => `<li><div><span class="ttl">${esc(t.title)}</span>${t.owner ? `<span class="sub">${esc(t.owner)}</span>` : ''}</div></li>`).join('')}</ul>${b.taskMore ? `<div class="bc-more">… 외 ${b.taskMore}건</div>` : ''}` : ''}
+        ${b.news.length ? `<div class="bc-sec news"><span class="bc-label">소방 뉴스</span><span class="bc-sub">어젯밤 6시 ~ 오늘 아침 7시</span></div><ol class="bc-news">${b.news.map(nw => `<li><a href="${esc(nw.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="no">${nw.n}</span><span><span class="ttl">${esc(nw.title)}</span><span class="press">${esc(nw.press)}</span></span></a></li>`).join('')}</ol>` : ''}
         ${mid ? '<div class="bc-foot">누르면 크게 보기 · 이미지로 저장</div>' : ''}
       </div></div>`;
   }
@@ -2761,12 +2766,17 @@
         box(P, y, W - P * 2, h, e.major ? '#FFF6D1' : '#F2F4F7', 20); txt(e.time, P + 26, y + 58, 900, 38, e.major ? '#8A6A00' : '#123A8C'); let ly = y + 58; for (const l of lines) { txt(l, P + 200, ly, 800, 40, '#111827'); ly += 50; } for (const l of subLines) { txt(l, P + 200, ly - 6, 500, 30, '#4B5563'); ly += 40; } y += h + 14; }
       if (b.more) { txt(`… 외 ${b.more}건`, P, y + 30, 700, 30, '#6B7280'); y += 50; }
       y += 20;
-      // 내일
-      box(P, y, W - P * 2, 92, '#F2F4F7', 20); txt('내일 일정', P + 28, y + 60, 700, 36, '#4B5563'); txt(`${b.tomorrowN}건`, W - P - 28, y + 62, 900, 44, '#111827', 'right'); y += 116;
-      // 업무 통계
-      const cw = (W - P * 2 - 24) / 3; [[b.late, '기한 지남', '#C42B38'], [b.dueToday, '오늘 기한', '#8A6A00'], [b.prog, '진행중', '#123A8C']].forEach(([n, label, col], i) => { const x = P + i * (cw + 12); box(x, y, cw, 150, '#F2F4F7', 20); txt(String(n), x + cw / 2, y + 86, 900, 64, col, 'center'); txt(label, x + cw / 2, y + 128, 700, 28, '#6B7280', 'center'); }); y += 174;
-      for (const t of b.tasks) { const lines = wrap('! ' + t.title + (t.owner ? ' · ' + t.owner : ''), 36, W - P * 2 - 56, 2); const h = 26 + lines.length * 46; box(P, y, W - P * 2, h, '#FFEEF0', 20); let ly = y + 52; for (const l of lines) { txt(l, P + 28, ly, 800, 36, '#111827'); ly += 46; } y += h + 12; }
-      if (b.taskMore) { txt(`… 외 ${b.taskMore}건`, P, y + 30, 700, 30, '#6B7280'); y += 50; }
+      // 소방 뉴스 + QR (카메라로 찍으면 바로 열림)
+      if (b.news.length) {
+        y += 10; txt('소방 뉴스', P, y + 10, 800, 40, '#4B5563'); txt('어젯밤 6시 ~ 오늘 아침 7시', W - P, y + 8, 600, 26, '#6B7280', 'right'); y += 44;
+        const QS = 176;
+        b.news.forEach((nw, i) => { const lines = wrap(nw.title, 34, W - P * 2 - QS - 80, 3); const h = Math.max(QS + 28, 40 + lines.length * 44 + 36);
+          box(P, y, W - P * 2, h, '#F2F4F7', 20);
+          if (!measure) { g.fillStyle = '#C42B38'; g.beginPath(); g.arc(P + 34, y + 36, 18, 0, Math.PI * 2); g.fill(); txt(String(nw.n), P + 34, y + 47, 900, 26, '#fff', 'center'); }
+          let ly = y + 50; for (const l of lines) { txt(l, P + 66, ly, 800, 34, '#111827'); ly += 44; } txt(nw.press, P + 66, ly + 2, 700, 26, '#123A8C');
+          if (!measure && nw.qr) { g.drawImage(nw.qr, W - P - QS - 14, y + 14, QS, QS); }
+          y += h + 12; });
+      }
       y += 30; txt('SAIL:41 · 41망 아침 브리핑', W / 2, y + 30, 700, 26, '#9AA4B8', 'center'); y += 70;
       return y;
     };
@@ -2775,8 +2785,11 @@
     const h = Math.max(1920, Math.ceil(draw(true) * k)); c.width = 1080; c.height = h; g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 1080, h); g.save(); g.scale(k, k); draw(false); g.restore();
     return c;
   }
+  function loadQrLib() { if (window.qrcode) return Promise.resolve(); return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/vendor/qrcode-generator.js'; sc.onload = res; sc.onerror = () => rej(new Error('QR 파일을 못 읽었어요')); document.head.appendChild(sc); }); }
+  function qrCanvas(url, size) { const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(); const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); const cell = (size - 16) / n; g.fillStyle = '#000'; for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (q.isDark(r, col)) g.fillRect(8 + col * cell, 8 + r * cell, Math.ceil(cell), Math.ceil(cell)); return c; }
   async function briefImage(mode) {
-    const b = BV.b; if (!b) return; let blob; try { if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
+    const b = BV.b; if (!b) return; let blob; try {
+      if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 176); } catch (e) { nw.qr = null; } }); } catch (e) {} } if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
     const name = `브리핑-${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}-${b.room}.png`; const file = new File([blob], name, { type: 'image/png' });
     if (mode === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast(mode === 'share' ? '이 브라우저는 바로 공유가 안 되어 이미지를 저장했어요. 갤러리에서 보내세요' : '이미지를 저장했어요', 3500);
@@ -2784,21 +2797,15 @@
 
   /* ── 아침 브리핑 ── */
   // 문장 형식은 supabase.sql ictc_briefing_text · ictc_server.py briefing_text 와 같다 (미리보기 모드용)
-  function briefingText(sched, tasks, roomName, dateStr, manual) {
+  function briefingText(sched, tasks, roomName, dateStr, manual, news) {
     const D = s => { const x = new Date((s || '').slice(0, 10) + 'T00:00:00'); return isNaN(x) ? null : x; }; const date = D(dateStr); const days = (a, b) => Math.round((a - b) / 864e5);
     const out = [`📋 ${date.getMonth() + 1}월 ${date.getDate()}일(${DOW[date.getDay()]}) 아침 브리핑 · ${roomName}${manual ? ' · 수동 게시' : ''}`];
-    for (const [label, d] of [['오늘', date], ['내일', new Date(date.getTime() + 864e5)]]) {
-      const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
-        .sort((a, b) => a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));
-      out.push(`${label} 일정 ${rows.length}건`);
-      if (d !== date) continue;   // 내일은 건수만, 목록은 오늘 일정만
-      rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
-        let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
-    }
-    const live = tasks.filter(t => !['완료', '보류'].includes(t.status || '')); const late = live.filter(t => D(t.due) && D(t.due) < date), today = live.filter(t => D(t.due) && days(D(t.due), date) === 0), prog = live.filter(t => t.status === '진행중');
-    out.push(`업무: 기한 지남 ${late.length}건 · 오늘 기한 ${today.length}건 · 진행중 ${prog.length}건`);
-    today.slice().sort((a, b) => (a.title || '').localeCompare(b.title || '')).forEach((t, k, arr) => { if (k > 6) return; if (k === 6) { out.push(` … 외 ${arr.length - 6}건`); return; }   // 목록에는 오늘 기한만
-      let line = ' ! ' + (t.title || ''); if (t.owner) line += ' · ' + t.owner; out.push(line + ' · 오늘'); });
+    const d = date; const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
+      .sort((a, b) => a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));
+    out.push(`오늘 일정 ${rows.length}건`);
+    rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
+      let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
+    if (news && news.length) { out.push('소방 뉴스'); news.slice(0, 3).forEach((nw, k) => out.push(` ${k + 1}. ${nw.title} (${nw.press}) ${nw.url}`)); }
     return out.join('\n');
   }
   // 보충 게시: 평일 7시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다

@@ -28,7 +28,7 @@ GUIDE = """SAIL:41 (지휘역량강화센터 일정·업무 보드) 로컬 서�
 """
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED) as z:
-    for name in ('ictc_server.py', 'start.bat'):
+    for name in ('ictc_server.py', 'fire_news.py', 'start.bat'):
         z.write(os.path.join(ROOT, 'server', name), TOP + name)
     z.write(os.path.join(ROOT, 'server', 'README.md'), TOP + 'README.md')   # 오프라인에서도 읽을 수 있게 안내 문서 포함
     z.writestr(TOP + '설치안내.txt', GUIDE.replace('\n', '\r\n').encode('utf-8-sig'))
