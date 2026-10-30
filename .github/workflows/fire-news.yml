@@ -43,5 +43,11 @@ jobs:
           DAY: ${{ steps.pick.outputs.day }}
         run: |
           if [ -z "$PGURL" ]; then echo "- Secret SUPABASE_DB_URL 이 없어 DB 에 넣지 않음" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          set -o pipefail
           sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
-          psql "$PGURL" -v ON_ERROR_STOP=1 -v day="$DAY" -v items="$(cat news.json)" -At -c "select 'briefings updated: ' || public.ictc_news_set(:'day'::date, :'items'::jsonb);" | tee -a "$GITHUB_STEP_SUMMARY"
+          # -c 에서는 psql 변수(:'x')가 치환되지 않으므로 SQL 파일로 만들어 -f 로 실행. JSON 은 달러 인용으로 그대로 넣는다
+          printf "select 'briefings updated: ' || public.ictc_news_set('%s'::date, \$news\$%s\$news\$::jsonb);\n" "$DAY" "$(cat news.json)" > set_news.sql
+          OUT=$(psql "$PGURL" -v ON_ERROR_STOP=1 -At -f set_news.sql) || { echo "::error::DB 저장 실패"; exit 1; }
+          STORED=$(psql "$PGURL" -At -c "select coalesce(jsonb_array_length(items), 0) from public.ictc_news where day = '$DAY'::date")
+          echo "::notice title=DB 저장::$OUT · ictc_news($DAY) ${STORED:-0}건"
+          echo "- $OUT · DB 에 ${STORED:-0}건 저장" >> "$GITHUB_STEP_SUMMARY"
