@@ -6,6 +6,9 @@ on:
     - cron: '40 21 * * 0-4'   # UTC 21:40 = KST 06:40 (월~금)
     - cron: '0 22 * * 0-4'    # UTC 22:00 = KST 07:00
   workflow_dispatch:
+  push:                        # 뉴스 선별 코드나 이 파일이 바뀌면 바로 한 번 실행(테스트 겸)
+    branches: [main]
+    paths: ['server/fire_news.py', '.github/workflows/fire-news.yml']
 
 concurrency:
   group: fire-news
@@ -25,7 +28,14 @@ jobs:
           python3 server/fire_news.py --date "$DAY" --json > news.json
           echo "## 소방 뉴스 ($DAY, 전날 18:00~07:00 KST)" >> "$GITHUB_STEP_SUMMARY"
           python3 server/fire_news.py --date "$DAY" | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
-          [ "$(cat news.json)" != "[]" ] || echo "- (창 안의 기사가 없거나 RSS 실패)" >> "$GITHUB_STEP_SUMMARY"
+          [ "$(cat news.json)" != "[]" ] || { echo "- (창 안의 기사가 없거나 RSS 실패)" >> "$GITHUB_STEP_SUMMARY"; echo "::warning::뉴스를 고르지 못했습니다(창 안의 기사 없음 또는 RSS 실패)"; }
+          echo "count=$(python3 -c "import json;print(len(json.load(open('news.json'))))")" >> "$GITHUB_OUTPUT"
+      - name: 고른 기사 보관(아티팩트)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fire-news-${{ steps.pick.outputs.day }}
+          path: news.json
+          retention-days: 7
       - name: DB 에 넣고 오늘 브리핑에 붙이기
         env:
           PGURL: ${{ secrets.SUPABASE_DB_URL }}
