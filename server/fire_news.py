@@ -6,11 +6,11 @@
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 3개
 사용: python3 server/fire_news.py [--date YYYY-MM-DD] [--json]   (날짜는 한국 시간 '당일', 기본 오늘)
 로컬 서버도 같은 함수를 쓴다(fetch_fire_news). 인터넷이 안 되면 빈 목록."""
-import argparse, datetime, json, re, sys, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+import argparse, datetime, json, re, sys, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
-QUERIES = ['소방', '소방관', '화재', '119 구조', '소방서', '화재 사망 OR 화재 부상 OR 화재 대피']
+QUERIES = ['소방', '소방관', '화재', '소방서 구조']
 MAJOR = ['연합뉴스', 'KBS', 'MBC', 'SBS', 'YTN', 'JTBC', '조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '뉴시스', '뉴스1', '한국일보', '서울신문', '국민일보', '세계일보', '문화일보', '매일경제', '한국경제', '연합뉴스TV', 'MBN', 'TV조선', '채널A']
 FOREIGN = ['홍콩', '중국', '일본', '미국', '대만', '영국', '프랑스', '독일', '러시아', '우크라이나', '인도', '호주', '캐나다', '유럽', '해외', '베트남', '태국', '필리핀', '인도네시아', '이스라엘', '이란', '터키', '튀르키예', '브라질', '멕시코', '뉴욕', '도쿄', 'LA', '파리', '런던']
 INCIDENT = ['화재', '불', '사망', '숨져', '순직', '부상', '구조', '대피', '폭발', '붕괴', '사고', '진화', '전소', '화상', '참사', '이송', '인명']
@@ -23,9 +23,17 @@ def window(day):
 
 def fetch_rss(q, timeout=12):
     url = 'https://news.google.com/rss/search?q=' + urllib.parse.quote(q) + '&hl=ko&gl=KR&ceid=KR:ko'
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (SAIL41 briefing)'})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', 'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8', 'Accept-Language': 'ko-KR,ko;q=0.9'})
+    last = None
+    for attempt in range(3):   # 일시 오류·속도 제한이면 잠깐 쉬고 다시
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body = r.read()
+            if b'<rss' not in body[:2000] and b'<feed' not in body[:2000]: raise ValueError('RSS 가 아닌 응답(%d bytes)' % len(body))
+            return body
+        except Exception as e:
+            last = e; time.sleep(2 + attempt * 3)
+    raise last
 
 def parse_rss(xml_bytes):
     out = []
@@ -82,10 +90,13 @@ def pick_top(items, day, n=3):
 
 def fetch_fire_news(day=None, timeout=12):
     day = day or datetime.datetime.now(KST).date()
-    items = []
-    for q in QUERIES:
-        try: items += parse_rss(fetch_rss(q, timeout))
-        except Exception as e: print('[뉴스] %s 실패: %s' % (q, e), file=sys.stderr)
+    items = []; log = []
+    for i, q in enumerate(QUERIES):
+        if i: time.sleep(1.5)   # 검색어 사이 간격(속도 제한 예방)
+        try: got = parse_rss(fetch_rss(q, timeout)); items += got; log.append('%s: %d건' % (q, len(got)))
+        except Exception as e: log.append('%s: 실패(%s)' % (q, e)); print('[뉴스] %s 실패: %s' % (q, e), file=sys.stderr)
+    start, end = window(day); inwin = sum(1 for i in items if start <= i['ts'].astimezone(KST) < end)
+    print('::notice title=뉴스 수집::' + ' · '.join(log) + ' · 창(%s~%s) 안 %d건' % (start.strftime('%m/%d %H:%M'), end.strftime('%m/%d %H:%M'), inwin), file=sys.stderr)
     return pick_top(items, day)
 
 if __name__ == '__main__':
