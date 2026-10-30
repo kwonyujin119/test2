@@ -1,0 +1,28 @@
+name: Briefing test (manual post)
+# 실제 DB 에 '수동 게시' 브리핑을 톡방마다 하나씩 올리고 본문을 실행 주석(notice)으로 보여 준다.
+# 실행: Actions 탭 → Run workflow, 또는 이 파일을 수정해 푸시. 직원에게 보이는 글이 올라가므로 테스트 뒤 톡방에서 지워도 된다.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/briefing-test.yml']
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 수동 브리핑 올리고 본문 확인
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$PGURL" ]; then echo "::error::Secret SUPABASE_DB_URL 이 없습니다"; exit 1; fi
+          sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
+          DAY=$(TZ=Asia/Seoul date +%F)
+          N=$(psql "$PGURL" -At -v ON_ERROR_STOP=1 -c "select public.ictc_chat_briefing('$DAY'::date, true)")
+          echo "::notice title=브리핑 게시::$DAY 톡방 $N 개에 수동 브리핑을 올렸습니다"
+          NEWS=$(psql "$PGURL" -At -c "select coalesce(jsonb_array_length(items), 0) from public.ictc_news where day = '$DAY'::date")
+          echo "::notice title=오늘 뉴스 저장 건수::${NEWS:-0}건 (ictc_news, $DAY)"
+          psql "$PGURL" -At -c "select data->>'text' from public.ictc_items where kind='chat' and board='ictc' and id like 'brief-ictc-%-m%' order by updated_at desc limit 1" > body.txt
+          echo "## 수동 브리핑 본문 (지휘역량강화센터)" >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"; cat body.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
+          i=0; while IFS= read -r line; do i=$((i+1)); [ $i -le 14 ] && echo "::notice title=본문 $i::$line"; done < body.txt
