@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 5개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 사건·인천시 정책 +100 = 최우선(구 단위 정책·행사는 제외), 사망 +6, 다른 지역 지역사고 −8, 인명피해 없는 사고 −3, 해프닝 −10, 칼럼·시론 −6, 전국적 사건·정책 신호 +3/개(최대 9)).
+기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −15, 행사·홍보성 기사 −4, 인천 사건·인천시 정책 +100 = 최우선(구 단위 정책·행사는 제외), 사망 +6, 다른 지역 지역사고 −8, 인명피해 없는 사고 −3, 해프닝 −10, 칼럼·시론 −6, 전국적 사건·정책 신호 +3/개(최대 9)).
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 5개
@@ -104,7 +104,7 @@ def pick_top(items, day, n=5):
         opinion = any(w in titles for w in OPINION); noharm = any(w in titles for w in NOHARM)
         other = (not incheon) and any(w in titles for w in OTHER_REGION)       # 다른 지역의 지역 사고
         national = sum(1 for w in NATIONAL if w in titles)                     # 전국적 사건·정책 신호 개수
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (15 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []
