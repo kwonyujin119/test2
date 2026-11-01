@@ -19,6 +19,13 @@ jobs:
           if [ -z "$PGURL" ]; then echo "::error::Secret SUPABASE_DB_URL 이 없습니다"; exit 1; fi
           sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
           DAY=$(TZ=Asia/Seoul date +%F)
+          # DB 안 뉴스 수집(pg_net) 먼저: 요청 → 25초 대기 → 선택
+          EXT=$(psql "$PGURL" -At -c "select string_agg(extname, ',') from pg_extension where extname in ('pg_cron','pg_net')")
+          echo "::notice title=확장::${EXT:-없음}"
+          F=$(psql "$PGURL" -At -c "select public.ictc_news_fetch('$DAY'::date)"); sleep 25
+          P=$(psql "$PGURL" -At -c "select public.ictc_news_pick('$DAY'::date)")
+          R=$(psql "$PGURL" -At -c "select string_agg(status_code::text || ':' || coalesce(length(content), 0)::text, ' ') from public.ictc_news_req q join net._http_response r on r.id = q.req_id where q.day = '$DAY'::date" 2>&1 | head -1)
+          echo "::notice title=DB 안 뉴스 수집::요청 $F 건 → 응답 [$R] → 선택 $P 건"
           N=$(psql "$PGURL" -At -v ON_ERROR_STOP=1 -c "select public.ictc_chat_briefing('$DAY'::date, true)")
           echo "::notice title=브리핑 게시::$DAY 톡방 $N 개에 수동 브리핑을 올렸습니다"
           NEWS=$(psql "$PGURL" -At -c "select coalesce(jsonb_array_length(items), 0) from public.ictc_news where day = '$DAY'::date")
