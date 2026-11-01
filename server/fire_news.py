@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 5개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 18:00 ~ 당일 07:00 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 관련 +100 = 무조건 최우선).
+기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 관련 +100 = 무조건 최우선, 다른 지역 지역사고 −5, 전국적 사건·정책 신호 +3/개(최대 9)).
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 5개
@@ -11,6 +11,8 @@ from email.utils import parsedate_to_datetime
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
 QUERIES = ['소방', '소방관', '화재', '소방서 구조', '인천 소방']
+OTHER_REGION = ['울산', '대전', '부산', '대구', '광주', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '춘천', '원주', '청주', '천안', '전주', '목포', '포항', '창원', '김해', '진주', '구미', '경주', '여수', '순천', '군산', '익산', '장수', '사천', '통영', '거제', '안동', '강릉', '속초']   # 다른 지역의 지역 사고는 감점
+NATIONAL = ['사망', '숨져', '순직', '참사', '대형', '전국', '잇따라', '동시다발', '소방청', '정부', '국회', '행정안전부', '법안', '개정', '예산', '처우', '인력']   # 전국적 사건·정책은 가점
 INCHEON = ['인천', '부평', '계양', '미추홀', '연수구', '남동구', '송도', '영종', '청라', '검단', '강화군', '강화도', '옹진', '인천공항', '인천항']   # 인천 관련은 최우선
 MAJOR = ['연합뉴스', 'KBS', 'MBC', 'SBS', 'YTN', 'JTBC', '조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '뉴시스', '뉴스1', '한국일보', '서울신문', '국민일보', '세계일보', '문화일보', '매일경제', '한국경제', '연합뉴스TV', 'MBN', 'TV조선', '채널A']
 FOREIGN = ['홍콩', '중국', '일본', '미국', '대만', '영국', '프랑스', '독일', '러시아', '우크라이나', '인도', '호주', '캐나다', '유럽', '해외', '베트남', '태국', '필리핀', '인도네시아', '이스라엘', '이란', '터키', '튀르키예', '브라질', '멕시코', '뉴욕', '도쿄', 'LA', '파리', '런던']
@@ -20,9 +22,9 @@ STOP = set('소방 소방관 소방서 소방청 소방본부 화재 불 발생 
 SYN = [('다쳤', '부상'), ('다쳐', '부상'), ('숨졌', '사망'), ('숨져', '사망'), ('숨진', '사망'), ('불길', '진화'), ('진압', '진화')]   # 같은 뜻 다른 표현
 
 def window(day):
-    """(시작, 끝) = 전날 18:00 KST ~ 당일 07:00 KST"""
-    d = datetime.datetime(day.year, day.month, day.day, tzinfo=KST)
-    return d - datetime.timedelta(hours=6), d + datetime.timedelta(hours=7)
+    """(시작, 끝) = 전날 07:00 KST ~ 당일 07:00 KST (공유 기준 시각 이전 24시간)"""
+    d = datetime.datetime(day.year, day.month, day.day, 7, tzinfo=KST)
+    return d - datetime.timedelta(hours=24), d
 
 def fetch_rss(q, timeout=12):
     url = 'https://news.google.com/rss/search?q=' + urllib.parse.quote(q) + '&hl=ko&gl=KR&ceid=KR:ko'
@@ -90,7 +92,9 @@ def pick_top(items, day, n=5):
         pr = any(w in titles for w in PR)                                      # 행사·홍보성(훈련 개최 등)은 '구조' 같은 단어가 있어도 사고로 보지 않음
         incident = (not pr) and any(w in titles for w in INCIDENT)             # 사고·인명 기사는 앞으로
         incheon = any(w in titles for w in INCHEON)                            # 인천 소방 소식은 맨 위
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0)
+        other = (not incheon) and any(w in titles for w in OTHER_REGION)       # 다른 지역의 지역 사고
+        national = sum(1 for w in NATIONAL if w in titles)                     # 전국적 사건·정책 신호 개수
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (5 if other else 0) + min(national, 3) * 3
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []

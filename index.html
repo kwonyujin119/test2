@@ -2740,7 +2740,7 @@
       <div class="bc-body">
         <div class="bc-sec"><span class="bc-label">오늘 일정</span><span class="bc-n">${b.todayN}<small>건</small></span></div>
         ${b.today.length ? `<ul class="bc-list">${b.today.map(e => `<li class="${e.major ? 'major' : ''}"><b class="t">${esc(e.time)}</b><div><span class="ttl">${e.major ? '★ ' : ''}${esc(e.title)}${e.dayIdx ? `<span class="dayidx">${esc(e.dayIdx)}</span>` : ''}</span>${e.sub ? `<span class="sub">${esc(e.sub)}</span>` : ''}</div></li>`).join('')}</ul>${b.more ? `<div class="bc-more">… 외 ${b.more}건</div>` : ''}` : '<div class="bc-none">오늘 일정 없음</div>'}
-        ${b.news.length ? `<div class="bc-sec news"><span class="bc-label">소방 뉴스</span><span class="bc-sub">어젯밤 6시 ~ 오늘 아침 7시</span></div><ol class="bc-news">${b.news.map(nw => `<li><a href="${esc(nw.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="no">${nw.n}</span><span><span class="ttl">${esc(nw.title)}</span><span class="press">${esc(nw.press)}</span></span></a></li>`).join('')}</ol>` : ''}
+        ${b.news.length ? `<div class="bc-sec news"><span class="bc-label">소방 뉴스</span><span class="bc-sub">어제 7시 ~ 오늘 7시</span></div><ol class="bc-news">${b.news.map(nw => `<li><a href="${esc(nw.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="no">${nw.n}</span><span><span class="ttl">${esc(nw.title)}</span><span class="press">${esc(nw.press)}</span></span></a></li>`).join('')}</ol>` : ''}
         ${mid ? '<div class="bc-foot">누르면 크게 보기 · 이미지로 저장</div>' : ''}
       </div></div>`;
   }
@@ -2769,7 +2769,7 @@
       y += 20;
       // 소방 뉴스 + QR (카메라로 찍으면 바로 열림)
       if (b.news.length) {
-        y += 10; txt('소방 뉴스', P, y + 8, 800, 32, '#4B5563'); txt('어젯밤 6시 ~ 오늘 아침 7시', W - P, y + 6, 600, 22, '#6B7280', 'right'); y += 34;
+        y += 10; txt('소방 뉴스', P, y + 8, 800, 32, '#4B5563'); txt('어제 7시 ~ 오늘 7시', W - P, y + 6, 600, 22, '#6B7280', 'right'); y += 34;
         const QS = 124;
         b.news.forEach((nw, i) => { const lines = wrap(nw.title, 27, W - P * 2 - QS - 70, 2); const h = Math.max(QS + 20, 28 + lines.length * 36 + 30);
           box(P, y, W - P * 2, h, '#F2F4F7', 16);

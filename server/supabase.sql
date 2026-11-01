@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -602,7 +602,7 @@ begin
     if r.ed > r.sd then line := line || ' (' || (d - r.sd + 1) || '/' || (r.ed - r.sd + 1) || '일차)'; end if;
     txt := txt || E'\n' || line;
   end loop;
-  -- 소방 뉴스(전날 18:00~당일 07:00, GitHub Actions 가 골라 ictc_news 에 넣음). 없으면 이 절은 생략
+  -- 소방 뉴스(전날 07:00~당일 07:00, DB 안 수집 또는 GitHub Actions 가 골라 ictc_news 에 넣음). 없으면 이 절은 생략
   select items into news from public.ictc_news where day = p_date;
   if news is not null and jsonb_array_length(news) > 0 then
     txt := txt || E'\n소방 뉴스'; k := 0;
@@ -663,12 +663,14 @@ revoke all on public.ictc_news_req from anon, authenticated;
 create or replace function public.ictc_news_rank(p_docs xml[], p_day date)
 returns jsonb language plpgsql set search_path = public, extensions as $$
 declare
-  w_start timestamptz := ((p_day - 1)::timestamp + interval '18 hours') at time zone 'Asia/Seoul';
+  w_start timestamptz := ((p_day - 1)::timestamp + interval '7 hours') at time zone 'Asia/Seoul';   -- 전날 07:00 ~ 당일 07:00 (24시간)
   w_end   timestamptz := (p_day::timestamp + interval '7 hours') at time zone 'Asia/Seoul';
   major text[] := array['연합뉴스','KBS','MBC','SBS','YTN','JTBC','조선일보','중앙일보','동아일보','한겨레','경향신문','뉴시스','뉴스1','한국일보','서울신문','국민일보','세계일보','문화일보','매일경제','한국경제','연합뉴스TV','MBN','TV조선','채널A'];
   foreign_w text[] := array['홍콩','중국','일본','미국','대만','영국','프랑스','독일','러시아','우크라이나','인도','호주','캐나다','유럽','해외','베트남','태국','필리핀','인도네시아','이스라엘','이란','터키','튀르키예','브라질','멕시코','뉴욕','도쿄','파리','런던'];
   pr_w text[] := array['개최','성황리','훈련','캠페인','협약','MOU','홍보','간담회','위촉','수여','표창','방문','시상','발대식','점검 실시','교육 실시','행사','기념','업무협약','워크숍','세미나','봉사'];
   inc_w text[] := array['화재','불','사망','숨져','순직','부상','구조','대피','폭발','붕괴','사고','진화','전소','화상','참사','이송','인명'];
+  other_w text[] := array['울산','대전','부산','대구','광주','세종','강원','충북','충남','전북','전남','경북','경남','제주','춘천','원주','청주','천안','전주','목포','포항','창원','김해','진주','구미','경주','여수','순천','군산','익산','장수','사천','통영','거제','안동','강릉','속초'];   -- 다른 지역의 지역 사고 −5
+  nat_w text[] := array['사망','숨져','순직','참사','대형','전국','잇따라','동시다발','소방청','정부','국회','행정안전부','법안','개정','예산','처우','인력'];   -- 전국적 사건·정책 +3/개(최대 9)
   inch_w text[] := array['인천','부평','계양','미추홀','연수구','남동구','송도','영종','청라','검단','강화군','강화도','옹진','인천공항','인천항'];   -- 인천 관련은 무조건 최우선(+100)
   stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','불','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스','인명피해','없어','없음','만에','추정','원인','조사','당국','경찰','긴급','현장','오전','오후','새벽','시간'];
   doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
@@ -714,7 +716,9 @@ begin
     if exists (select 1 from unnest(pr_w) w where c.titles like '%' || w || '%') then s := s - 4;
     elsif exists (select 1 from unnest(inc_w) w where c.titles like '%' || w || '%') then s := s + 3; end if;
     if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;
-    if exists (select 1 from unnest(inch_w) w where c.titles like '%' || w || '%') then s := s + 100; end if;   -- 인천은 무조건 맨 위
+    if exists (select 1 from unnest(inch_w) w where c.titles like '%' || w || '%') then s := s + 100;   -- 인천은 무조건 맨 위
+    elsif exists (select 1 from unnest(other_w) w where c.titles like '%' || w || '%') then s := s - 5; end if;
+    s := s + least(3, (select count(*) from unnest(nat_w) w where c.titles like '%' || w || '%')) * 3;
     insert into tmp_news (title, press, url, ts, tok, cl) values ('__score__', s::text, c.last_ts::text, c.last_ts, null, c.cl);
   end loop;
   k := 0;
