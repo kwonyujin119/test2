@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -674,7 +674,9 @@ declare
   city_w text[] := array['인천'];   -- 시 단위: 사건·정책 모두 최우선(+100)
   gu_w text[] := array['부평','계양','미추홀','연수구','남동구','송도','영종','청라','검단','강화군','강화도','옹진','인천공항','인천항'];   -- 구 단위: 사건만 최우선, 정책·행사는 보통 기사
   death_w text[] := array['사망','숨져','숨진','숨졌','순직','참사'];   -- 사망 +6
-  trivia_w text[] := array['소동','해프닝','뱀','고양이','강아지','개구리','벌집','말벌','동물','구출 작전','열쇠'];   -- 가벼운 해프닝 −4
+  trivia_w text[] := array['소동','해프닝','뱀','고양이','강아지','개구리','벌집','말벌','동물','구출 작전','열쇠'];   -- 가벼운 해프닝 −10
+  opinion_w text[] := array['시론','칼럼','사설','기고','논설','인터뷰','기자수첩'];   -- 의견·칼럼 −6
+  noharm_w text[] := array['인명피해 없','인명 피해 없','다친 사람 없','부상자 없'];   -- 인명피해 없는 사고 −3(인천 제외)
   v_pr boolean; v_inc boolean; v_city boolean; v_gu boolean;
   stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','불','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스','인명피해','없어','없음','만에','추정','원인','조사','당국','경찰','긴급','현장','오전','오후','새벽','시간'];
   doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
@@ -723,9 +725,11 @@ begin
     if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;
     v_city := exists (select 1 from unnest(city_w) w where c.titles like '%' || w || '%'); v_gu := exists (select 1 from unnest(gu_w) w where c.titles like '%' || w || '%');
     if (v_inc and (v_city or v_gu)) or (v_city and not v_pr) then s := s + 100;   -- 인천 사건(구 단위 포함)·인천시 단위 정책은 맨 위. 구 단위 정책·행사는 보통 기사
-    elsif (not v_city and not v_gu) and exists (select 1 from unnest(other_w) w where c.titles like '%' || w || '%') then s := s - 5; end if;
+    elsif (not v_city and not v_gu) and exists (select 1 from unnest(other_w) w where c.titles like '%' || w || '%') then s := s - 8; end if;
     if exists (select 1 from unnest(death_w) w where c.titles like '%' || w || '%') then s := s + 6; end if;   -- 사망 추가 가점
-    if exists (select 1 from unnest(trivia_w) w where c.titles like '%' || w || '%') then s := s - 4; end if;   -- 해프닝 감점
+    if exists (select 1 from unnest(trivia_w) w where c.titles like '%' || w || '%') then s := s - 10; end if;   -- 해프닝 감점
+    if exists (select 1 from unnest(opinion_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;   -- 칼럼·시론 감점
+    if not (v_city or v_gu) and exists (select 1 from unnest(noharm_w) w where c.titles like '%' || w || '%') then s := s - 3; end if;   -- 인명피해 없는 사고(인천 제외) 소폭 감점
     s := s + least(3, (select count(*) from unnest(nat_w) w where c.titles like '%' || w || '%')) * 3;
     insert into tmp_news (title, press, url, ts, tok, cl) values ('__score__', s::text, c.last_ts::text, c.last_ts, null, c.cl);
   end loop;

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 5개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 사건·인천시 정책 +100 = 최우선(구 단위 정책·행사는 제외), 사망 +6, 다른 지역 지역사고 −5, 전국적 사건·정책 신호 +3/개(최대 9)).
+기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 사건·인천시 정책 +100 = 최우선(구 단위 정책·행사는 제외), 사망 +6, 다른 지역 지역사고 −8, 인명피해 없는 사고 −3, 해프닝 −10, 칼럼·시론 −6, 전국적 사건·정책 신호 +3/개(최대 9)).
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 5개
@@ -12,6 +12,8 @@ from email.utils import parsedate_to_datetime
 KST = datetime.timezone(datetime.timedelta(hours=9))
 QUERIES = ['소방', '소방관', '화재', '소방서 구조', '인천 소방']
 OTHER_REGION = ['울산', '대전', '부산', '대구', '광주', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '춘천', '원주', '청주', '천안', '전주', '목포', '포항', '창원', '김해', '진주', '구미', '경주', '여수', '순천', '군산', '익산', '장수', '사천', '통영', '거제', '안동', '강릉', '속초']   # 다른 지역의 지역 사고는 감점
+OPINION = ['시론', '칼럼', '사설', '기고', '논설', '인터뷰', '[기자수첩]', '기자수첩']   # 의견·칼럼은 감점
+NOHARM = ['인명피해 없', '인명 피해 없', '다친 사람 없', '부상자 없']   # 인명피해 없는 사고는 소폭 감점
 TRIVIA = ['소동', '해프닝', '뱀', '고양이', '강아지', '개구리', '벌집', '말벌', '동물', '구출 작전', '열쇠']   # 가벼운 해프닝 기사는 감점
 NATIONAL = ['사망', '숨져', '순직', '참사', '대형', '전국', '잇따라', '동시다발', '소방청', '정부', '국회', '행정안전부', '법안', '개정', '예산', '처우', '인력']   # 전국적 사건·정책은 가점
 INCHEON_CITY = ['인천']   # 시 단위(인천시·인천소방본부): 사건·정책 모두 가점
@@ -99,9 +101,10 @@ def pick_top(items, day, n=5):
         incheon = (incident and (in_city or in_gu)) or (in_city and not pr)   # 인천 사건(구 단위 포함) 또는 인천시 단위 정책만 최우선. 구 단위 정책·행사는 보통 기사로
         death = any(w in titles for w in DEATH)
         trivia = any(w in titles for w in TRIVIA)
+        opinion = any(w in titles for w in OPINION); noharm = any(w in titles for w in NOHARM)
         other = (not incheon) and any(w in titles for w in OTHER_REGION)       # 다른 지역의 지역 사고
         national = sum(1 for w in NATIONAL if w in titles)                     # 전국적 사건·정책 신호 개수
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (5 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (4 if trivia else 0)
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []
