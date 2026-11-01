@@ -871,11 +871,12 @@
   .bc-foot { font-size: 12.5px; color: var(--text-3); text-align: center; padding: 6px 0 10px; }
   .bc-sec.news { margin-top: 14px; align-items: baseline; } .bc-sub { font-size: 12.5px; color: var(--text-3); font-weight: 600; }
   .bc-news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .bc-news a { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; background: var(--card-2); border-radius: 12px; padding: 10px 12px; color: inherit; text-decoration: none; }
-  .bc-news .no { width: 26px; height: 26px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 900; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
-  .bc-news .ttl { display: block; font-size: 16.5px; font-weight: 800; line-height: 1.35; word-break: keep-all; color: var(--text); }
-  .bc-news .press { display: block; font-size: 13px; color: var(--primary-text); font-weight: 700; margin-top: 3px; }
-  .bv-body .bc-news .ttl { font-size: 20px; } .bv-body .bc-news .press { font-size: 15px; } .bv-body .bc-news a { padding: 12px 14px; grid-template-columns: 34px 1fr; }
+  .bc-news a { display: grid; grid-template-columns: 24px 1fr; gap: 6px; align-items: start; background: var(--card-2); border-radius: 10px; padding: 7px 10px; color: inherit; text-decoration: none; }
+  .bc-news .no { width: 20px; height: 20px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 900; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .bc-news { gap: 4px; } .bc-sec.news .bc-label { font-size: 14.5px; }
+  .bc-news .ttl { display: block; font-size: 14px; font-weight: 700; line-height: 1.35; word-break: keep-all; color: var(--text); }
+  .bc-news .press { display: block; font-size: 12px; color: var(--primary-text); font-weight: 700; margin-top: 2px; }
+  .bv-body .bc-news .ttl { font-size: 16px; } .bv-body .bc-news .press { font-size: 13px; } .bv-body .bc-news a { padding: 9px 12px; grid-template-columns: 26px 1fr; } .bv-body .bc-sec.news .bc-label { font-size: 17px; }
   .brief-view { position: fixed; inset: 0; z-index: 150; background: var(--bg); display: none; flex-direction: column; }
   .brief-view.open { display: flex; }
   .bv-top { display: flex; justify-content: flex-end; padding: calc(4px + env(safe-area-inset-top)) 6px 0; }
@@ -2768,14 +2769,14 @@
       y += 20;
       // 소방 뉴스 + QR (카메라로 찍으면 바로 열림)
       if (b.news.length) {
-        y += 10; txt('소방 뉴스', P, y + 10, 800, 40, '#4B5563'); txt('어젯밤 6시 ~ 오늘 아침 7시', W - P, y + 8, 600, 26, '#6B7280', 'right'); y += 44;
-        const QS = 176;
-        b.news.forEach((nw, i) => { const lines = wrap(nw.title, 34, W - P * 2 - QS - 80, 3); const h = Math.max(QS + 28, 40 + lines.length * 44 + 36);
-          box(P, y, W - P * 2, h, '#F2F4F7', 20);
-          if (!measure) { g.fillStyle = '#C42B38'; g.beginPath(); g.arc(P + 34, y + 36, 18, 0, Math.PI * 2); g.fill(); txt(String(nw.n), P + 34, y + 47, 900, 26, '#fff', 'center'); }
-          let ly = y + 50; for (const l of lines) { txt(l, P + 66, ly, 800, 34, '#111827'); ly += 44; } txt(nw.press, P + 66, ly + 2, 700, 26, '#123A8C');
-          if (!measure && nw.qr) { g.drawImage(nw.qr, W - P - QS - 14, y + 14, QS, QS); }
-          y += h + 12; });
+        y += 10; txt('소방 뉴스', P, y + 8, 800, 32, '#4B5563'); txt('어젯밤 6시 ~ 오늘 아침 7시', W - P, y + 6, 600, 22, '#6B7280', 'right'); y += 34;
+        const QS = 124;
+        b.news.forEach((nw, i) => { const lines = wrap(nw.title, 27, W - P * 2 - QS - 70, 2); const h = Math.max(QS + 20, 28 + lines.length * 36 + 30);
+          box(P, y, W - P * 2, h, '#F2F4F7', 16);
+          if (!measure) { g.fillStyle = '#C42B38'; g.beginPath(); g.arc(P + 26, y + 30, 14, 0, Math.PI * 2); g.fill(); txt(String(nw.n), P + 26, y + 38, 900, 20, '#fff', 'center'); }
+          let ly = y + 40; for (const l of lines) { txt(l, P + 52, ly, 700, 27, '#111827'); ly += 36; } txt(nw.press, P + 52, ly, 700, 21, '#123A8C');
+          if (!measure && nw.qr) { g.drawImage(nw.qr, W - P - QS - 10, y + 10, QS, QS); }
+          y += h + 8; });
       }
       y += 30; txt('SAIL:41 · 41망 아침 브리핑', W / 2, y + 30, 700, 26, '#9AA4B8', 'center'); y += 70;
       return y;
@@ -2789,7 +2790,7 @@
   function qrCanvas(url, size) { const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(); const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); const cell = (size - 16) / n; g.fillStyle = '#000'; for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (q.isDark(r, col)) g.fillRect(8 + col * cell, 8 + r * cell, Math.ceil(cell), Math.ceil(cell)); return c; }
   async function briefImage(mode) {
     const b = BV.b; if (!b) return; let blob; try {
-      if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 176); } catch (e) { nw.qr = null; } }); } catch (e) {} } if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
+      if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 124); } catch (e) { nw.qr = null; } }); } catch (e) {} } if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
     const name = `브리핑-${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}-${b.room}.png`; const file = new File([blob], name, { type: 'image/png' });
     if (mode === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast(mode === 'share' ? '이 브라우저는 바로 공유가 안 되어 이미지를 저장했어요. 갤러리에서 보내세요' : '이미지를 저장했어요', 3500);
@@ -2805,7 +2806,7 @@
     out.push(`오늘 일정 ${rows.length}건`);
     rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
       let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
-    if (news && news.length) { out.push('소방 뉴스'); news.slice(0, 3).forEach((nw, k) => out.push(` ${k + 1}. ${nw.title} (${nw.press}) ${nw.url}`)); }
+    if (news && news.length) { out.push('소방 뉴스'); news.slice(0, 5).forEach((nw, k) => out.push(` ${k + 1}. ${nw.title} (${nw.press}) ${nw.url}`)); }
     return out.join('\n');
   }
   // 보충 게시: 평일 7시 이후 이 기기에서 오늘 처음이면 서버에 "오늘 브리핑 없으면 올려 줘" 한 번. 서버는 톡방마다 하루 한 번만 올린다

@@ -154,7 +154,7 @@ def briefing_text(sched, tasks, room_name, date, manual=False, news=None):
         out.append(line)
     if news:
         out.append('소방 뉴스')
-        for k, nw in enumerate(news[:3], 1): out.append(f" {k}. {nw.get('title', '')} ({nw.get('press', '')}) {nw.get('url', '')}")
+        for k, nw in enumerate(news[:5], 1): out.append(f" {k}. {nw.get('title', '')} ({nw.get('press', '')}) {nw.get('url', '')}")
     return '\n'.join(out)
 
 class DB:

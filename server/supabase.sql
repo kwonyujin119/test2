@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -544,7 +544,7 @@ begin
 end $$;
 
 -- ---------- 아침 브리핑 (v6.6) ----------
--- 평일 07:00(한국 시간) 톡방마다 "오늘 일정 + 소방 뉴스 3개" 글을 '브리핑' 이름으로 올린다.
+-- 평일 07:00(한국 시간) 톡방마다 "오늘 일정 + 소방 뉴스 5개" 글을 '브리핑' 이름으로 올린다.
 -- 글 id 는 brief-<톡방>-<날짜> 하나뿐이라 몇 번 불러도 하루 한 번만 올라간다. 톡방 ↔ 대시보드는 이름이 같은 것으로 잇고, 없으면 main.
 create or replace function public.ictc_dt(p text)
 returns date language plpgsql immutable set search_path = public, extensions as $$
@@ -607,7 +607,7 @@ begin
   if news is not null and jsonb_array_length(news) > 0 then
     txt := txt || E'\n소방 뉴스'; k := 0;
     for r in select value as it from jsonb_array_elements(news) loop
-      k := k + 1; if k > 3 then exit; end if;
+      k := k + 1; if k > 5 then exit; end if;
       txt := txt || E'\n ' || k || '. ' || coalesce(r.it->>'title', '') || ' (' || coalesce(r.it->>'press', '') || ') ' || coalesce(r.it->>'url', '');
     end loop;
   end if;
@@ -659,7 +659,7 @@ create table if not exists public.ictc_news_req (day date not null, q text not n
 alter table public.ictc_news_req enable row level security;
 revoke all on public.ictc_news_req from anon, authenticated;
 
--- RSS 문서들(xml 배열)에서 창 안 기사를 모아 3개를 고른다. 순수 함수라 로컬에서도 검사할 수 있다
+-- RSS 문서들(xml 배열)에서 창 안 기사를 모아 5개를 고른다(인천 관련 최우선). 순수 함수라 로컬에서도 검사할 수 있다
 create or replace function public.ictc_news_rank(p_docs xml[], p_day date)
 returns jsonb language plpgsql set search_path = public, extensions as $$
 declare
@@ -669,7 +669,8 @@ declare
   foreign_w text[] := array['홍콩','중국','일본','미국','대만','영국','프랑스','독일','러시아','우크라이나','인도','호주','캐나다','유럽','해외','베트남','태국','필리핀','인도네시아','이스라엘','이란','터키','튀르키예','브라질','멕시코','뉴욕','도쿄','파리','런던'];
   pr_w text[] := array['개최','성황리','훈련','캠페인','협약','MOU','홍보','간담회','위촉','수여','표창','방문','시상','발대식','점검 실시','교육 실시','행사','기념','업무협약','워크숍','세미나','봉사'];
   inc_w text[] := array['화재','불','사망','숨져','순직','부상','구조','대피','폭발','붕괴','사고','진화','전소','화상','참사','이송','인명'];
-  stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스'];
+  inch_w text[] := array['인천','부평','계양','미추홀','연수구','남동구','송도','영종','청라','검단','강화군','강화도','옹진','인천공항','인천항'];   -- 인천 관련은 최우선(+20)
+  stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','불','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스','인명피해','없어','없음','만에','추정','원인','조사','당국','경찰','긴급','현장','오전','오후','새벽','시간'];
   doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
 begin
   create temp table if not exists tmp_news (id serial, title text, press text, url text, ts timestamptz, tok text[], cl int) on commit drop;
@@ -686,19 +687,20 @@ begin
       exception when others then continue; end;
       if v_ts < w_start or v_ts >= w_end then continue; end if;
       if exists (select 1 from tmp_news x where x.title = v_t and x.press = v_p) then continue; end if;
-      v_tok := array(select m[1] from regexp_matches(v_t, '([가-힣A-Za-z0-9]{2,})', 'g') m where m[1] <> all(stop_w));
+      -- 같은 뜻 통일 → 단어 추출 → 숫자·단위 제외 → 불용어(조사 붙은 꼴 포함) 제외 → 앞 3자
+      v_tok := array(select distinct left(m[1], 2) from regexp_matches(regexp_replace(regexp_replace(regexp_replace(v_t, '다쳤|다쳐', '부상', 'g'), '숨졌|숨져|숨진', '사망', 'g'), '불길|진압', '진화', 'g'), '([가-힣A-Za-z0-9]{2,})', 'g') m
+                      where m[1] !~ '^\d+(명|시간|분|건|일|층|대|곳|여|차|호|%)?$' and not exists (select 1 from unnest(stop_w) st where m[1] = st or (length(st) >= 2 and m[1] like st || '%')));
       insert into tmp_news (title, press, url, ts, tok) values (v_t, v_p, v_l, v_ts, v_tok);
     end loop;
   end loop;
-  -- 같은 사건 묶기: 단어 2개 이상 또는 1/4 이상 겹침
+  -- 같은 사건 묶기: 단어 2개 이상 겹치고 1/5 이상, 또는 3개 이상 겹침
   for r in select * from tmp_news order by ts desc loop
     best := null;
     for c in select * from tmp_cl order by id loop
-      k := cardinality(array(select unnest(r.tok) intersect select unnest(c.tok)));
-      if k >= 2 or (cardinality(r.tok) > 0 and k::numeric / greatest(cardinality(array(select unnest(r.tok) union select unnest(c.tok))), 1) >= 0.25) then best := c.id; exit; end if;
+      k := cardinality(array(select unnest(r.tok) intersect select unnest(c.tok)));   -- 묶음의 '첫 기사' 단어와 비교(눈덩이 방지)
+      if cardinality(r.tok) > 0 and ((k >= 2 and k::numeric / greatest(cardinality(array(select unnest(r.tok) union select unnest(c.tok))), 1) >= 0.2) or k >= 3) then best := c.id; exit; end if;
     end loop;
-    if best is null then insert into tmp_cl (tok) values (r.tok) returning id into best;
-    else update tmp_cl set tok = array(select unnest(tmp_cl.tok) union select unnest(r.tok)) where id = best; end if;
+    if best is null then insert into tmp_cl (tok) values (r.tok) returning id into best; end if;
     update tmp_news set cl = best where id = r.id;
   end loop;
   -- 점수
@@ -711,11 +713,12 @@ begin
     if exists (select 1 from unnest(pr_w) w where c.titles like '%' || w || '%') then s := s - 4;
     elsif exists (select 1 from unnest(inc_w) w where c.titles like '%' || w || '%') then s := s + 3; end if;
     if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;
+    if exists (select 1 from unnest(inch_w) w where c.titles like '%' || w || '%') then s := s + 20; end if;
     insert into tmp_news (title, press, url, ts, tok, cl) values ('__score__', s::text, c.last_ts::text, c.last_ts, null, c.cl);
   end loop;
   k := 0;
   for c in select cl, press::numeric as score, ts as last_ts from tmp_news where title = '__score__' order by press::numeric desc, ts desc loop
-    k := k + 1; if k > 3 then exit; end if;
+    k := k + 1; if k > 5 then exit; end if;
     select title, press, url, ts into rep from tmp_news x where x.cl = c.cl and x.title <> '__score__'
       order by coalesce((select min(i) from unnest(major) with ordinality as m(name, i) where x.press like '%' || m.name || '%'), 99), ts desc limit 1;
     out := out || jsonb_build_object('title', rep.title, 'press', rep.press, 'url', rep.url, 'time', to_char(rep.ts at time zone 'Asia/Seoul', 'HH24:MI'),
@@ -738,7 +741,7 @@ declare d date := coalesce(p_day, (now() at time zone 'Asia/Seoul')::date); q te
 begin
   if not exists (select 1 from pg_extension where extname = 'pg_net') then return 0; end if;
   delete from public.ictc_news_req where day < d - 2;
-  foreach q in array array['소방', '소방관', '화재', '소방서 구조'] loop
+  foreach q in array array['소방', '소방관', '화재', '소방서 구조', '인천 소방'] loop
     rid := net.http_get('https://news.google.com/rss/search?q=' || public.ictc_urlencode(q) || '&hl=ko&gl=KR&ceid=KR:ko',
                         '{}'::jsonb, '{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9"}'::jsonb, 15000);
     insert into public.ictc_news_req (day, q, req_id) values (d, q, rid); cnt := cnt + 1;
