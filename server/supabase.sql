@@ -724,6 +724,13 @@ begin
   return out;
 end $$;
 
+-- URL 인코딩(한글 검색어). pg_net 은 주소를 그대로 보내므로 직접 %XX 로 바꾼다
+create or replace function public.ictc_urlencode(p text)
+returns text language sql immutable set search_path = public, extensions as $$
+  select string_agg(case when chr(get_byte(b, i)) ~ '^[A-Za-z0-9._~-]$' then chr(get_byte(b, i)) else '%' || upper(lpad(to_hex(get_byte(b, i)), 2, '0')) end, '' order by i)
+    from (select convert_to(p, 'UTF8') as b) s, generate_series(0, length(convert_to(p, 'UTF8')) - 1) as i;
+$$;
+
 -- 1) RSS 요청 보내기(pg_net, 비동기). 결과는 net._http_response 에 쌓인다
 create or replace function public.ictc_news_fetch(p_day date default null)
 returns int language plpgsql security definer set search_path = public, extensions as $$
@@ -732,7 +739,7 @@ begin
   if not exists (select 1 from pg_extension where extname = 'pg_net') then return 0; end if;
   delete from public.ictc_news_req where day < d - 2;
   foreach q in array array['소방', '소방관', '화재', '소방서 구조'] loop
-    rid := net.http_get('https://news.google.com/rss/search?q=' || replace(q, ' ', '%20') || '&hl=ko&gl=KR&ceid=KR:ko',
+    rid := net.http_get('https://news.google.com/rss/search?q=' || public.ictc_urlencode(q) || '&hl=ko&gl=KR&ceid=KR:ko',
                         '{}'::jsonb, '{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9"}'::jsonb, 15000);
     insert into public.ictc_news_req (day, q, req_id) values (d, q, rid); cnt := cnt + 1;
   end loop;
@@ -810,7 +817,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set', 'ictc_news_rank', 'ictc_news_fetch', 'ictc_news_pick') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set', 'ictc_news_rank', 'ictc_news_fetch', 'ictc_news_pick', 'ictc_urlencode') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);
