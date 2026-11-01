@@ -12,6 +12,7 @@ from email.utils import parsedate_to_datetime
 KST = datetime.timezone(datetime.timedelta(hours=9))
 QUERIES = ['소방', '소방관', '화재', '소방서 구조', '인천 소방']
 OTHER_REGION = ['울산', '대전', '부산', '대구', '광주', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주', '춘천', '원주', '청주', '천안', '전주', '목포', '포항', '창원', '김해', '진주', '구미', '경주', '여수', '순천', '군산', '익산', '장수', '사천', '통영', '거제', '안동', '강릉', '속초']   # 다른 지역의 지역 사고는 감점
+TRIVIA = ['소동', '해프닝', '뱀', '고양이', '강아지', '개구리', '벌집', '말벌', '동물', '구출 작전', '열쇠']   # 가벼운 해프닝 기사는 감점
 NATIONAL = ['사망', '숨져', '순직', '참사', '대형', '전국', '잇따라', '동시다발', '소방청', '정부', '국회', '행정안전부', '법안', '개정', '예산', '처우', '인력']   # 전국적 사건·정책은 가점
 INCHEON_CITY = ['인천']   # 시 단위(인천시·인천소방본부): 사건·정책 모두 가점
 INCHEON_GU = ['부평', '계양', '미추홀', '연수구', '남동구', '송도', '영종', '청라', '검단', '강화군', '강화도', '옹진', '인천공항', '인천항']   # 구 단위: 사건만 가점(정책·행사는 아님)
@@ -97,9 +98,10 @@ def pick_top(items, day, n=5):
         in_city = any(w in titles for w in INCHEON_CITY); in_gu = any(w in titles for w in INCHEON_GU)
         incheon = (incident and (in_city or in_gu)) or (in_city and not pr)   # 인천 사건(구 단위 포함) 또는 인천시 단위 정책만 최우선. 구 단위 정책·행사는 보통 기사로
         death = any(w in titles for w in DEATH)
+        trivia = any(w in titles for w in TRIVIA)
         other = (not incheon) and any(w in titles for w in OTHER_REGION)       # 다른 지역의 지역 사고
         national = sum(1 for w in NATIONAL if w in titles)                     # 전국적 사건·정책 신호 개수
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (5 if other else 0) + min(national, 3) * 3 + (6 if death else 0)
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (5 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (4 if trivia else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []
