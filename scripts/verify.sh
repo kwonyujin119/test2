@@ -39,6 +39,8 @@ if [[ " $* " != *" --no-sql "* ]]; then
     nset=$($PS -d ictc_verify -At -c "select ictc_news_set('2026-10-27', '[{\"title\":\"아파트 화재 20명 대피\",\"press\":\"연합뉴스\",\"url\":\"https://example.com/a\"},{\"title\":\"소방관 순직 애도\",\"press\":\"KBS\",\"url\":\"https://example.com/b\"}]'::jsonb)" 2>&1)
     ntxt=$($PS -d ictc_verify -At -c "select data->>'text' from ictc_items where id='brief-ictc-20261027'" 2>&1)
     { [ "$nset" = "4" ] && [[ "$ntxt" == *"소방 뉴스"* ]] && [[ "$ntxt" == *" 1. 아파트 화재 20명 대피 (연합뉴스) https://example.com/a"* ]] && [[ "$ntxt" != *"내일 일정"* ]] && [[ "$ntxt" != *"기한 지남"* ]]; } && echo "  브리핑 뉴스 붙이기(오늘 글 4개 갱신·내일/업무 절 없음) ok" || { echo "  브리핑 뉴스 검사 실패: $nset / $ntxt"; ok=0; }
+    rank=$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')" 2>&1)
+    [[ "$rank" == *"서울 아파트 화재로 주민 20명 대피"* ]] && [[ "$rank" == *"\"press\": \"연합뉴스\""* ]] && [[ "$rank" != *"창 밖"* ]] && [[ "$rank" == *"소방관 부상"* ]] && echo "  뉴스 순위(SQL, 표본 RSS: 창 밖 제외·같은 사건 묶음·주요 언론 대표) ok" || { echo "  뉴스 순위(SQL) 실패: $rank"; ok=0; }
     nanon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select * from ictc_news" 2>&1); [[ "$nanon" == *"permission denied"* ]] && echo "  뉴스 표 anon 차단 ok" || { echo "  뉴스 표가 anon 에 열려 있음: $nanon"; ok=0; }
     banon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); [[ "$banon" == *"permission denied"* ]] && echo "  브리핑 내부 함수 anon 거부 ok" || { echo "  브리핑 함수가 anon 에 열려 있음: $banon"; ok=0; }
     # --- v6.4 추가 검사 ---

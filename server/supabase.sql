@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -652,6 +652,109 @@ begin
   return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date, true);
 end $$;
 
+-- ---------- 소방 뉴스 수집을 DB 안에서 (v6.13, pg_net) ----------
+-- GitHub 예약이 돌지 않는 날에도 뉴스가 붙도록, Supabase 의 pg_net 으로 Google 뉴스 RSS 를 받아 SQL 이 직접 3개를 고른다.
+-- 순위 기준은 server/fire_news.py 와 같다(주요 언론사 ×3 + 그 밖 ×1 + 기사 수 ×0.3 + 사고·인명 +3, 해외 −6, 행사·홍보 −4).
+create table if not exists public.ictc_news_req (day date not null, q text not null, req_id bigint not null, created_at timestamptz not null default now());
+alter table public.ictc_news_req enable row level security;
+revoke all on public.ictc_news_req from anon, authenticated;
+
+-- RSS 문서들(xml 배열)에서 창 안 기사를 모아 3개를 고른다. 순수 함수라 로컬에서도 검사할 수 있다
+create or replace function public.ictc_news_rank(p_docs xml[], p_day date)
+returns jsonb language plpgsql set search_path = public, extensions as $$
+declare
+  w_start timestamptz := ((p_day - 1)::timestamp + interval '18 hours') at time zone 'Asia/Seoul';
+  w_end   timestamptz := (p_day::timestamp + interval '7 hours') at time zone 'Asia/Seoul';
+  major text[] := array['연합뉴스','KBS','MBC','SBS','YTN','JTBC','조선일보','중앙일보','동아일보','한겨레','경향신문','뉴시스','뉴스1','한국일보','서울신문','국민일보','세계일보','문화일보','매일경제','한국경제','연합뉴스TV','MBN','TV조선','채널A'];
+  foreign_w text[] := array['홍콩','중국','일본','미국','대만','영국','프랑스','독일','러시아','우크라이나','인도','호주','캐나다','유럽','해외','베트남','태국','필리핀','인도네시아','이스라엘','이란','터키','튀르키예','브라질','멕시코','뉴욕','도쿄','파리','런던'];
+  pr_w text[] := array['개최','성황리','훈련','캠페인','협약','MOU','홍보','간담회','위촉','수여','표창','방문','시상','발대식','점검 실시','교육 실시','행사','기념','업무협약','워크숍','세미나','봉사'];
+  inc_w text[] := array['화재','불','사망','숨져','순직','부상','구조','대피','폭발','붕괴','사고','진화','전소','화상','참사','이송','인명'];
+  stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스'];
+  doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
+begin
+  create temp table if not exists tmp_news (id serial, title text, press text, url text, ts timestamptz, tok text[], cl int) on commit drop;
+  create temp table if not exists tmp_cl (id serial, tok text[]) on commit drop;
+  delete from tmp_news; delete from tmp_cl;
+  foreach doc in array coalesce(p_docs, array[]::xml[]) loop
+    for it in select unnest(xpath('/rss/channel/item', doc)) loop
+      v_t := (xpath('/item/title/text()', it))[1]::text; v_l := (xpath('/item/link/text()', it))[1]::text; v_p := coalesce((xpath('/item/source/text()', it))[1]::text, '');   -- 조각(xml)에는 절대 경로로
+      v_pd := (xpath('/item/pubDate/text()', it))[1]::text;
+      if v_t is null or v_l is null or v_pd is null or v_t = '' then continue; end if;
+      if v_p = '' and position(' - ' in v_t) > 0 then v_p := trim(substring(v_t from '.* - (.*)$')); end if;
+      if position(' - ' in v_t) > 0 then v_t := trim(regexp_replace(v_t, ' - [^-]*$', '')); end if;
+      begin v_ts := (regexp_replace(trim(regexp_replace(v_pd, '^[A-Za-z]+,\s*', '')), '\s+(GMT|UTC|\+0000)$', ''))::timestamp at time zone 'UTC';
+      exception when others then continue; end;
+      if v_ts < w_start or v_ts >= w_end then continue; end if;
+      if exists (select 1 from tmp_news x where x.title = v_t and x.press = v_p) then continue; end if;
+      v_tok := array(select m[1] from regexp_matches(v_t, '([가-힣A-Za-z0-9]{2,})', 'g') m where m[1] <> all(stop_w));
+      insert into tmp_news (title, press, url, ts, tok) values (v_t, v_p, v_l, v_ts, v_tok);
+    end loop;
+  end loop;
+  -- 같은 사건 묶기: 단어 2개 이상 또는 1/4 이상 겹침
+  for r in select * from tmp_news order by ts desc loop
+    best := null;
+    for c in select * from tmp_cl order by id loop
+      k := cardinality(array(select unnest(r.tok) intersect select unnest(c.tok)));
+      if k >= 2 or (cardinality(r.tok) > 0 and k::numeric / greatest(cardinality(array(select unnest(r.tok) union select unnest(c.tok))), 1) >= 0.25) then best := c.id; exit; end if;
+    end loop;
+    if best is null then insert into tmp_cl (tok) values (r.tok) returning id into best;
+    else update tmp_cl set tok = array(select unnest(tmp_cl.tok) union select unnest(r.tok)) where id = best; end if;
+    update tmp_news set cl = best where id = r.id;
+  end loop;
+  -- 점수
+  for c in
+    select cl, string_agg(title, ' / ') as titles, count(distinct press) as n_press, count(*) as n_items,
+           count(distinct press) filter (where exists (select 1 from unnest(major) m where press like '%' || m || '%')) as n_major, max(ts) as last_ts
+      from tmp_news group by cl
+  loop
+    s := c.n_major * 3 + (c.n_press - c.n_major) * 1 + c.n_items * 0.3;
+    if exists (select 1 from unnest(pr_w) w where c.titles like '%' || w || '%') then s := s - 4;
+    elsif exists (select 1 from unnest(inc_w) w where c.titles like '%' || w || '%') then s := s + 3; end if;
+    if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;
+    insert into tmp_news (title, press, url, ts, tok, cl) values ('__score__', s::text, c.last_ts::text, c.last_ts, null, c.cl);
+  end loop;
+  k := 0;
+  for c in select cl, press::numeric as score, ts as last_ts from tmp_news where title = '__score__' order by press::numeric desc, ts desc loop
+    k := k + 1; if k > 3 then exit; end if;
+    select title, press, url, ts into rep from tmp_news x where x.cl = c.cl and x.title <> '__score__'
+      order by coalesce((select min(i) from unnest(major) with ordinality as m(name, i) where x.press like '%' || m.name || '%'), 99), ts desc limit 1;
+    out := out || jsonb_build_object('title', rep.title, 'press', rep.press, 'url', rep.url, 'time', to_char(rep.ts at time zone 'Asia/Seoul', 'HH24:MI'),
+                  'outlets', (select count(distinct press) from tmp_news x where x.cl = c.cl and x.title <> '__score__'));
+  end loop;
+  return out;
+end $$;
+
+-- 1) RSS 요청 보내기(pg_net, 비동기). 결과는 net._http_response 에 쌓인다
+create or replace function public.ictc_news_fetch(p_day date default null)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+declare d date := coalesce(p_day, (now() at time zone 'Asia/Seoul')::date); q text; rid bigint; cnt int := 0;
+begin
+  if not exists (select 1 from pg_extension where extname = 'pg_net') then return 0; end if;
+  delete from public.ictc_news_req where day < d - 2;
+  foreach q in array array['소방', '소방관', '화재', '소방서 구조'] loop
+    rid := net.http_get('https://news.google.com/rss/search?q=' || replace(q, ' ', '%20') || '&hl=ko&gl=KR&ceid=KR:ko',
+                        '{}'::jsonb, '{"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9"}'::jsonb, 15000);
+    insert into public.ictc_news_req (day, q, req_id) values (d, q, rid); cnt := cnt + 1;
+  end loop;
+  return cnt;
+end $$;
+
+-- 2) 받은 응답으로 3개를 고르고 ictc_news 에 넣어 오늘 브리핑에 붙인다. 응답이 아직 없으면 0
+create or replace function public.ictc_news_pick(p_day date default null)
+returns int language plpgsql security definer set search_path = public, extensions as $$
+declare d date := coalesce(p_day, (now() at time zone 'Asia/Seoul')::date); docs xml[] := array[]::xml[]; r record; x xml; picked jsonb;
+begin
+  if not exists (select 1 from pg_extension where extname = 'pg_net') then return 0; end if;
+  for r in execute 'select r.content from public.ictc_news_req q join net._http_response r on r.id = q.req_id where q.day = $1 and r.status_code = 200' using d loop
+    begin x := r.content::xml; docs := docs || x; exception when others then continue; end;
+  end loop;
+  if cardinality(docs) = 0 then return 0; end if;
+  picked := public.ictc_news_rank(docs, d);
+  if jsonb_array_length(picked) = 0 then return 0; end if;
+  perform public.ictc_news_set(d, picked);
+  return jsonb_array_length(picked);
+end $$;
+
 -- 예약 실행(pg_cron): 평일 07:00 KST = UTC 일~목 22:00. 확장이 없으면(로컬 PostgreSQL·사전 검사) 건너뛴다.
 -- Supabase 에서 create extension 이 거부되면 대시보드 → Database → Extensions 에서 pg_cron 을 켜고 이 파일을 한 번 더 실행하면 등록된다.
 do $$
@@ -660,10 +763,18 @@ begin
     create extension if not exists pg_cron;
   exception when others then raise notice 'pg_cron 을 만들지 못했습니다(%). 대시보드에서 켠 뒤 다시 실행하세요.', sqlerrm;
   end;
+  begin
+    create extension if not exists pg_net;
+  exception when others then raise notice 'pg_net 을 만들지 못했습니다(%). 대시보드 → Database → Extensions 에서 pg_net 을 켜면 뉴스가 DB 안에서 수집됩니다.', sqlerrm;
+  end;
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
-    perform cron.unschedule(jobid) from cron.job where jobname = 'sail41-briefing';
-    perform cron.schedule('sail41-briefing', '0 22 * * 0-4', 'select public.ictc_chat_briefing()');
-    raise notice 'pg_cron 예약 등록: sail41-briefing (평일 07:00 KST)';
+    perform cron.unschedule(jobid) from cron.job where jobname in ('sail41-briefing', 'sail41-news-fetch-1', 'sail41-news-fetch-2', 'sail41-news-pick-1', 'sail41-news-pick-2');
+    perform cron.schedule('sail41-news-fetch-1', '45 21 * * 0-4', 'select public.ictc_news_fetch()');   -- 06:45 KST RSS 요청
+    perform cron.schedule('sail41-news-pick-1',  '57 21 * * 0-4', 'select public.ictc_news_pick()');    -- 06:57 고르기 → 07:00 브리핑에 실림
+    perform cron.schedule('sail41-briefing',     '0 22 * * 0-4',  'select public.ictc_chat_briefing()'); -- 07:00 브리핑
+    perform cron.schedule('sail41-news-fetch-2', '1 22 * * 0-4',  'select public.ictc_news_fetch()');   -- 07:01 창(07:00까지) 완성용 재요청
+    perform cron.schedule('sail41-news-pick-2',  '12 22 * * 0-4', 'select public.ictc_news_pick()');    -- 07:12 다시 골라 브리핑 본문 갱신
+    raise notice 'pg_cron 예약 등록: 브리핑 07:00 · 뉴스 06:45/06:57/07:01/07:12 (KST)';
   end if;
 end $$;
 
@@ -699,7 +810,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set', 'ictc_news_rank', 'ictc_news_fetch', 'ictc_news_pick') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);
