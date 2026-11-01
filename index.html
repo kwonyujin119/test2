@@ -2791,7 +2791,7 @@
   async function briefImage(mode) {
     const b = BV.b; if (!b) return; let blob; try {
       if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 124); } catch (e) { nw.qr = null; } }); } catch (e) {} } if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
-    const name = `브리핑-${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}-${b.room}.png`; const file = new File([blob], name, { type: 'image/png' });
+    const name = `SAIL41-brief-${new Date().getFullYear()}${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}.png`;   // 공유 대상 앱이 한글 파일명을 거부하는 경우가 있어 영문으로 const file = new File([blob], name, { type: 'image/png' });
     if (mode === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast(mode === 'share' ? '이 브라우저는 바로 공유가 안 되어 이미지를 저장했어요. 갤러리에서 보내세요' : '이미지를 저장했어요', 3500);
   }
