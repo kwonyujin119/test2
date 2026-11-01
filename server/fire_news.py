@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 5개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 18:00 ~ 당일 07:00 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 관련 +20 = 최우선).
+기준: 한국 시간 전날 18:00 ~ 당일 07:00 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −6, 행사·홍보성 기사 −4, 인천 관련 +100 = 무조건 최우선).
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 5개
 사용: python3 server/fire_news.py [--date YYYY-MM-DD] [--json]   (날짜는 한국 시간 '당일', 기본 오늘)
 로컬 서버도 같은 함수를 쓴다(fetch_fire_news). 인터넷이 안 되면 빈 목록."""
-import argparse, datetime, json, re, sys, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+import argparse, datetime, html, json, re, sys, time, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
@@ -46,6 +46,7 @@ def parse_rss(xml_bytes):
         src = it.find('source'); press = (src.text or '').strip() if src is not None else ''
         if not press and ' - ' in title: press = title.rsplit(' - ', 1)[1].strip()
         if ' - ' in title: title = title.rsplit(' - ', 1)[0].strip()
+        title = html.unescape(html.unescape(title)); title = re.sub(r'\s*>\s*뉴스\s*$', '', title)   # 이중 이스케이프(&amp;gt;)·꼬리말 정리
         try: ts = parsedate_to_datetime(pub)
         except Exception: continue
         if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.timezone.utc)
@@ -89,7 +90,7 @@ def pick_top(items, day, n=5):
         pr = any(w in titles for w in PR)                                      # 행사·홍보성(훈련 개최 등)은 '구조' 같은 단어가 있어도 사고로 보지 않음
         incident = (not pr) and any(w in titles for w in INCIDENT)             # 사고·인명 기사는 앞으로
         incheon = any(w in titles for w in INCHEON)                            # 인천 소방 소식은 맨 위
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (20 if incheon else 0)
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (6 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     top = []

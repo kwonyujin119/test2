@@ -669,7 +669,7 @@ declare
   foreign_w text[] := array['홍콩','중국','일본','미국','대만','영국','프랑스','독일','러시아','우크라이나','인도','호주','캐나다','유럽','해외','베트남','태국','필리핀','인도네시아','이스라엘','이란','터키','튀르키예','브라질','멕시코','뉴욕','도쿄','파리','런던'];
   pr_w text[] := array['개최','성황리','훈련','캠페인','협약','MOU','홍보','간담회','위촉','수여','표창','방문','시상','발대식','점검 실시','교육 실시','행사','기념','업무협약','워크숍','세미나','봉사'];
   inc_w text[] := array['화재','불','사망','숨져','순직','부상','구조','대피','폭발','붕괴','사고','진화','전소','화상','참사','이송','인명'];
-  inch_w text[] := array['인천','부평','계양','미추홀','연수구','남동구','송도','영종','청라','검단','강화군','강화도','옹진','인천공항','인천항'];   -- 인천 관련은 최우선(+20)
+  inch_w text[] := array['인천','부평','계양','미추홀','연수구','남동구','송도','영종','청라','검단','강화군','강화도','옹진','인천공항','인천항'];   -- 인천 관련은 무조건 최우선(+100)
   stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','불','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스','인명피해','없어','없음','만에','추정','원인','조사','당국','경찰','긴급','현장','오전','오후','새벽','시간'];
   doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
 begin
@@ -683,6 +683,7 @@ begin
       if v_t is null or v_l is null or v_pd is null or v_t = '' then continue; end if;
       if v_p = '' and position(' - ' in v_t) > 0 then v_p := trim(substring(v_t from '.* - (.*)$')); end if;
       if position(' - ' in v_t) > 0 then v_t := trim(regexp_replace(v_t, ' - [^-]*$', '')); end if;
+      v_t := regexp_replace(replace(replace(replace(replace(replace(v_t, '&amp;', '&'), '&gt;', '>'), '&lt;', '<'), '&quot;', '"'), '&#39;', ''''), '\s*>\s*뉴스\s*$', '');   -- 이중 이스케이프·꼬리말 정리
       begin v_ts := (regexp_replace(trim(regexp_replace(v_pd, '^[A-Za-z]+,\s*', '')), '\s+(GMT|UTC|\+0000)$', ''))::timestamp at time zone 'UTC';
       exception when others then continue; end;
       if v_ts < w_start or v_ts >= w_end then continue; end if;
@@ -713,7 +714,7 @@ begin
     if exists (select 1 from unnest(pr_w) w where c.titles like '%' || w || '%') then s := s - 4;
     elsif exists (select 1 from unnest(inc_w) w where c.titles like '%' || w || '%') then s := s + 3; end if;
     if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 6; end if;
-    if exists (select 1 from unnest(inch_w) w where c.titles like '%' || w || '%') then s := s + 20; end if;
+    if exists (select 1 from unnest(inch_w) w where c.titles like '%' || w || '%') then s := s + 100; end if;   -- 인천은 무조건 맨 위
     insert into tmp_news (title, press, url, ts, tok, cl) values ('__score__', s::text, c.last_ts::text, c.last_ts, null, c.cl);
   end loop;
   k := 0;
