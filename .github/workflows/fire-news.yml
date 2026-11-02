@@ -8,11 +8,6 @@ on:
     - cron: '5 22 * * 0-4'    # KST 07:05
     - cron: '20 22 * * 0-4'   # KST 07:20
   workflow_dispatch:
-    inputs:
-      debug:
-        description: '점수 순 묶음 60개를 주석으로 보여 주고 DB 에는 넣지 않음'
-        type: boolean
-        default: false
   push:                        # 뉴스 선별 코드나 이 파일이 바뀌면 바로 한 번 실행(테스트 겸)
     branches: [main]
     paths: ['server/fire_news.py', '.github/workflows/fire-news.yml']
@@ -27,15 +22,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: 점수표(디버그)
-        if: ${{ inputs.debug }}
+      - name: 점수표(순위 규칙 점검용, 주석 10개로 표시)
         run: |
           DAY=$(TZ=Asia/Seoul date +%F)
           python3 server/fire_news.py --date "$DAY" --dump 60 > dump.txt
           echo "## 점수표 ($DAY)" >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"; cat dump.txt >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
           # 주석은 단계당 10개 → 6줄씩 묶어 10개로 표시
-          split -l 6 -d dump.txt part_; i=0; for f in part_*; do i=$((i+1)); [ $i -le 10 ] && echo "::notice title=점수표 $i::$(tr '\n' '|' < $f)"; done
-          exit 1
+          split -l 6 -d dump.txt part_; i=0; for f in part_*; do i=$((i+1)); [ $i -le 10 ] && echo "::notice title=점수표 $i::$(tr '\n' '|' < $f)"; done; true
       - name: 뉴스 고르기
         id: pick
         run: |
