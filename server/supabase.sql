@@ -692,7 +692,7 @@ begin
       v_pd := (xpath('/item/pubDate/text()', it))[1]::text;
       if v_t is null or v_l is null or v_pd is null or v_t = '' then continue; end if;
       if v_p = '' and position(' - ' in v_t) > 0 then v_p := trim(substring(v_t from '.* - (.*)$')); end if;
-      if position(' - ' in v_t) > 0 then v_t := trim(regexp_replace(v_t, ' - [^-]*$', '')); end if;
+      if position(' - ' in v_t) > 0 then v_t := trim(regexp_replace(v_t, '^(.*) - .*$', '\1')); end if;   -- 마지막 ' - 언론사' 만 떼어냄(FPN-소방방재신문 처럼 하이픈 든 이름도). Python rsplit 과 같음
       v_t := regexp_replace(replace(replace(replace(replace(replace(v_t, '&amp;', '&'), '&gt;', '>'), '&lt;', '<'), '&quot;', '"'), '&#39;', ''''), '\s*>\s*뉴스\s*$', '');   -- 이중 이스케이프·꼬리말 정리
       begin v_ts := (regexp_replace(trim(regexp_replace(v_pd, '^[A-Za-z]+,\s*', '')), '\s+(GMT|UTC|\+0000)$', ''))::timestamp at time zone 'UTC';
       exception when others then continue; end;
