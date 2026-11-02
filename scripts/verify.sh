@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 ok=1
 echo "== JS 문법"
 node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');new Function(s.slice(s.lastIndexOf('<script>')+8,s.lastIndexOf('</script>')));console.log('  ok')" || ok=0
+echo "== config.js 문법"
+node -e "const w={};require('vm').runInNewContext(require('fs').readFileSync('config.js','utf8'),{window:w});if(!w.ICTC_CONFIG||typeof w.ICTC_CONFIG!=='object')throw new Error('ICTC_CONFIG 없음');console.log('  ok')" || { echo "  config.js 문법 오류 → 앱이 테스트 모드로 열립니다!"; ok=0; }
 echo "== Python 문법"
 python3 -I -c "import ast;[ast.parse(open(f,encoding='utf-8').read()) for f in ('server/ictc_server.py','server/build_zip.py')];print('  ok')" || ok=0
 if [[ " $* " != *" --no-sql "* ]]; then
