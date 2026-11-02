@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.20: 브리핑 공유 이미지 경로 · v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -820,11 +820,11 @@ begin
             'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/octet-stream'])
     on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
     execute 'drop policy if exists "sail41 chat upload" on storage.objects';
-    -- 경로는 chat/<톡방id>/<난수>.<확장자> (41망) 또는 items/<schedule|tasks|personal>/<난수>.<확장자> (일정·업무 사진, v6.5) 세 단계만
+    -- 경로는 chat/<톡방id>/<난수>.<확장자> (41망) 또는 items/<schedule|tasks|personal|briefing>/<난수>.<확장자> (일정·업무 사진 v6.5, 브리핑 공유 이미지 v6.20) 세 단계만
     -- (화면 chatUpload · itemUpload 의 key 형식과 같아야 함). 수정·삭제 정책은 없으므로 anon 은 올린 파일을 바꾸거나 지울 수 없다
     execute $p$create policy "sail41 chat upload" on storage.objects for insert to anon, authenticated
       with check (bucket_id = 'sail41' and ((storage.foldername(name))[1] = 'chat' or (storage.foldername(name))[1] = 'items')
-        and name ~ '^(chat/[A-Za-z0-9_.%-]{1,64}|items/(schedule|tasks|personal))/[A-Za-z0-9_.-]{1,80}$')$p$;
+        and name ~ '^(chat/[A-Za-z0-9_.%-]{1,64}|items/(schedule|tasks|personal|briefing))/[A-Za-z0-9_.-]{1,80}$')$p$;   -- briefing: 카카오톡 공유용 브리핑 이미지
     execute 'drop policy if exists "sail41 public read" on storage.objects';
     execute $p$create policy "sail41 public read" on storage.objects for select to anon, authenticated using (bucket_id = 'sail41')$p$;
   end if;

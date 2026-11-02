@@ -1683,7 +1683,7 @@
       restore: async () => {},
       // 미리보기 톡방: 이 브라우저에만 저장. 기본 톡방·코드는 실제 서버와 같다
       chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
-      chatBriefingNow: async (pin) => { if (pin !== (lsGet(LS.pin) || '1234')) throw new ApiError('PIN_INVALID'); return api.chatBriefing(true); },
+      chatBriefingNow: async (pin) => { if (pin !== 'local' && pin !== (lsGet(LS.pin) || '1234')) throw new ApiError('PIN_INVALID'); return api.chatBriefing(true); },   // 미리보기는 관리자 PIN 이 'local'
       chatBriefing: async (force) => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
         const t = new Date(); if (!force && (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 7)) return 0;
         const d = todayStr(); let cnt = 0; const rooms = await api.chatRooms(); const boards = lsGet(LS.boards) || [{ id: 'main', name: '지휘역량강화센터' }];
@@ -2316,7 +2316,28 @@
     document.getElementById('menu').classList.remove('open'); let n = 0;
     const ok = await withPin(async pin => { n = await api.chatBriefingNow(pin); }); if (!ok) return;
     await refreshChat(true);
-    toast(n > 0 ? `${n}개 톡방에 브리핑을 올렸어요(수동 게시 표시). 평일 07:00 자동 게시와는 별개예요` : '올릴 톡방이 없어요', 4000);
+    if (!(n > 0)) { toast('올릴 톡방이 없어요', 4000); return; }
+    // 자동화: 방금 올린 브리핑(입장한 첫 톡방)을 크게 보기로 열고 바로 카카오톡 공유까지
+    const room = CHAT.rooms.find(r => chatCode(r.id)) || CHAT.rooms[0]; let m = null;
+    if (room && chatCode(room.id)) { await refreshRoom(room.id, true); m = chatMsgs(room.id).filter(x => x.bot && /수동 게시/.test(x.text || '')).pop(); }
+    if (!m) { toast(`${n}개 톡방에 올렸어요. 공유하려면 입장한 톡방의 카드를 열어 '공유'를 누르세요`, 4000); return; }
+    openBriefView(null, m); toast('브리핑을 올렸어요. 카카오톡 공유 창을 엽니다', 2500);
+    setTimeout(() => briefShareAuto(), 300);
+  }
+  // 카카오톡으로: JavaScript 키가 있으면 Kakao Share(카카오톡이 바로 열려 '나와의 채팅' 선택), 없으면 폰의 공유 창(카카오톡 → 나와의 채팅)
+  function loadKakao() { if (window.Kakao) return Promise.resolve(); return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js'; sc.crossOrigin = 'anonymous'; sc.onload = res; sc.onerror = () => rej(new Error('카카오 SDK 를 불러오지 못했어요')); document.head.appendChild(sc); }); }
+  async function briefShareAuto() {
+    const b = BV.b; if (!b) return;
+    if (!CFG.kakaoJsKey) { await briefImage('share'); return; }
+    try {
+      await loadKakao(); if (!Kakao.isInitialized()) Kakao.init(CFG.kakaoJsKey);
+      if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 124); } catch (e) { nw.qr = null; } }); } catch (e) {} }
+      const canvas = briefCanvas(b); const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], `SAIL41-brief-${new Date().getFullYear()}${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}.png`, { type: 'image/png' });
+      const up = await api.itemUpload('briefing', file);   // 카카오 메시지의 이미지는 주소(URL)여야 해서 저장소에 올린다
+      const appUrl = location.origin + location.pathname;
+      Kakao.Share.sendDefault({ objectType: 'feed', content: { title: `${b.month}월 ${b.day}일 아침 브리핑 · ${b.room}`, description: `오늘 일정 ${b.todayN}건${b.news.length ? ` · 소방 뉴스 ${b.news.length}개` : ''}`, imageUrl: up.url, imageWidth: canvas.width, imageHeight: canvas.height, link: { mobileWebUrl: appUrl, webUrl: appUrl } }, buttons: [{ title: 'SAIL:41 열기', link: { mobileWebUrl: appUrl, webUrl: appUrl } }] });
+    } catch (e) { toast((e.message || '카카오톡 공유 실패') + ' · 폰 공유 창으로 보냅니다', 3500); await briefImage('share'); }
   }
   async function openTrash() {
     let rows;
@@ -2745,7 +2766,7 @@
       </div></div>`;
   }
   const BV = { b: null };
-  function openBriefView(mid) { const m = chatMsgs(CHAT.room).find(x => x.id === mid); const b = m && parseBrief(m.text); if (!b) return; BV.b = b; document.getElementById('bvBody').innerHTML = briefCardHtml(b, null); document.getElementById('briefView').classList.add('open'); document.getElementById('bvBody').scrollTop = 0; pushNav({ overlay: 'briefView' }); }
+  function openBriefView(mid, msg) { const m = msg || chatMsgs(CHAT.room).find(x => x.id === mid); const b = m && parseBrief(m.text); if (!b) return; BV.b = b; document.getElementById('bvBody').innerHTML = briefCardHtml(b, null); document.getElementById('briefView').classList.add('open'); document.getElementById('bvBody').scrollTop = 0; pushNav({ overlay: 'briefView' }); }
   function closeBriefView(viaHistory) { const v = document.getElementById('briefView'); if (!v.classList.contains('open')) return; v.classList.remove('open'); if (!viaHistory && history.state && history.state.overlay === 'briefView') history.back(); }
   // 이미지: 앱이 캔버스에 직접 그린다(1080px 폭, 내용 길이만큼 세로). 서버 없이 폰에서 만든다
   function briefCanvas(b) {
@@ -2791,7 +2812,8 @@
   async function briefImage(mode) {
     const b = BV.b; if (!b) return; let blob; try {
       if (b.news.length) { try { await loadQrLib(); b.news.forEach(nw => { try { nw.qr = qrCanvas(nw.url, 124); } catch (e) { nw.qr = null; } }); } catch (e) {} } if (document.fonts && document.fonts.load) await document.fonts.load('900 76px Pretendard').catch(() => {}); blob = await new Promise(r => briefCanvas(b).toBlob(r, 'image/png')); } catch (e) { toast('이미지를 만들지 못했어요'); return; }
-    const name = `SAIL41-brief-${new Date().getFullYear()}${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}.png`;   // 공유 대상 앱이 한글 파일명을 거부하는 경우가 있어 영문으로 const file = new File([blob], name, { type: 'image/png' });
+    const name = `SAIL41-brief-${new Date().getFullYear()}${String(b.month).padStart(2, '0')}${String(b.day).padStart(2, '0')}.png`;   // 공유 대상 앱이 한글 파일명을 거부하는 경우가 있어 영문으로
+    const file = new File([blob], name, { type: 'image/png' });
     if (mode === 'share' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast(mode === 'share' ? '이 브라우저는 바로 공유가 안 되어 이미지를 저장했어요. 갤러리에서 보내세요' : '이미지를 저장했어요', 3500);
   }
