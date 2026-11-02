@@ -71,7 +71,7 @@ def tokens(title):
         out.add(w[:2])                                                                # 활동하던→활동, 아파트→아파 처럼 앞 2자로 비교(조사·어미 차이 무시)
     return out
 
-def pick_top(items, day, n=5):
+def pick_top(items, day, n=5, dump=0):
     start, end = window(day)
     items = [i for i in items if start <= i['ts'].astimezone(KST) < end]
     # 같은 기사(제목·링크 중복) 제거
@@ -107,6 +107,9 @@ def pick_top(items, day, n=5):
         s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (15 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
+    if dump:   # 디버그: 점수 순으로 묶음을 보여 준다(순위 규칙 조정용)
+        for c in clusters[:dump]:
+            rep = c['items'][0]; print('%6.1f | %s (%s, %s, %d곳/%d건)' % (score(c)[0], rep['title'], rep['press'], rep['ts'].astimezone(KST).strftime('%H:%M'), len({x['press'] for x in c['items']}), len(c['items'])))
     top = []
     for c in clusters[:n]:
         rank = lambda x: next((i for i, m in enumerate(MAJOR) if m in x['press']), len(MAJOR))   # 주요 언론사 순위(앞일수록 우선), 없으면 뒤
@@ -126,10 +129,17 @@ def fetch_fire_news(day=None, timeout=12):
     return pick_top(items, day)
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('--date'); ap.add_argument('--json', action='store_true'); ap.add_argument('--sample', help='RSS xml 파일로 테스트(인터넷 없이)')
+    ap = argparse.ArgumentParser(); ap.add_argument('--date'); ap.add_argument('--json', action='store_true'); ap.add_argument('--sample', help='RSS xml 파일로 테스트(인터넷 없이)'); ap.add_argument('--dump', type=int, default=0, help='점수 순 묶음 N개를 보여 준다(디버그)')
     a = ap.parse_args()
     day = datetime.date.fromisoformat(a.date) if a.date else datetime.datetime.now(KST).date()
-    if a.sample: top = pick_top(parse_rss(open(a.sample, 'rb').read()), day)
+    if a.sample: top = pick_top(parse_rss(open(a.sample, 'rb').read()), day, dump=a.dump)
+    elif a.dump:
+        items = []
+        for i, q in enumerate(QUERIES):
+            if i: time.sleep(1.5)
+            try: items += parse_rss(fetch_rss(q))
+            except Exception as e: print('[뉴스] %s 실패: %s' % (q, e), file=sys.stderr)
+        top = pick_top(items, day, dump=a.dump)
     else: top = fetch_fire_news(day)
     if a.json: print(json.dumps(top, ensure_ascii=False))
     else:
