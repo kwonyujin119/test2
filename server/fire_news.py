@@ -25,7 +25,7 @@ INCHEON = INCHEON_CITY + INCHEON_GU
 MAJOR = ['연합뉴스', 'KBS', 'MBC', 'SBS', 'YTN', 'JTBC', '조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '뉴시스', '뉴스1', '한국일보', '서울신문', '국민일보', '세계일보', '문화일보', '매일경제', '한국경제', '연합뉴스TV', 'MBN', 'TV조선', '채널A']
 FOREIGN = ['홍콩', '중국', '일본', '미국', '대만', '영국', '프랑스', '독일', '러시아', '우크라이나', '인도', '호주', '캐나다', '유럽', '해외', '베트남', '태국', '필리핀', '인도네시아', '이스라엘', '이란', '터키', '튀르키예', '브라질', '멕시코', '뉴욕', '도쿄', 'LA', '파리', '런던']
 PR = ['개최', '성황리', '훈련', '캠페인', '협약', 'MOU', '홍보', '간담회', '위촉', '수여', '표창', '방문', '시상', '발대식', '점검', '교육 실시', '행사', '기념', '업무협약', '워크숍', '세미나', '봉사', '전달', '기부', '후원', '성료', '체험', '견학', '신고식', '승진', '격려', '우승', '대회', '페스티벌', '완공식', '부스', '교실', '실습', '추모식', '안전지도', '운영', '강조의 달', '실증', '맞손']
-POLICY = ['소방청', '정부', '국회', '행정안전부', '행안부', '법안', '법률', '입법', '개정', '예산', '교부세', '국비', '처우', '인력', '정원', '제도', '조직', '승격', '대통령', '장관', '국정감사', '국감', '정책', '지침', '시행', '도입', '수당', '연금', '복지', '대책', '공무상', '국회의원']   # 소방 정책(예산·법·제도·처우·조직) 기사 = 최우선 +80. '의원' 은 시·도·구·지방의원을 뺀 국회의원만(아래 정규식)
+POLICY = ['소방청', '정부', '국회', '행정안전부', '행안부', '법안', '법률', '입법', '개정', '교부세', '국비', '처우', '인력', '정원', '제도', '조직', '승격', '대통령', '장관', '국정감사', '국감', '정책', '지침', '시행', '도입', '수당', '연금', '복지', '대책', '공무상', '국회의원']   # 소방 정책(예산·법·제도·처우·조직) 기사 = 최우선 +80. '의원' 은 시·도·구·지방의원을 뺀 국회의원만(아래 정규식)
 RELEVANT = ['소방', '화재', '119', '구급', '구조', '산불', '폭발', '진화', '대피', '방화', '소화기', '큰불', '불이', '불길', '불에', '불로', '불,', '불…', '화상', '붕괴', '참사']   # 이 중 하나도 없으면 소방 기사가 아님(검색어에 걸린 엉뚱한 기사) −50   # 보도자료성 기사는 뒤로
 INCIDENT = ['화재', '불', '사망', '숨져', '순직', '부상', '구조', '대피', '폭발', '붕괴', '사고', '진화', '전소', '화상', '참사', '이송', '인명']
 STOP = set('소방 소방관 소방서 소방청 소방본부 화재 불 발생 관련 오늘 내일 어제 속보 단독 영상 사진 종합 기자 뉴스 등 및 의 는 을 를 이 가 에 서 로 도 한 명 중 명이 명을 명의 인명피해 없어 없음 만에 추정 원인 조사 당국 경찰 긴급 현장 오전 오후 새벽 밤 시간'.split())
@@ -71,8 +71,11 @@ def tokens(title):
     out = set()
     for w in words:
         if re.match(r'^\d+(명|시간|분|건|일|층|대|곳|여|차|호|%)?$', w): continue          # 숫자·단위(20명, 2시간)는 사건 식별에 약하다
-        if w in STOP or any(w.startswith(st) for st in STOP if len(st) >= 2): continue   # 화재로·소방관이 같은 조사 붙은 꼴도 제외(두 글자 이상 불용어만 앞부분 비교)
-        out.add(w[:2])                                                                # 활동하던→활동, 아파트→아파 처럼 앞 2자로 비교(조사·어미 차이 무시)
+        if w in STOP: continue
+        st = max((st for st in STOP if len(st) >= 2 and w.startswith(st)), key=len, default=None)   # 두 글자 이상 불용어로 시작하는 말
+        if st and len(w) <= len(st) + 2: continue                                     # 화재로·소방관이 같은 조사 붙은 꼴은 제외
+        out.add(w[:len(st) + 2] if st else w[:2])                                     # 활동하던→활동, 아파트→아파 처럼 앞 2자로 비교(조사·어미 차이 무시). 화재위험경보→화재위험
+        if len(w) >= 6 and re.match(r'^[가-힣]+$', w): out.add(w)                     # 긴 복합어(화재위험경보·소방안전교부세)는 통째로도: 뽑을 때 같은 사건 중복 제거에 쓴다
     return out
 
 def pick_top(items, day, n=5, dump=0):
@@ -102,7 +105,7 @@ def pick_top(items, day, n=5, dump=0):
         pr = any(w in titles for w in PR)                                      # 행사·홍보성(훈련 개최 등)은 '구조' 같은 단어가 있어도 사고로 보지 않음
         incident = (not pr) and any(w in titles for w in INCIDENT)             # 사고·인명 기사는 앞으로
         in_city = any(w in titles for w in INCHEON_CITY); in_gu = any(w in titles for w in INCHEON_GU)
-        policy = any(w in titles for w in POLICY) or re.search(r'(?<![시도구방])의원', titles) is not None   # 소방 정책 기사(행사·홍보 단어가 섞여도 정책이면 정책)
+        policy = any(w in titles for w in POLICY) or re.search(r'(?<![시도구방])의원|예산(?!군)', titles) is not None   # 소방 정책 기사(행사·홍보 단어가 섞여도 정책이면 정책)
         relevant = any(w in titles for w in RELEVANT)
         incheon = (incident and (in_city or in_gu)) or (in_city and policy)   # 인천 사건(구 단위 포함) 또는 인천시 단위 정책만 가점. 구 단위 정책·행사, 소방과 무관한 인천 기사는 아님
         death = incident and any(w in titles for w in DEATH)                  # 사망은 사고 기사일 때만(기부·추모 행사의 '순직' 은 아님)
@@ -116,8 +119,11 @@ def pick_top(items, day, n=5, dump=0):
     if dump:   # 디버그: 점수 순으로 묶음을 보여 준다(순위 규칙 조정용)
         for c in clusters[:dump]:
             rep = c['items'][0]; print('%6.1f | %s (%s, %s, %d곳/%d건)' % (score(c)[0], rep['title'], rep['press'], rep['ts'].astimezone(KST).strftime('%H:%M'), len({x['press'] for x in c['items']}), len(c['items'])))
-    top = []
-    for c in clusters[:n]:
+    top = []; picked = []
+    for c in clusters:
+        if len(top) >= n: break
+        if any(len(w) >= 6 for p in picked for w in (c['tok'] & p)): continue   # 이미 뽑은 사건과 긴 복합어(화재위험경보 등)를 공유하면 같은 사건의 다른 지역판 → 건너뜀
+        picked.append(c['tok'])
         rank = lambda x: next((i for i, m in enumerate(MAJOR) if m in x['press']), len(MAJOR))   # 주요 언론사 순위(앞일수록 우선), 없으면 뒤
         rep = sorted(c['items'], key=lambda x: (rank(x), -x['ts'].timestamp()))[0]
         top.append({'title': rep['title'], 'press': rep['press'], 'url': rep['url'], 'time': rep['ts'].astimezone(KST).strftime('%H:%M'), 'outlets': len({x['press'] for x in c['items']})})

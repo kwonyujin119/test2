@@ -668,7 +668,7 @@ declare
   major text[] := array['연합뉴스','KBS','MBC','SBS','YTN','JTBC','조선일보','중앙일보','동아일보','한겨레','경향신문','뉴시스','뉴스1','한국일보','서울신문','국민일보','세계일보','문화일보','매일경제','한국경제','연합뉴스TV','MBN','TV조선','채널A'];
   foreign_w text[] := array['홍콩','중국','일본','미국','대만','영국','프랑스','독일','러시아','우크라이나','인도','호주','캐나다','유럽','해외','베트남','태국','필리핀','인도네시아','이스라엘','이란','터키','튀르키예','브라질','멕시코','뉴욕','도쿄','파리','런던'];
   pr_w text[] := array['개최','성황리','훈련','캠페인','협약','MOU','홍보','간담회','위촉','수여','표창','방문','시상','발대식','점검','교육 실시','행사','기념','업무협약','워크숍','세미나','봉사','전달','기부','후원','성료','체험','견학','신고식','승진','격려','우승','대회','페스티벌','완공식','부스','교실','실습','추모식','안전지도','운영','강조의 달','실증','맞손'];
-  policy_w text[] := array['소방청','정부','국회','행정안전부','행안부','법안','법률','입법','개정','예산','교부세','국비','처우','인력','정원','제도','조직','승격','대통령','장관','국정감사','국감','정책','지침','시행','도입','수당','연금','복지','대책','공무상','국회의원'];   -- 소방 정책 +80 = 최우선 ('의원' 은 시·도·구·지방의원 제외, 아래 정규식)
+  policy_w text[] := array['소방청','정부','국회','행정안전부','행안부','법안','법률','입법','개정','교부세','국비','처우','인력','정원','제도','조직','승격','대통령','장관','국정감사','국감','정책','지침','시행','도입','수당','연금','복지','대책','공무상','국회의원'];   -- 소방 정책 +80 = 최우선 ('의원' 은 시·도·구·지방의원 제외, 아래 정규식)
   relevant_w text[] := array['소방','화재','119','구급','구조','산불','폭발','진화','대피','방화','소화기','큰불','불이','불길','불에','불로','불,','불…','화상','붕괴','참사'];   -- 하나도 없으면 소방 기사가 아님 −50
   inc_w text[] := array['화재','불','사망','숨져','순직','부상','구조','대피','폭발','붕괴','사고','진화','전소','화상','참사','이송','인명'];
   other_w text[] := array['울산','대전','부산','대구','광주','세종','강원','충북','충남','전북','전남','경북','경남','제주','춘천','원주','청주','천안','전주','목포','포항','창원','김해','진주','구미','경주','여수','순천','군산','익산','장수','사천','통영','거제','안동','강릉','속초'];   -- 다른 지역의 지역 사고 −5
@@ -679,7 +679,7 @@ declare
   trivia_w text[] := array['소동','해프닝','뱀','고양이','강아지','개구리','벌집','말벌','동물','구출 작전','열쇠'];   -- 가벼운 해프닝 −10
   opinion_w text[] := array['시론','칼럼','사설','기고','논설','인터뷰','기자수첩'];   -- 의견·칼럼 −6
   noharm_w text[] := array['인명피해 없','인명 피해 없','다친 사람 없','부상자 없'];   -- 인명피해 없는 사고 −3(인천 제외)
-  v_pr boolean; v_inc boolean; v_city boolean; v_gu boolean; v_policy boolean; v_incheon boolean;
+  v_pr boolean; v_inc boolean; v_city boolean; v_gu boolean; v_policy boolean; v_incheon boolean; picked_cl int[] := array[]::int[];
   stop_w text[] := array['소방','소방관','소방서','소방청','소방본부','화재','불','발생','관련','오늘','내일','어제','속보','단독','영상','사진','종합','기자','뉴스','인명피해','없어','없음','만에','추정','원인','조사','당국','경찰','긴급','현장','오전','오후','새벽','시간'];
   doc xml; it xml; v_t text; v_l text; v_p text; v_pd text; v_ts timestamptz; v_tok text[]; r record; c record; best int; k int; out jsonb := '[]'::jsonb; rep record; titles text; s numeric; n_major int; n_press int; n_items int;
 begin
@@ -699,8 +699,15 @@ begin
       if v_ts < w_start or v_ts >= w_end then continue; end if;
       if exists (select 1 from tmp_news x where x.title = v_t and x.press = v_p) then continue; end if;
       -- 같은 뜻 통일 → 단어 추출 → 숫자·단위 제외 → 불용어(조사 붙은 꼴 포함) 제외 → 앞 3자
-      v_tok := array(select distinct left(m[1], 2) from regexp_matches(regexp_replace(regexp_replace(regexp_replace(v_t, '다쳤|다쳐', '부상', 'g'), '숨졌|숨져|숨진', '사망', 'g'), '불길|진압', '진화', 'g'), '([가-힣A-Za-z0-9]{2,})', 'g') m
-                      where m[1] !~ '^\d+(명|시간|분|건|일|층|대|곳|여|차|호|%)?$' and not exists (select 1 from unnest(stop_w) st where m[1] = st or (length(st) >= 2 and m[1] like st || '%')));
+      v_tok := array(select distinct t from (
+                 select case when sp.s is null then left(m[1], 2) else left(m[1], length(sp.s) + 2) end as t   -- 앞 2자(불용어로 시작하면 불용어+2자: 화재위험경보→화재위험)
+                   from regexp_matches(regexp_replace(regexp_replace(regexp_replace(v_t, '다쳤|다쳐', '부상', 'g'), '숨졌|숨져|숨진', '사망', 'g'), '불길|진압', '진화', 'g'), '([가-힣A-Za-z0-9]{2,})', 'g') m
+                   left join lateral (select st from unnest(stop_w) st where length(st) >= 2 and m[1] like st || '%' order by length(st) desc limit 1) sp(s) on true
+                  where m[1] !~ '^\d+(명|시간|분|건|일|층|대|곳|여|차|호|%)?$' and not exists (select 1 from unnest(stop_w) st where m[1] = st)
+                    and (sp.s is null or length(m[1]) > length(sp.s) + 2)   -- 화재로·소방관이 같은 조사 붙은 꼴 제외
+                 union
+                 select m[1] from regexp_matches(regexp_replace(regexp_replace(regexp_replace(v_t, '다쳤|다쳐', '부상', 'g'), '숨졌|숨져|숨진', '사망', 'g'), '불길|진압', '진화', 'g'), '([가-힣]{6,})', 'g') m   -- 긴 복합어는 통째로도(뽑을 때 중복 제거용)
+               ) x);
       insert into tmp_news (title, press, url, ts, tok) values (v_t, v_p, v_l, v_ts, v_tok);
     end loop;
   end loop;
@@ -726,7 +733,7 @@ begin
     if v_pr then s := s - 4; elsif v_inc then s := s + 3; end if;
     if exists (select 1 from unnest(foreign_w) w where c.titles like '%' || w || '%') then s := s - 15; end if;   -- 해외 사건은 사망·참사라도 뒤로
     v_city := exists (select 1 from unnest(city_w) w where c.titles like '%' || w || '%'); v_gu := exists (select 1 from unnest(gu_w) w where c.titles like '%' || w || '%');
-    v_policy := exists (select 1 from unnest(policy_w) w where c.titles like '%' || w || '%') or c.titles ~ '(^|[^시도구방])의원';   -- 소방 정책(행사 단어가 섞여도 정책)
+    v_policy := exists (select 1 from unnest(policy_w) w where c.titles like '%' || w || '%') or c.titles ~ '(^|[^시도구방])의원|예산($|[^군])';   -- 소방 정책(행사 단어가 섞여도 정책)
     if v_policy then s := s + 80; end if;   -- 정책 최우선
     if not exists (select 1 from unnest(relevant_w) w where c.titles like '%' || w || '%') then s := s - 50; end if;   -- 소방 단어가 없는 엉뚱한 기사
     v_incheon := (v_inc and (v_city or v_gu)) or (v_city and v_policy);   -- 인천 사건(구 단위 포함)·인천시 단위 정책만 가점. 구 단위 정책·행사, 소방과 무관한 인천 기사는 아님
@@ -741,7 +748,11 @@ begin
   end loop;
   k := 0;
   for c in select cl, press::numeric as score, ts as last_ts from tmp_news where title = '__score__' order by press::numeric desc, ts desc loop
-    k := k + 1; if k > 5 then exit; end if;
+    if k >= 5 then exit; end if;
+    -- 이미 뽑은 사건과 긴 복합어(6자 이상: 화재위험경보 등)를 공유하면 같은 사건의 다른 지역판 → 건너뜀
+    if exists (select 1 from tmp_cl a join tmp_cl b on b.id = c.cl where a.id = any(picked_cl)
+                 and exists (select 1 from unnest(a.tok) t where length(t) >= 6 and t = any(b.tok))) then continue; end if;
+    picked_cl := picked_cl || c.cl; k := k + 1;
     select title, press, url, ts into rep from tmp_news x where x.cl = c.cl and x.title <> '__score__'
       order by coalesce((select min(i) from unnest(major) with ordinality as m(name, i) where x.press like '%' || m.name || '%'), 99), ts desc limit 1;
     out := out || jsonb_build_object('title', rep.title, 'press', rep.press, 'url', rep.url, 'time', to_char(rep.ts at time zone 'Asia/Seoul', 'HH24:MI'),
