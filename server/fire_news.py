@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """소방 관련 뉴스 5개 고르기 (Google 뉴스 RSS, 표준 라이브러리만).
-기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −15, 행사·홍보성 기사 −4, 인천 사건·인천시 정책 +100 = 최우선(구 단위 정책·행사는 제외), 사망 +6, 다른 지역 지역사고 −8, 인명피해 없는 사고 −3, 해프닝 −10, 칼럼·시론 −6, 전국적 사건·정책 신호 +3/개(최대 9)).
+기준: 한국 시간 전날 07:00 ~ 당일 07:00(24시간) 사이에 나온 기사 중 '가장 많이 다뤄진 사건' 순(주요 언론사 수 ×3 + 그 밖 언론사 수 ×1 + 기사 수 ×0.3 + 사고·인명 기사 +3, 해외 사건 −15, 행사·홍보성 기사 −4,
+      **소방 정책(예산·법·제도·처우·조직) +80 = 최우선**, 인천 사건·인천시 정책 +50(둘이면 +130; 구 단위 정책·행사는 제외), 소방 단어가 하나도 없는 기사 −50(검색어에 걸린 엉뚱한 기사), 사망(사고 기사만) +6, 다른 지역 지역사고 −8, 인명피해 없는 사고 −3, 해프닝 −10, 칼럼·시론 −6, 전국적 사건·정책 신호 +3/개(최대 9)).
+  순서는 대체로: 인천 소방 정책 > 전국 소방 정책 > 인천 사고 > 전국 큰 사고 > 그 밖.
   - '소방' '소방관' '화재' 세 검색어의 RSS 를 합치고 창(window) 안의 기사만 남긴다
   - 제목 단어가 2개 이상(또는 1/4 이상) 겹치는 기사를 같은 사건으로 묶고, 보도한 언론사 수가 많은 묶음을 위로
   - 묶음마다 대표 기사 1개(주요 언론사 우선, 없으면 가장 최근)만 넣어 5개
@@ -22,7 +24,9 @@ DEATH = ['사망', '숨져', '숨진', '숨졌', '순직', '참사']   # 사망 
 INCHEON = INCHEON_CITY + INCHEON_GU
 MAJOR = ['연합뉴스', 'KBS', 'MBC', 'SBS', 'YTN', 'JTBC', '조선일보', '중앙일보', '동아일보', '한겨레', '경향신문', '뉴시스', '뉴스1', '한국일보', '서울신문', '국민일보', '세계일보', '문화일보', '매일경제', '한국경제', '연합뉴스TV', 'MBN', 'TV조선', '채널A']
 FOREIGN = ['홍콩', '중국', '일본', '미국', '대만', '영국', '프랑스', '독일', '러시아', '우크라이나', '인도', '호주', '캐나다', '유럽', '해외', '베트남', '태국', '필리핀', '인도네시아', '이스라엘', '이란', '터키', '튀르키예', '브라질', '멕시코', '뉴욕', '도쿄', 'LA', '파리', '런던']
-PR = ['개최', '성황리', '훈련', '캠페인', '협약', 'MOU', '홍보', '간담회', '위촉', '수여', '표창', '방문', '시상', '발대식', '점검 실시', '교육 실시', '행사', '기념', '업무협약', '워크숍', '세미나', '봉사']   # 보도자료성 기사는 뒤로
+PR = ['개최', '성황리', '훈련', '캠페인', '협약', 'MOU', '홍보', '간담회', '위촉', '수여', '표창', '방문', '시상', '발대식', '점검', '교육 실시', '행사', '기념', '업무협약', '워크숍', '세미나', '봉사', '전달', '기부', '후원', '성료', '체험', '견학', '신고식', '승진', '격려', '우승', '대회', '페스티벌', '완공식', '부스', '교실', '실습', '추모식', '안전지도', '운영', '강조의 달', '실증', '맞손']
+POLICY = ['소방청', '정부', '국회', '행정안전부', '행안부', '법안', '법률', '입법', '개정', '예산', '교부세', '국비', '처우', '인력', '정원', '제도', '조직', '승격', '대통령', '장관', '국정감사', '국감', '정책', '지침', '시행', '도입', '수당', '연금', '복지', '대책', '공무상', '국회의원']   # 소방 정책(예산·법·제도·처우·조직) 기사 = 최우선 +80. '의원' 은 시·도·구·지방의원을 뺀 국회의원만(아래 정규식)
+RELEVANT = ['소방', '화재', '119', '구급', '구조', '산불', '폭발', '진화', '대피', '방화', '소화기', '큰불', '불이', '불길', '불에', '불로', '불,', '불…', '화상', '붕괴', '참사']   # 이 중 하나도 없으면 소방 기사가 아님(검색어에 걸린 엉뚱한 기사) −50   # 보도자료성 기사는 뒤로
 INCIDENT = ['화재', '불', '사망', '숨져', '순직', '부상', '구조', '대피', '폭발', '붕괴', '사고', '진화', '전소', '화상', '참사', '이송', '인명']
 STOP = set('소방 소방관 소방서 소방청 소방본부 화재 불 발생 관련 오늘 내일 어제 속보 단독 영상 사진 종합 기자 뉴스 등 및 의 는 을 를 이 가 에 서 로 도 한 명 중 명이 명을 명의 인명피해 없어 없음 만에 추정 원인 조사 당국 경찰 긴급 현장 오전 오후 새벽 밤 시간'.split())
 SYN = [('다쳤', '부상'), ('다쳐', '부상'), ('숨졌', '사망'), ('숨져', '사망'), ('숨진', '사망'), ('불길', '진화'), ('진압', '진화')]   # 같은 뜻 다른 표현
@@ -98,13 +102,15 @@ def pick_top(items, day, n=5, dump=0):
         pr = any(w in titles for w in PR)                                      # 행사·홍보성(훈련 개최 등)은 '구조' 같은 단어가 있어도 사고로 보지 않음
         incident = (not pr) and any(w in titles for w in INCIDENT)             # 사고·인명 기사는 앞으로
         in_city = any(w in titles for w in INCHEON_CITY); in_gu = any(w in titles for w in INCHEON_GU)
-        incheon = (incident and (in_city or in_gu)) or (in_city and not pr)   # 인천 사건(구 단위 포함) 또는 인천시 단위 정책만 최우선. 구 단위 정책·행사는 보통 기사로
-        death = any(w in titles for w in DEATH)
+        policy = any(w in titles for w in POLICY) or re.search(r'(?<![시도구방])의원', titles) is not None   # 소방 정책 기사(행사·홍보 단어가 섞여도 정책이면 정책)
+        relevant = any(w in titles for w in RELEVANT)
+        incheon = (incident and (in_city or in_gu)) or (in_city and policy)   # 인천 사건(구 단위 포함) 또는 인천시 단위 정책만 가점. 구 단위 정책·행사, 소방과 무관한 인천 기사는 아님
+        death = incident and any(w in titles for w in DEATH)                  # 사망은 사고 기사일 때만(기부·추모 행사의 '순직' 은 아님)
         trivia = any(w in titles for w in TRIVIA)
         opinion = any(w in titles for w in OPINION); noharm = any(w in titles for w in NOHARM)
         other = (not incheon) and any(w in titles for w in OTHER_REGION)       # 다른 지역의 지역 사고
         national = sum(1 for w in NATIONAL if w in titles)                     # 전국적 사건·정책 신호 개수
-        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (15 if foreign else 0) - (4 if pr else 0) + (100 if incheon else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
+        s = major * 3 + (len(presses) - major) * 1 + len(c['items']) * 0.3 + (3 if incident else 0) - (15 if foreign else 0) - (4 if pr else 0) + (80 if policy else 0) + (50 if incheon else 0) - (50 if not relevant else 0) - (8 if other else 0) + min(national, 3) * 3 + (6 if death else 0) - (10 if trivia else 0) - (6 if opinion else 0) - (3 if (noharm and not incheon) else 0)
         return (s, max(x['ts'] for x in c['items']))
     clusters.sort(key=score, reverse=True)
     if dump:   # 디버그: 점수 순으로 묶음을 보여 준다(순위 규칙 조정용)
