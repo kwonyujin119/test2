@@ -230,6 +230,13 @@
   .cal-ev.major::before { content: '★'; margin-right: 2px; }
   @media (max-width: 640px) { .cal-ev.major { background: var(--gold); } .cal-ev.major::before { content: none; } }
   .task.linked-major:not(.done) { background: var(--gold-soft); box-shadow: inset 0 0 0 1px rgba(138,106,0,.18); }
+  .event.cancelled .event-title .t, .event.cancelled .event-time { text-decoration: line-through; color: var(--text-3); }
+  .event.cancelled .event-bar { opacity: .35; } .event.cancelled .event-sub, .event.cancelled .note, .event.cancelled .pill:not(.cancel) { opacity: .6; }
+  .event.cancelled.major .event-title .t::before { content: ''; }
+  .pill.cancel { background: var(--red-soft); color: var(--red); } .event-sub .cancel-why { color: var(--red); font-weight: 700; }
+  .cal-ev.cancelled { text-decoration: line-through; opacity: .5; }
+  .cancel-banner { background: var(--red-soft); color: var(--red); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 10px; }
+  .btn.cancel-btn.on { color: var(--red); } .sheet-foot { flex-wrap: wrap; } .sheet-foot .btn { min-width: 72px; }
   .event-bar { width: 4px; flex-shrink: 0; background: var(--cat, var(--c-기타)); margin: 10px 0 10px 10px; border-radius: 2px; }
   .event-time { width: 78px; flex-shrink: 0; padding: 12px 8px 12px 12px; font-size: 13px; font-weight: 600; color: var(--text-2); line-height: 1.45; font-variant-numeric: tabular-nums; border: none; background: transparent; text-align: left; border-radius: 10px; margin: 4px 0 4px 2px; transition: background .15s; }
   .event-time:hover { background: var(--card-2); color: var(--primary-text); }
@@ -1152,7 +1159,8 @@
     <div class="handle"></div>
     <h2 id="scheduleFormTitle">일정 추가</h2>
     <div class="copy-hint">내용을 복사했어요. 날짜를 고르고 저장하면 새 일정으로 추가됩니다.</div>
-    <input type="hidden" name="id"><input type="hidden" name="tag" value="기타">
+    <input type="hidden" name="id"><input type="hidden" name="tag" value="기타"><input type="hidden" name="cancelled"><input type="hidden" name="cancelReason">
+    <div class="cancel-banner" id="cancelBanner" style="display:none"></div>
     <div class="field"><label>제목</label><input name="title" required maxlength="100" placeholder="예) 현장지휘관 양성과정 1일차"></div>
     <div class="field"><label>구분</label><div class="picker" id="catPicker"></div></div>
     <div class="when-summary"><span id="whenText"></span><button type="button" onclick="expandWhen()">일시 변경</button></div>
@@ -1178,7 +1186,8 @@
     <div class="sheet-foot">
       <button type="button" class="btn danger" id="scheduleDelete" onclick="deleteItem('schedule')">삭제</button>
       <button type="button" class="btn ghost copy" id="scheduleCopy" onclick="copySchedule()" title="내용은 그대로, 날짜만 새로">복사</button>
-      <button type="button" class="btn ghost" onclick="closeModal('scheduleModal')">취소</button>
+      <button type="button" class="btn ghost cancel-btn" id="scheduleCancel" onclick="toggleCancelSchedule()" title="지우지 않고 '취소됨'으로 남겨요">일정 취소</button>
+      <button type="button" class="btn ghost" onclick="closeModal('scheduleModal')">닫기</button>
       <button type="submit" class="btn primary">저장</button>
     </div>
   </form>
@@ -1491,7 +1500,9 @@
   }
   const normCat = t => CATEGORIES.includes(t) ? t : (LEGACY_CAT[t] || normCustom(t) || '기타');
   const tagsOf = ev => { const raw = Array.isArray(ev.tags) && ev.tags.length ? ev.tags : [ev.tag]; return [...new Set(raw.map(normCat))]; };
-  const catOf = ev => tagsOf(ev)[0];
+  const catRank = c => { const i = CATEGORIES.indexOf(c); return i < 0 ? CATEGORIES.length : i; };   // 구분 순서(주요업무 → ICTC → … → 기타 → 직접 입력)
+  const sortCats = tags => [...tags].sort((a, b) => catRank(a) - catRank(b));
+  const catOf = ev => sortCats(tagsOf(ev))[0];   // 여러 구분이면 앞 순서 구분의 색
   const tcatOf = t => TASK_CATEGORIES.includes(t.category) ? t.category : (LEGACY_TCAT[t.category] || normCustom(t.category) || '기타');
   const ymd = d => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
   const fmtTime = iso => { if (!iso) return '-'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -1960,10 +1971,11 @@
   /* ── 일정: 목록 / 달력 ── */
   function renderSchedule() {
     const data = state.schedule, list = document.getElementById('scheduleList'); if (!data) return;
-    const upcoming = data.items.filter(i => endOf(i) >= TODAY).length, todayCnt = data.items.filter(i => i.date <= TODAY && endOf(i) >= TODAY).length;
+    const live = data.items.filter(i => !i.cancelled);   // 취소된 일정은 건수에서 뺀다(목록에는 취소선으로 남음)
+    const upcoming = live.filter(i => endOf(i) >= TODAY).length, todayCnt = live.filter(i => i.date <= TODAY && endOf(i) >= TODAY).length, todayCancel = data.items.filter(i => i.cancelled && i.date <= TODAY && endOf(i) >= TODAY).length;
     const d = new Date();
     document.getElementById('scheduleSummary').innerHTML = `
-      <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건<span class="mo-only"> · 예정 ${upcoming}건</span></div></div>
+      <div><div class="big">${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</div><div class="label">오늘 일정 ${todayCnt}건${todayCancel ? ` · 취소 ${todayCancel}건` : ''}<span class="mo-only"> · 예정 ${upcoming}건</span></div></div>
       <div class="stats"><div class="stat"><b>${upcoming}</b><span>예정</span></div><div class="stat"><b>${data.items.length}</b><span>전체</span></div></div>
       <div class="view-switch" role="group" aria-label="보기 전환"><button type="button" class="${state.view === 'list' ? 'on' : ''}" aria-label="목록 보기" onclick="setView('list')">${I.list}</button><button type="button" class="${state.view === 'calendar' ? 'on' : ''}" aria-label="달력 보기" onclick="setView('calendar')">${I.cal}</button></div>${wideBtn()}`;
     const counts = {}; data.items.forEach(i => tagsOf(i).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
@@ -2003,10 +2015,10 @@
         const ev = o.ev, cat = catOf(ev);
         const time = (ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일') + (o.total > 1 ? `<span class="dayidx">${o.idx + 1}/${o.total}일차</span>` : '');
         const sub = eventSub(ev, o.total > 1);
-        html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
+        html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''} ${ev.cancelled ? 'cancelled' : ''}"><div class="event-bar"></div>
           <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
           <div class="event-main" title="내용 수정" onclick="openScheduleForm('${esc(ev.id)}', 'detail')">
-            <div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, q)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>
+            <div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, q)}</span>${sortCats(tagsOf(ev)).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}${ev.cancelled ? '<span class="pill cancel">취소</span>' : ''}</div>
               ${sub ? `<div class="event-sub">${sub}</div>` : ''}${ev.note ? `<div class="event-sub"><span class="note">${esc(ev.note)}</span></div>` : ''}${attsHtml(ev.files, 4, 'ev:' + ev.id)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
       });
@@ -2017,7 +2029,7 @@
   }
   /* 카드 보조 정보 순서는 항상 같다: 기간 → 장소 → 담당 */
   function eventSub(ev, multi) {
-    return [multi ? `<span class="range">${I.cal}${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? `<span>${I.pin}${esc(ev.place)}</span>` : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
+    return [ev.cancelled ? `<span class="cancel-why">취소${ev.cancelReason ? ' · ' + esc(ev.cancelReason) : '됨'}</span>` : '', multi ? `<span class="range">${I.cal}${md(ev.date)} ~ ${md(endOf(ev))}</span>` : '', ev.place ? `<span>${I.pin}${esc(ev.place)}</span>` : '', ev.owner ? `<span><span class="avatar">${esc(initial(ev.owner))}</span>${esc(ev.owner)}</span>` : ''].filter(Boolean).join('');
   }
   function setView(v) { if (state.view !== v) toggleView(); }
   // 탭 버튼에 '달력' 표시(PC 배지 / 폰은 작은 글자 교체). 세 탭 공통
@@ -2042,7 +2054,7 @@
       const dow = dd.getDay(); const evs = byDate[date] || [];
       html += `<div class="cal-cell ${other ? 'other' : ''} ${date === TODAY ? 'today' : ''} ${mobile && date === state.calSelected ? 'selected' : ''} ${dow===0?'sun':dow===6?'sat':''} ${Q.schedule && (byDate[date] || []).length ? 'hit' : ''}" onclick="calCellClick(event,'${date}')"><div class="n">${dd.getDate()}</div>`;
       const max = mobile ? 4 : 3;
-      evs.slice(0, max).forEach(ev => { const multi = endOf(ev) !== ev.date; html += `<div class="cal-ev cat-${catOf(ev)} ${multi ? 'multi' : ''} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}" title="${esc(ev.title)}${multi ? ` (${md(ev.date)}~${md(endOf(ev))})` : ''}" onclick="${mobile ? '' : 'event.stopPropagation();openScheduleForm(\'' + esc(ev.id) + '\',\'detail\')'}">${ev.start && !multi ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
+      evs.slice(0, max).forEach(ev => { const multi = endOf(ev) !== ev.date; html += `<div class="cal-ev cat-${catOf(ev)} ${multi ? 'multi' : ''} ${tagsOf(ev).includes('주요업무') ? 'major' : ''} ${ev.cancelled ? 'cancelled' : ''}" title="${ev.cancelled ? '(취소) ' : ''}${esc(ev.title)}${multi ? ` (${md(ev.date)}~${md(endOf(ev))})` : ''}" onclick="${mobile ? '' : 'event.stopPropagation();openScheduleForm(\'' + esc(ev.id) + '\',\'detail\')'}">${ev.start && !multi ? `<small>${esc(ev.start)}</small>` : ''}${esc(ev.title)}</div>`; });
       if (evs.length > max) html += `<div class="cal-more">+${evs.length - max}개 더</div>`;
       html += `</div>`;
     }
@@ -2058,9 +2070,9 @@
           const cat = catOf(ev); const multi = endOf(ev) !== ev.date;
           const time = ev.start ? `${esc(ev.start)}<small>${ev.end ? esc(ev.end) : ''}</small>` : '종일';
           const sub = eventSub(ev, multi);
-          html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''}"><div class="event-bar"></div>
+          html += `<div class="event cat-${cat} ${tagsOf(ev).includes('주요업무') ? 'major' : ''} ${ev.cancelled ? 'cancelled' : ''}"><div class="event-bar"></div>
             <button type="button" class="event-time ${ev.start ? '' : 'allday'}" title="일시 변경" onclick="openPop('${esc(ev.id)}', this)">${time}</button>
-            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${tagsOf(ev).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}${attsHtml(ev.files, 4, 'ev:' + ev.id)}</div>
+            <div class="event-main" onclick="openScheduleForm('${esc(ev.id)}', 'detail')"><div class="event-body"><div class="event-title"><span class="t">${qMark(ev.title, Q.schedule)}</span>${sortCats(tagsOf(ev)).map(t => `<span class="pill cat-${t}">${esc(t)}</span>`).join('')}${ev.cancelled ? '<span class="pill cancel">취소</span>' : ''}</div>${sub ? `<div class="event-sub">${sub}</div>` : ''}${attsHtml(ev.files, 4, 'ev:' + ev.id)}</div>
             <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div></div>`;
         });
         html += `</div>`;
@@ -2449,6 +2461,9 @@
     document.getElementById('scheduleFormTitle').textContent = preset ? '일정 복사' : item ? '일정 수정' : '새 일정';
     document.getElementById('scheduleDelete').style.display = item ? '' : 'none';
     document.getElementById('scheduleCopy').style.display = item ? '' : 'none';
+    const cb = document.getElementById('scheduleCancel'); cb.style.display = item ? '' : 'none'; cb.textContent = item && item.cancelled ? '취소 해제' : '일정 취소'; cb.classList.toggle('on', !!(item && item.cancelled));
+    form.elements.cancelled.value = item && item.cancelled ? '1' : ''; form.elements.cancelReason.value = (item && item.cancelReason) || '';
+    const ban = document.getElementById('cancelBanner'); ban.style.display = item && item.cancelled ? '' : 'none'; ban.textContent = item && item.cancelled ? `이 일정은 취소됐어요${item.cancelReason ? ' · 사유: ' + item.cancelReason : ''}. 목록·달력에 취소선으로 남아요` : '';
     fillForm(form, item || preset || { date: presetDate || TODAY, start: '09:00', end: '18:00' }); renderCatPicker(item ? tagsOf(item) : preset ? tagsOf(preset) : ['교육']); attReset('schedule', (item || preset || {}).files);
     if (item && mode === 'detail') { form.classList.add('compact'); document.getElementById('whenText').textContent = fmtWhen(item); }
     openModal('scheduleModal'); setTimeout(() => (preset ? form.date : form.title).focus(), 300);
@@ -2456,26 +2471,34 @@
   async function copySchedule() {
     const form = document.getElementById('scheduleForm'); const src = state.schedule.items.find(i => i.id === form.elements.id.value); if (!src) return;
     await closeModal('scheduleModal');
-    openScheduleForm(null, null, null, { ...src, id: '', date: '', endDate: '' });
+    openScheduleForm(null, null, null, { ...src, id: '', date: '', endDate: '', cancelled: false, cancelReason: '' });
+  }
+  // 일정 취소/해제: 지우지 않고 '취소됨' 표시로 남긴다(없었던 일정과 구분). 폼의 다른 수정 내용도 함께 저장
+  function toggleCancelSchedule() {
+    const form = document.getElementById('scheduleForm'); const f = form.elements; if (!f.id.value) return;
+    if (f.cancelled.value === '1') { f.cancelled.value = ''; f.cancelReason.value = ''; }
+    else { const why = prompt('이 일정을 취소로 표시할게요. 취소 사유를 적어 주세요 (비워도 돼요)', f.cancelReason.value || ''); if (why === null) return; f.cancelled.value = '1'; f.cancelReason.value = why.trim().slice(0, 100); }
+    if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true }));
   }
   async function saveSchedule(e) {
     e.preventDefault();
-    const form = document.getElementById('scheduleForm'); const v = readForm(form);
+    const form = document.getElementById('scheduleForm'); const v = readForm(form); const wasCancelled = !!(v.id && (state.schedule.items.find(i => i.id === v.id) || {}).cancelled);
     if (v.start && v.end && v.end < v.start) { toast('종료 시간이 시작보다 빨라요'); return; }
     if (!v.endDate) v.endDate = v.date;
     if (v.endDate < v.date) { toast('종료 날짜가 시작보다 빨라요'); return; }
-    v.tags = (v.tag || '').split(',').filter(Boolean); if (!v.tags.length) v.tags = ['기타']; v.tag = v.tags[0];
+    v.tags = sortCats((v.tag || '').split(',').filter(Boolean)); if (!v.tags.length) v.tags = ['기타']; v.tag = v.tags[0];   // 고른 순서와 상관없이 구분 순서로 저장 → 색·알약 순서가 일정함
+    v.cancelled = v.cancelled === '1'; if (!v.cancelled) v.cancelReason = '';
     if (!v.id) { v.id = uid(); v.created = TODAY; }
     setBusy(form, true);
     try { v.files = await attUpload('schedule', 'schedule'); } catch (e2) { setBusy(form, false); toast(e2.message || '사진을 올리지 못했어요'); return; }
     state.focusDate = v.date; if (v.date < TODAY) state.showPast = true; const ok = await saveItem('schedule', v); setBusy(form, false);
     if (!ok) state.focusDate = null;
-    if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('Attention에도 등록했어요. Schedule에도 그대로 있어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast('저장했어요'); }
+    if (ok) { await closeModal('scheduleModal'); const linked = await syncLinkedTask(v); if (linked) { toast('Attention에도 등록했어요. Schedule에도 그대로 있어요'); showTab('tasks'); pushNav({ tab: 'tasks' }); state.focusTask = TASK_OF(v.id); renderTasks(); window.scrollTo({ top: 0 }); } else toast(v.cancelled && !wasCancelled ? '취소로 표시했어요. 목록·달력에 취소선으로 남아요' : !v.cancelled && wasCancelled ? '취소를 해제했어요' : '저장했어요'); }
   }
   /* 일정 구분 '주요업무' ↔ 주요업무 카드 연동 */
   async function syncLinkedTask(ev) {
     const tid = TASK_OF(ev.id); const existing = (state.tasks?.items || []).find(t => t.id === tid);
-    if (tagsOf(ev).includes('주요업무')) {
+    if (tagsOf(ev).includes('주요업무') && !ev.cancelled) {   // 취소된 일정은 주요업무 카드에서 뺀다
       const task = { id: tid, fromSchedule: ev.id, title: ev.title, due: endOf(ev), owner: ev.owner || '', category: existing?.category || '교육운영', status: existing?.status || '예정',
         detail: [ev.place ? '장소 ' + ev.place : '', ev.note || '', `일정 ${fmtWhen(ev)}`].filter(Boolean).join('\n') };
       if (!existing || JSON.stringify(existing) !== JSON.stringify(task)) await saveItem('tasks', task);
@@ -2835,11 +2858,11 @@
   function briefingText(sched, tasks, roomName, dateStr, manual, news) {
     const D = s => { const x = new Date((s || '').slice(0, 10) + 'T00:00:00'); return isNaN(x) ? null : x; }; const date = D(dateStr); const days = (a, b) => Math.round((a - b) / 864e5);
     const out = [`📋 ${date.getMonth() + 1}월 ${date.getDate()}일(${DOW[date.getDay()]}) 아침 브리핑 · ${roomName}${manual ? ' · 수동 게시' : ''}`];
-    const d = date; const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
-      .sort((a, b) => a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));
-    out.push(`오늘 일정 ${rows.length}건`);
+    const d = date; const rows = sched.map(it => { const sd = D(it.date), ed = D(it.endDate) || sd; if (!sd || sd > d || ed < d) return null; const tags = tagsOf(it); return { cancelled: it.cancelled ? 1 : 0, major: tags.includes('주요업무') ? 0 : 1, start: it.start || '', it, sd, ed }; }).filter(Boolean)
+      .sort((a, b) => a.cancelled - b.cancelled || a.major - b.major || a.start.localeCompare(b.start) || (a.it.title || '').localeCompare(b.it.title || ''));   // 취소된 일정은 맨 뒤에 [취소] 로, 건수에서는 제외
+    out.push(`오늘 일정 ${rows.filter(r => !r.cancelled).length}건`);
     rows.forEach((r, k) => { if (k > 8) return; if (k === 8) { out.push(` … 외 ${rows.length - 8}건`); return; }
-      let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
+      let line = ` ${r.start || '종일'} ${r.major === 0 ? '★ ' : ''}${r.cancelled ? '[취소] ' : ''}${r.it.title || ''}`; if (r.it.place) line += ' · ' + r.it.place; if (r.it.owner) line += ' · ' + r.it.owner; if (r.ed > r.sd) line += ` (${days(d, r.sd) + 1}/${days(r.ed, r.sd) + 1}일차)`; out.push(line); });
     if (news && news.length) { out.push('소방 뉴스'); news.slice(0, 5).forEach((nw, k) => out.push(` ${k + 1}. ${nw.title} (${nw.press}) ${nw.url}`)); }
     return out.join('\n');
   }

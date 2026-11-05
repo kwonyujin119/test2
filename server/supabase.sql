@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.22: 첨부 형식 확대(동영상·소리·zip 변형)·조각 업로드 · v6.21: 뉴스 순위 소방 정책 +80 최우선, 인천 +50, 소방 무관 기사 −50 · v6.20: 브리핑 공유 이미지 경로 · v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.23: 브리핑에서 취소 일정은 건수 제외·[취소] 표시 · v6.22: 첨부 형식 확대(동영상·소리·zip 변형)·조각 업로드 · v6.21: 뉴스 순위 소방 정책 +80 최우선, 인천 +50, 소방 무관 기사 −50 · v6.20: 브리핑 공유 이미지 경로 · v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -578,25 +578,29 @@ create or replace function public.ictc_briefing_text(p_board text, p_room_name t
 returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   dow text[] := array['일','월','화','수','목','금','토'];
-  txt text := ''; r record; d date; n int; k int; line text; news jsonb;
+  txt text := ''; r record; d date; n int; tot int; k int; line text; news jsonb;
 begin
   txt := '📋 ' || extract(month from p_date)::int || '월 ' || extract(day from p_date)::int || '일(' || dow[extract(dow from p_date)::int + 1] || ') 아침 브리핑 · ' || p_room_name || (case when p_manual then ' · 수동 게시' else '' end);
   d := p_date;
   select count(*) into n from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
-    and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;
+    and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d
+    and coalesce(i.data->>'cancelled', '') not in ('true', '1');   -- 취소된 일정은 건수에서 뺀다(목록 맨 뒤에 [취소] 로 표시, v6.23)
+  select count(*) into tot from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
+    and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d;   -- 취소 포함 전체(… 외 n건 계산용)
   txt := txt || E'\n오늘 일정 ' || n || '건';
   k := 0;
   for r in
     select i.data as it,
            (coalesce(i.data->'tags', jsonb_build_array(i.data->'tag')) @> '["주요업무"]'::jsonb) as major,
+           (coalesce(i.data->>'cancelled', '') in ('true', '1')) as cancelled,
            public.ictc_dt(i.data->>'date') as sd, coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) as ed
       from public.ictc_items i where i.kind = 'schedule' and i.board = p_board
        and public.ictc_dt(i.data->>'date') <= d and coalesce(public.ictc_dt(i.data->>'endDate'), public.ictc_dt(i.data->>'date')) >= d
-     order by major desc, coalesce(i.data->>'start', '') , i.data->>'title'
+     order by cancelled, major desc, coalesce(i.data->>'start', '') , i.data->>'title'
   loop
     k := k + 1;
-    if k > 8 then txt := txt || E'\n … 외 ' || (n - 8) || '건'; exit; end if;
-    line := ' ' || coalesce(nullif(r.it->>'start', ''), '종일') || ' ' || (case when r.major then '★ ' else '' end) || coalesce(r.it->>'title', '');
+    if k > 8 then txt := txt || E'\n … 외 ' || (tot - 8) || '건'; exit; end if;
+    line := ' ' || coalesce(nullif(r.it->>'start', ''), '종일') || ' ' || (case when r.major then '★ ' else '' end) || (case when r.cancelled then '[취소] ' else '' end) || coalesce(r.it->>'title', '');
     if coalesce(r.it->>'place', '') <> '' then line := line || ' · ' || (r.it->>'place'); end if;
     if coalesce(r.it->>'owner', '') <> '' then line := line || ' · ' || (r.it->>'owner'); end if;
     if r.ed > r.sd then line := line || ' (' || (d - r.sd + 1) || '/' || (r.ed - r.sd + 1) || '일차)'; end if;

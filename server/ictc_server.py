@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.11'
+VERSION = '5.12'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
@@ -138,12 +138,12 @@ def briefing_text(sched, tasks, room_name, date, manual=False, news=None):
         sd = _d(it.get('date')); ed = _d(it.get('endDate')) or sd
         if sd and sd <= d <= ed:
             tags = it.get('tags') if isinstance(it.get('tags'), list) else [it.get('tag')]
-            rows.append((0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
-    rows.sort(key=lambda r: (r[0], r[1], r[2]))
-    out.append(f'오늘 일정 {len(rows)}건')
-    for k, (major, start, title, it, sd, ed) in enumerate(rows):
+            rows.append((1 if str(it.get('cancelled')).lower() in ('true', '1') else 0, 0 if '주요업무' in tags else 1, it.get('start') or '', it.get('title') or '', it, sd, ed))
+    rows.sort(key=lambda r: (r[0], r[1], r[2], r[3]))   # 취소된 일정은 맨 뒤에 [취소] 로, 건수에서는 제외
+    out.append(f"오늘 일정 {sum(1 for r in rows if not r[0])}건")
+    for k, (cancelled, major, start, title, it, sd, ed) in enumerate(rows):
         if k >= 8: out.append(f' … 외 {len(rows) - 8}건'); break
-        line = f" {start or '종일'} {'★ ' if major == 0 else ''}{title}"
+        line = f" {start or '종일'} {'★ ' if major == 0 else ''}{'[취소] ' if cancelled else ''}{title}"
         if it.get('place'): line += ' · ' + it['place']
         if it.get('owner'): line += ' · ' + it['owner']
         if ed > sd: line += f' ({(d - sd).days + 1}/{(ed - sd).days + 1}일차)'
