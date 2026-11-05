@@ -788,6 +788,7 @@
   .chat-file .fn { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-file .fs { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
   .chat-file:hover { border-color: var(--primary); }
+  button.chat-file { font: inherit; cursor: pointer; text-align: left; max-width: 100%; }
   #chatSend.busy { opacity: .7; }
   /* '+' 시트 */
   #attachModal, #imgEditModal { z-index: 120; }   /* 톡방 모달(100) 위에 */
@@ -3050,7 +3051,7 @@
     const key = 'chat:' + mid; const imgs = regView(key, files);
     return `<div class="chat-files">${files.map((f, i) => isImgFile(f)
       ? `<a class="chat-img" href="${esc(f.url)}" onclick="event.preventDefault();openViewer('${esc(key)}', ${imgs.indexOf(f)})" data-fi="${i}"><img src="${esc(f.thumb || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"${f.w && f.h ? ` width="${f.w}" height="${f.h}"` : ''}></a>`
-      : f.parts && f.parts.length ? (PARTS[`${mid}:${i}`] = f, `<a class="chat-file" href="${esc(f.url)}" data-pk="${esc(mid)}:${i}" onclick="event.preventDefault();downloadParts('${esc(mid)}:${i}')" data-fi="${i}" title="조각으로 올라간 파일 · 누르면 합쳐서 내려받아요">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)} · ${f.parts.length}조각</span></a>`)
+      : f.parts && f.parts.length ? (PARTS[`${mid}:${i}`] = f, `<button type="button" class="chat-file" data-pk="${esc(mid)}:${i}" onclick="downloadParts('${esc(mid)}:${i}')" data-fi="${i}" title="조각으로 올라간 파일 · 누르면 합쳐서 내려받아요">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)} · ${f.parts.length}조각</span></button>`)
       : `<a class="chat-file" href="${esc(dlUrl(f))}" target="_blank" rel="noopener" download="${esc(f.name || '')}" data-fi="${i}">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)}</span></a>`).join('')}</div>`;
   }
   const chatPreviewText = m => m.deleted ? '(삭제된 메시지)' : m.text ? m.text : (m.files || []).some(isImgFile) ? '📷 사진' : (m.files || []).length ? '📎 파일' : '';
@@ -3630,6 +3631,11 @@
     const sync = () => { if (!busy()) { refresh('schedule', true); refresh('tasks', true); refreshChat(true); if (state.me) refresh('personal', true); } };
     setInterval(sync, every);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+    // 새 버전 알림: 화면 파일(index.html)의 HEAD 응답 ETag·Last-Modified 를 처음 값과 비교해 바뀌면 "새로고침" 토스트. 옛 화면이 새 형식(조각 파일 등)을 잘못 다루는 일을 줄인다
+    let verTag = null, verSeen = false;
+    const verCheck = async () => { try { const res = await fetch(location.pathname.replace(/[^/]*$/, '') + 'index.html', { method: 'HEAD', cache: 'no-store' }); if (!res.ok) return; const tag = (res.headers.get('etag') || '') + '|' + (res.headers.get('last-modified') || ''); if (tag === '|') return; if (verTag === null) verTag = tag; else if (tag !== verTag && !verSeen) { verSeen = true; toast('새 버전이 나왔어요. 새로고침하면 바로 적용돼요', 12000, () => location.reload(true), '새로고침'); } } catch (e) {} };
+    verCheck(); setInterval(() => { if (!document.hidden) verCheck(); }, 10 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) verCheck(); });
   }
   document.querySelectorAll('#menu button[data-ico]').forEach(b => { b.setAttribute('role', 'menuitem'); b.insertAdjacentHTML('afterbegin', I[b.dataset.ico] || ''); });
   document.querySelectorAll('#menu hr').forEach(h => h.setAttribute('role', 'separator'));
