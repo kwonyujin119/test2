@@ -28,18 +28,14 @@ from urllib.parse import urlparse, parse_qs, quote
 HERE = os.path.dirname(os.path.abspath(__file__))
 KINDS = ('schedule', 'tasks')   # 41망 톡방(chat)은 입장코드 검증이 있는 /api/chat_* 로만 다룬다
 CHAT_ROOMS_DEFAULT = (('ictc', '지휘역량강화센터', '5948', 1), ('edu-support', '교육지원과', '5914', 2), ('edu-plan', '교육기획과', '5926', 3), ('training', '훈련운영과', '5527', 4))
-VERSION = '5.10'
+VERSION = '5.11'
 FILE_MAX = 100 * 1024 * 1024   # 41망 첨부파일 최대 100MB (DB 폴더 옆 files/ 에 저장)
 ITEM_MAX = 64 * 1024           # 항목(일정·업무·톡방 글) 한 건 최대 크기 (supabase.sql ictc_check_item 과 동일)
 BODY_MAX = 32 * 1024 * 1024    # /api/* JSON 본문 상한 (JSON 가져오기 포함)
 # 업로드 허용 형식 (supabase.sql 의 sail41 버킷 allowed_mime_types 와 동일). 그 밖의 형식은 FILE_TYPE
-FILE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain', 'text/csv',
-              'application/zip', 'application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/vnd.hancom.hwpx', 'application/x-hwpx',
-              'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/octet-stream'}
+FILE_TYPES = None   # 5.11: 형식 제한 없음(화면이 안전 형식 외에는 octet-stream 으로 보냄). 브라우저에서 바로 여는 형식은 INLINE_TYPES 만, 나머지는 내려받기로만 준다
 # 브라우저 안에서 바로 열어도 안전한 형식. 나머지(html·svg·js 등 스크립트 실행 가능 형식 포함)는 octet-stream + 내려받기로만 준다
-INLINE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain', 'text/csv'}
+INLINE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/heic', 'image/heif', 'application/pdf', 'text/plain', 'text/csv', 'video/mp4', 'video/quicktime', 'video/webm', 'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/wav'}
 BACKUP_KEEP = 7            # 기동 시 날짜별 백업 보관 개수
 TRASH_DAYS = 30            # 삭제 항목 보관 일수 (supabase.sql 의 ictc_trash 와 동일)
 THROTTLE_MAX, THROTTLE_WINDOW = 10, 600   # IP당 10분 내 PIN 실패 10회 → 잠시 거부
@@ -566,7 +562,7 @@ def make_handler(db, static_dir, pin_path, poll):
                                 raise
                         if n <= 0 or n > FILE_MAX: raise ApiError('FILE_TOO_LARGE', 413)   # 헤더로 1차 거부. 실제 받은 양은 아래에서 다시 확인
                         ctype = (self.headers.get('Content-Type') or mimetypes.guess_type((q.get('name') or ['file'])[0])[0] or 'application/octet-stream').split(';')[0].strip().lower()
-                        if ctype not in FILE_TYPES: raise ApiError('FILE_TYPE', 415)
+                        if FILE_TYPES is not None and ctype not in FILE_TYPES: raise ApiError('FILE_TYPE', 415)
                     except ApiError:
                         self._drain(n); raise
                     name = re.sub(r'[^\w.\-가-힣 ()]+', '_', (q.get('name') or ['file'])[0]).strip(' .')[:80] or 'file'

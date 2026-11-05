@@ -80,6 +80,17 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.chatImgLoaded = await P.locator('#chatList .chat-msg.mine .chat-img img').first().evaluate(i => i.complete && i.naturalWidth > 0).catch(() => false);
   r.chatFileCard = await P.locator('#chatList .chat-msg.mine .chat-file .fn', { hasText: 'note.txt' }).count();
   r.chatPendingCleared = await P.locator('#chatPending .pend').count();
+  if (shared) {   // 큰 파일: 조각 크기를 64KB 로 줄여 200KB 파일을 4조각으로 올림 → '4조각' 카드 → 누르면 조각을 합쳐 원래 이름·내용으로 내려받기. 형식(video/mp4)도 거부되지 않아야 함
+    await P.evaluate(() => { CHAT.partSize = 64 * 1024; });
+    const big = Buffer.alloc(200 * 1024); for (let i = 0; i < big.length; i++) big[i] = i % 251;
+    await P.click('#chatPlus'); await P.waitForTimeout(300);
+    await P.setInputFiles('#chatFileAny', { name: 'big-video.mp4', mimeType: 'video/mp4', buffer: big }); await P.waitForTimeout(400);
+    await P.click('#attachSendBtn'); await P.waitForTimeout(3500);
+    r.chatParts = await P.locator('#chatList .chat-msg.mine .chat-file .fs', { hasText: '4조각' }).count();
+    const [dl] = await Promise.all([P.waitForEvent('download', { timeout: 10000 }), P.locator('#chatList .chat-msg.mine .chat-file', { hasText: 'big-video.mp4' }).click()]);
+    r.chatPartsName = dl.suggestedFilename(); const dp = await dl.path(); r.chatPartsSame = require('fs').readFileSync(dp).equals(big);
+    r.chatPartsPending = await P.locator('#chatPending .pend').count();
+  }
   r.chatThumb = await P.locator('#chatList .chat-msg.mine .chat-img img').first().getAttribute('src').then(v => /thumb|data:|\/files\//.test(v || '') || (v || '').includes('/chat/'));
   // 우클릭 메뉴: 사진에서 → 답장·이미지 복사·글 복사·공유·사진 저장·삭제. 답장 → 인용 말풍선. 삭제 → (삭제된 메시지)
   await P.locator('#chatList .chat-msg.mine .chat-img').first().click({ button: 'right' }); await P.waitForTimeout(250);
@@ -193,7 +204,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
   const expect = { logos: true, schedSaved: 1, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalDefaultName: '직원 1234', personalSaved: 1, wideOn: true, wideBar: true, wideOff: true, helpOpen: true, helpClosed: true, briefNow: 4, briefAgain: 4, attPending: 1, attCard: 1, attLoaded: true, attExisting: 1, viewerOpen: true, viewerClosed: true, qMarks: 2, qOnly: 1, qFabHidden: true, tcal: 1, tcalHit: 1, tcalBack: 0, qCleared: true, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatStrip: ['1', '2'], chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatThumb: true, ctxItems: ['답장', '이미지 복사', '글 복사 글 없는 메시지', '공유', '사진 저장', '삭제'], replyBar: true, replyQuote: 1, deletedPh: 1, pasteAttached: true, chatRoomLast: '테스터: (삭제된 메시지)', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { briefNews: { news: process.argv[2].includes('localhost') ? 5 : 0, hasOld: false }, chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: true, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
+  if (shared) Object.assign(expect, { chatParts: 1, chatPartsName: 'big-video.mp4', chatPartsSame: true, chatPartsPending: 0, briefNews: { news: process.argv[2].includes('localhost') ? 5 : 0, hasOld: false }, chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: true, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

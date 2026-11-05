@@ -1523,7 +1523,7 @@
   /* 원인 + 해결을 함께 말한다. USER_PIN_INVALID 문구는 로그인 화면 검사(e2e)와 맞물려 있으니 그대로 둔다 */
   const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요해요. 담당자에게 받은 숫자를 넣으세요', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않아요. 담당자에게 받은 숫자를 다시 확인하세요', PIN_INVALID: '관리자 PIN이 올바르지 않아요. 담당자(관리자)만 쓰는 기능이에요',
     USER_NOT_FOUND: '등록되지 않은 번호예요. 행정전화 뒤 4자리를 확인하세요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요. 비밀번호를 잊었으면 담당자에게 초기화를 요청하세요',
-    USER_ID_INVALID: '행정전화 뒤 4자리(숫자)를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요. 담당자에게 톡방 입장코드를 확인하세요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요. 톡방 목록을 새로 고치세요', CHAT_CODE_TOO_SHORT: '입장코드는 숫자 4자리 이상이어야 해요', CHAT_ROOM_EXISTS: '같은 이름의 톡방이 이미 있어요', FILE_TOO_LARGE: '파일이 너무 커요. 서버 한도(무료 요금제는 파일당 50MB)보다 작게 줄여서 보내세요', FILE_TYPE: '보낼 수 없는 파일 형식이에요(사진·PDF·문서·압축 파일만)', UPLOAD_FAILED: '파일이 끝까지 올라가지 않았어요. 인터넷 연결을 확인하고 다시 보내 주세요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하 파일만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리로 넣으세요', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '같은 이름의 대시보드가 이미 있어요',
+    USER_ID_INVALID: '행정전화 뒤 4자리(숫자)를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요. 담당자에게 톡방 입장코드를 확인하세요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요. 톡방 목록을 새로 고치세요', CHAT_CODE_TOO_SHORT: '입장코드는 숫자 4자리 이상이어야 해요', CHAT_ROOM_EXISTS: '같은 이름의 톡방이 이미 있어요', FILE_TOO_LARGE: '파일 조각이 서버 한도를 넘었어요. 담당자에게 알려 주세요(config.js 의 fileMaxMB 를 Supabase 파일 상한 이하로)', FILE_TYPE: '서버가 이 파일 형식을 받지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', UPLOAD_FAILED: '파일이 끝까지 올라가지 않았어요. 인터넷 연결을 확인하고 다시 보내 주세요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하 파일만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리로 넣으세요', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '같은 이름의 대시보드가 이미 있어요',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없어요', BOARD_NOT_FOUND: '이 대시보드가 지워졌어요. 과 이름▾에서 다른 대시보드를 고르세요', ID_REQUIRED: '항목 번호가 없어요. 화면을 새로고침한 뒤 다시 해 보세요', KIND_INVALID: '종류 오류예요. 화면을 새로고침한 뒤 다시 해 보세요',
     ITEM_TOO_LARGE: '내용이 너무 길어요. 메모·상세를 줄여서 저장하세요', ITEMS_REQUIRED: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', JSON_INVALID: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', NOT_FOUND: '요청한 주소가 없어요. 새로고침해 보세요',
     SERVER_ERROR: '서버에 문제가 생겼어요. 잠시 뒤 다시 시도하고, 계속되면 담당자에게 알려 주세요', SQL_OUTDATED: '서버 설정이 최신이 아니에요. 담당자에게 알려 주세요(SQL 재적용)', KEY_INVALID: '연결 키가 맞지 않아요. 담당자에게 알려 주세요',
@@ -1546,6 +1546,16 @@
   const viewPin = () => lsGet(LS.viewPin) || lsGet(LS.pin) || '';
   // 업로드 진행률이 필요한 곳은 fetch 대신 XHR
   const xhrUpload = (url, body, headers, onProgress) => new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('POST', url); Object.entries(headers || {}).forEach(([k, v]) => x.setRequestHeader(k, v)); if (x.upload && onProgress) x.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); }; x.onload = () => ok({ status: x.status, text: x.responseText }); x.onerror = () => no(new ApiError('UPLOAD_FAILED')); x.ontimeout = () => no(new ApiError('UPLOAD_FAILED')); x.timeout = 10 * 60 * 1000; x.send(body); });
+  // 업로드 형식: 저장소(버킷)가 받는 형식만 그대로 보내고, 나머지(Windows 의 zip 'application/x-zip-compressed', 알 수 없는 형식 등)는 octet-stream 으로 올린다 → 형식 때문에 실패하지 않음.
+  // html·svg·js 같은 스크립트 실행 가능 형식은 목록에 없어 내려받기 전용으로만 저장된다
+  const SAFE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'image/bmp', 'application/pdf', 'text/plain', 'text/csv', 'text/markdown', 'application/json', 'application/rtf',
+    'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/x-m4v', 'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm',
+    'application/zip', 'application/x-zip-compressed', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-7z-compressed',
+    'application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/vnd.hancom.hwpx', 'application/x-hwpx',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-word.document.macroEnabled.12',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel.sheet.macroEnabled.12',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.openxmlformats-officedocument.presentationml.slideshow', 'application/vnd.ms-powerpoint.presentation.macroEnabled.12', 'application/octet-stream']);
+  const upType = f => { const t = ((f && f.type) || '').split(';')[0].trim().toLowerCase(); return SAFE_TYPES.has(t) ? t : 'application/octet-stream'; };
   const UNDO_NOTE = REMOTE ? '담당자가 30일 안에 복구할 수 있어요.' : '되돌릴 수 없어요.';
   const rows2 = rows => ({ updated: rows[0]?.updated_at || null, items: rows.map(r => r.data) });
 
@@ -1592,7 +1602,7 @@
         if (!api._joined || api._joined !== room + ':' + code) { await api.chatJoin(room, code); api._joined = room + ':' + code; }
         const ext = ((file.name || '').split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
         const key = `chat/${encodeURIComponent(room)}/${uid()}.${ext}`;
-        const { status, text } = await xhrUpload(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, file, { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false', 'cache-control': '31536000' }, onProgress);
+        const { status, text } = await xhrUpload(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, file, { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': upType(file), 'x-upsert': 'false', 'cache-control': '31536000' }, onProgress);
         if (status < 200 || status >= 300) { let msg = ''; try { msg = JSON.parse(text).message || ''; } catch (e) {} throw new ApiError(status === 413 || /too large|exceeded|maximum/i.test(msg) ? 'FILE_TOO_LARGE' : /mime|type/i.test(msg) ? 'FILE_TYPE' : /bucket/i.test(msg) ? 'STORAGE_NOT_READY' : 'UPLOAD_FAILED', status); }
         return { url: `${CFG.supabaseUrl}/storage/v1/object/public/sail41/${key}`, name: file.name, size: file.size, type: file.type };
       },
@@ -1600,7 +1610,7 @@
       itemUpload: async (kind, file, onProgress) => {
         const ext = ((file.name || '').split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
         const key = `items/${kind}/${uid()}.${ext}`;
-        const { status, text } = await xhrUpload(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, file, { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false', 'cache-control': '31536000' }, onProgress);
+        const { status, text } = await xhrUpload(`${CFG.supabaseUrl}/storage/v1/object/sail41/${key}`, file, { apikey: CFG.supabaseAnonKey, Authorization: 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': upType(file), 'x-upsert': 'false', 'cache-control': '31536000' }, onProgress);
         if (status < 200 || status >= 300) { let msg = ''; try { msg = JSON.parse(text).message || ''; } catch (e) {} throw new ApiError(status === 413 || /too large|exceeded|maximum/i.test(msg) ? 'FILE_TOO_LARGE' : /mime|type/i.test(msg) ? 'FILE_TYPE' : /bucket/i.test(msg) ? 'STORAGE_NOT_READY' : /policy|security/i.test(msg) ? 'SQL_OUTDATED' : 'UPLOAD_FAILED', status); }
         return { url: `${CFG.supabaseUrl}/storage/v1/object/public/sail41/${key}`, name: file.name, size: file.size, type: file.type };
       },
@@ -1641,8 +1651,8 @@
       chatRoomRename: (pin, room, name) => post('/api/chat_room_rename', { pin, room, name }),
       chatRoomAdd: (pin, id, name, code) => post('/api/chat_room_add', { pin, id, name, code }),
       chatRoomDelete: (pin, room) => post('/api/chat_room_delete', { pin, room }),
-      chatUpload: async (room, code, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?room=${encodeURIComponent(room)}&code=${encodeURIComponent(code)}&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': file.type || 'application/octet-stream' }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
-      itemUpload: async (kind, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?kind=items&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': file.type || 'application/octet-stream' }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
+      chatUpload: async (room, code, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?room=${encodeURIComponent(room)}&code=${encodeURIComponent(code)}&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': upType(file) }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
+      itemUpload: async (kind, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?kind=items&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': upType(file) }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
     };
   } else {
     /* 미리보기 모드: 이 브라우저(localStorage)에만 저장 */
@@ -2719,10 +2729,11 @@
     if (await withPin(pin => api.chatRoomAdd(pin, id, nm, code))) { const c = chatCodes(); c[id] = code; lsSet('ictc.chat.codes', c); await loadChatRooms(true); renderChat(); toast('톡방을 만들었어요'); }
   }
 
-  /* ── 41망 첨부: + 토글 → 사진·카메라·파일. 한 번에 100MB·10개. 사진은 원본(2048px) + 썸네일(480px) 두 장으로 올린다 ── */
-  CHAT.pending = []; CHAT.fileMax = (Number(CFG.fileMaxMB) || 100) * 1024 * 1024; CHAT.sendMax = 100 * 1024 * 1024; CHAT.filesPerMsg = 10; CHAT.parallel = 3;   // 파일당 한도는 config.js 의 fileMaxMB (Supabase 무료 = 50)
-  { const el = document.getElementById('attHelpMax'); if (el) el.textContent = `파일당 ${Math.round(CHAT.fileMax / 1048576)}MB · 한 번에 ${CHAT.filesPerMsg}개까지.`; }
-  const isImgFile = f => /^image\//i.test(f.type || '') || /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(f.name || '');
+  /* ── 41망 첨부: + 토글 → 사진·카메라·파일. 한 번에 1GB·10개, 큰 파일은 조각 업로드. 사진은 원본(2048px) + 썸네일(480px) 두 장으로 올린다 ── */
+  // 한도: 서버가 한 번에 받는 크기(config.js 의 fileMaxMB, Supabase 무료 = 50MB)보다 큰 파일은 그보다 5MB 작은 조각으로 나눠 올린다(partSize). 파일당 전체 한도는 fileTotalMB(기본 500MB), 한 번에 1GB·10개
+  CHAT.pending = []; CHAT.partSize = Math.max(1, (Number(CFG.fileMaxMB) || 50) - 5) * 1048576; CHAT.fileMax = REMOTE ? (Number(CFG.fileTotalMB) || 500) * 1048576 : 1.5 * 1048576; CHAT.sendMax = 1024 * 1048576; CHAT.filesPerMsg = 10; CHAT.parallel = 3;
+  { const el = document.getElementById('attHelpMax'); if (el) el.textContent = REMOTE ? `파일당 ${Math.round(CHAT.fileMax / 1048576)}MB · 한 번에 ${CHAT.filesPerMsg}개까지. ${Math.round(CHAT.partSize / 1048576)}MB 넘는 파일은 조각으로 나눠 올라가고 받을 때 합쳐져요.` : `미리보기 모드: 파일당 1.5MB · 한 번에 ${CHAT.filesPerMsg}개까지.`; }
+  const isImgFile = f => !f.parts && (/^image\//i.test(f.type || '') || /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i.test(f.name || ''));   // 조각으로 올린 큰 파일은 사진이라도 파일 카드로
   const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : n >= 1024 ? Math.round(n / 1024) + 'KB' : (n || 0) + 'B';
   function chatPick(kind) { document.getElementById(kind === 'image' ? 'chatFileImg' : kind === 'camera' ? 'chatFileCam' : 'chatFileAny').click(); }
   // 사진 변환: bitmap 한 번만 디코드해 원본(최대 2048px)과 썸네일(480px)을 만든다. GIF·SVG 는 그대로
@@ -2955,7 +2966,7 @@
     const a = ATT[key]; if (!a.pending.length) return a.files.slice();
     const out = []; const q = a.pending.slice(); let idx = 0;
     const one = async p => { p.status = 'up'; p.pct = 0; attRender(key);
-      const tryUp = async (f, onp) => { try { return await api.itemUpload(kind, f, onp); } catch (e) { if (['FILE_TOO_LARGE', 'FILE_TYPE', 'FILE_TOO_LARGE_PREVIEW', 'SQL_OUTDATED', 'STORAGE_NOT_READY'].includes(e.code)) throw e; await new Promise(r => setTimeout(r, 800)); return api.itemUpload(kind, f, onp); } };
+      const tryUp = async (f, onp) => { let last; for (let k = 0; k < 4; k++) { try { return await api.itemUpload(kind, f, onp); } catch (e) { last = e; if (['FILE_TOO_LARGE', 'FILE_TYPE', 'FILE_TOO_LARGE_PREVIEW', 'SQL_OUTDATED', 'STORAGE_NOT_READY'].includes(e.code)) throw e; await new Promise(r => setTimeout(r, 1000 * (k + 1))); } } throw last; };   // 끊기면 최대 4번
       const th = p.thumb ? await tryUp(p.thumb) : null; const r = await tryUp(p.file, pct => { p.pct = pct; attRender(key); });
       p.status = 'done'; p.pct = 100; p.result = { ...r, thumb: th ? th.url : undefined, w: p.w || undefined, h: p.h || undefined }; };
     const workers = Array.from({ length: Math.min(3, q.length) }, async () => { while (idx < q.length) { const p = q[idx++]; try { await one(p); } catch (e) { p.status = 'err'; p.err = e; attRender(key); } } });
@@ -2985,24 +2996,62 @@
   // 올리기: 최대 3개 동시, 실패하면 한 번 재시도. 사진은 썸네일을 먼저 올려 목록에 빨리 보이게
   async function uploadPending(room, code) {
     const queue = CHAT.pending.slice(); const out = new Array(queue.length); let idx = 0;
+    const FATAL = ['FILE_TOO_LARGE', 'FILE_TYPE', 'CHAT_CODE_INVALID', 'FILE_TOO_LARGE_PREVIEW', 'STORAGE_NOT_READY', 'SQL_OUTDATED'];
     const one = async (p, i) => {
+      if (p.status === 'done' && p.result) { out[i] = p.result; return; }   // 재전송: 이미 올라간 파일은 다시 올리지 않음
       p.status = 'up'; p.pct = 0; renderPending();
-      const tryUp = async (f, onp) => { try { return await api.chatUpload(room, code, f, onp); } catch (e) { if (e.code === 'FILE_TOO_LARGE' || e.code === 'FILE_TYPE' || e.code === 'CHAT_CODE_INVALID') throw e; await new Promise(r => setTimeout(r, 800)); return api.chatUpload(room, code, f, onp); } };
+      const prog = pct => { p.pct = pct; const bar = document.querySelector(`#chatPending .pend:nth-child(${i + 1}) .pend-bar`); const sz = document.querySelector(`#chatPending .pend:nth-child(${i + 1}) .pend-size`); if (bar) bar.style.width = pct + '%'; if (sz) sz.textContent = pct + '%'; };
+      // 끊기면 1·2·3·4초 뒤 최대 4번 다시 시도(형식·크기·입장코드 오류는 바로 중단)
+      const tryUp = async (f, onp) => { let last; for (let k = 0; k < 4; k++) { try { return await api.chatUpload(room, code, f, onp); } catch (e) { last = e; if (FATAL.includes(e.code)) throw e; await new Promise(r => setTimeout(r, 1000 * (k + 1))); } } throw last; };
       const thumb = p.thumb ? await tryUp(p.thumb) : null;
-      const r = await tryUp(p.file, pct => { p.pct = pct; const bar = document.querySelector(`#chatPending .pend:nth-child(${i + 1}) .pend-bar`); const sz = document.querySelector(`#chatPending .pend:nth-child(${i + 1}) .pend-size`); if (bar) bar.style.width = pct + '%'; if (sz) sz.textContent = pct + '%'; });
-      out[i] = { ...r, thumb: thumb ? thumb.url : undefined, w: p.w || undefined, h: p.h || undefined }; p.status = 'done'; p.pct = 100;
+      let r;
+      if (REMOTE && p.file.size > CHAT.partSize) {
+        // 큰 파일: 서버 1회 한도보다 작은 조각으로 나눠 차례로 올리고 조각 주소 목록을 남긴다. 받을 때 화면이 다시 합친다(downloadParts)
+        const n = Math.ceil(p.file.size / CHAT.partSize); const parts = [];
+        for (let k = 0; k < n; k++) {
+          const blob = p.file.slice(k * CHAT.partSize, Math.min(p.file.size, (k + 1) * CHAT.partSize));
+          const part = new File([blob], `${p.file.name || 'file'}.part${k + 1}`, { type: 'application/octet-stream' });
+          const pr = await tryUp(part, pct => prog(Math.round((k * 100 + pct) / n)));
+          parts.push(pr.url);
+        }
+        r = { url: parts[0], parts, name: p.file.name, size: p.file.size, type: p.file.type || 'application/octet-stream' };
+      } else r = await tryUp(p.file, prog);
+      out[i] = p.result = { ...r, thumb: thumb ? thumb.url : undefined, w: p.w || undefined, h: p.h || undefined }; p.status = 'done'; p.pct = 100;
     };
     const workers = Array.from({ length: Math.min(CHAT.parallel, queue.length) }, async () => { while (idx < queue.length) { const i = idx++; try { await one(queue[i], i); } catch (e) { queue[i].status = 'err'; queue[i].err = e; renderPending(); } } });
     await Promise.all(workers);
-    const failed = queue.filter(p => p.status === 'err'); if (failed.length) throw failed[0].err || new ApiError('UPLOAD_FAILED');
+    const failed = queue.filter(p => p.status === 'err'); if (failed.length) { const e = failed[0].err || new ApiError('UPLOAD_FAILED'); e.message = `'${failed[0].file.name}' — ${e.message} (보내기를 다시 누르면 실패한 파일만 다시 올라가요)`; throw e; }
     return out;
   }
+  // 조각으로 올라간 큰 파일 받기: 조각을 차례로 받아 하나로 합쳐 원래 이름으로 저장
+  const PARTS = {};
+  async function downloadParts(k) {
+    const f = PARTS[k]; if (!f || f._busy) return; f._busy = true;
+    const el = document.querySelector(`[data-pk="${k}"] .fs`); const set = t => { if (el) el.textContent = t; };
+    try {
+      const blobs = [];
+      for (let i = 0; i < f.parts.length; i++) {
+        set(`받는 중 ${i + 1}/${f.parts.length}`);
+        let res = null, last = null;
+        for (let t = 0; t < 3 && !(res && res.ok); t++) { if (t) await new Promise(r => setTimeout(r, 1000 * t)); try { res = await fetch(f.parts[i], { cache: 'no-store' }); if (!res.ok) last = new Error('HTTP ' + res.status); } catch (e) { last = e; } }
+        if (!res || !res.ok) throw last || new Error('fail');
+        blobs.push(await res.blob());
+      }
+      const blob = new Blob(blobs, { type: f.type || 'application/octet-stream' }); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = f.name || 'file'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+      set(`${fmtSize(f.size)} · 받음`);
+    } catch (e) { set(`${fmtSize(f.size)} · ${f.parts.length}조각`); toast('파일을 끝까지 받지 못했어요. 다시 눌러 주세요'); }
+    f._busy = false;
+  }
+  // 내려받기 주소: Supabase 저장소는 ?download=이름 을 붙이면 원래 파일 이름으로 저장된다(다른 출처라 download 속성은 무시됨). 로컬 서버는 같은 출처라 그대로
+  const dlUrl = f => /\/storage\/v1\/object\/public\//.test(f.url || '') ? f.url + (f.url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(f.name || 'file') : f.url;
   function chatFilesHtml(files, mid) {
     if (!files || !files.length) return '';
     const key = 'chat:' + mid; const imgs = regView(key, files);
     return `<div class="chat-files">${files.map((f, i) => isImgFile(f)
       ? `<a class="chat-img" href="${esc(f.url)}" onclick="event.preventDefault();openViewer('${esc(key)}', ${imgs.indexOf(f)})" data-fi="${i}"><img src="${esc(f.thumb || f.url)}" alt="${esc(f.name || '사진')}" loading="lazy" decoding="async"${f.w && f.h ? ` width="${f.w}" height="${f.h}"` : ''}></a>`
-      : `<a class="chat-file" href="${esc(f.url)}" target="_blank" rel="noopener" download="${esc(f.name || '')}" data-fi="${i}">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)}</span></a>`).join('')}</div>`;
+      : f.parts && f.parts.length ? (PARTS[`${mid}:${i}`] = f, `<a class="chat-file" href="${esc(f.url)}" data-pk="${esc(mid)}:${i}" onclick="event.preventDefault();downloadParts('${esc(mid)}:${i}')" data-fi="${i}" title="조각으로 올라간 파일 · 누르면 합쳐서 내려받아요">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)} · ${f.parts.length}조각</span></a>`)
+      : `<a class="chat-file" href="${esc(dlUrl(f))}" target="_blank" rel="noopener" download="${esc(f.name || '')}" data-fi="${i}">${I.file}<span class="fn">${esc(f.name || '파일')}</span><span class="fs">${fmtSize(f.size)}</span></a>`).join('')}</div>`;
   }
   const chatPreviewText = m => m.deleted ? '(삭제된 메시지)' : m.text ? m.text : (m.files || []).some(isImgFile) ? '📷 사진' : (m.files || []).length ? '📎 파일' : '';
 
