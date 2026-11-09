@@ -33,6 +33,8 @@ jobs:
           sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
           npm install --no-audit --no-fund --silent web-push@3.6.7 >/dev/null
           DAY=${DAY_IN:-$(TZ=Asia/Seoul date +%F)}; DAYC=$(echo "$DAY" | tr -d -)
+          # 0) SQL 적용(v6.24)과 동시에 돌 수 있으므로 표가 생길 때까지 최대 3분 기다림
+          for i in $(seq 1 18); do [ "$(psql "$PGURL" -At -c "select to_regclass('public.ictc_kv') is not null and to_regclass('public.ictc_push_sent') is not null" 2>/dev/null)" = "t" ] && break; echo "SQL 적용 대기 $i"; sleep 10; done
           # 1) 서명 키: 없으면 만들어 저장
           HAVE=$(psql "$PGURL" -At -c "select count(*) from public.ictc_kv where k in ('vapid_public','vapid_private')")
           if [ "$HAVE" != "2" ]; then
