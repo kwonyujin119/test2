@@ -1,5 +1,5 @@
 -- ============================================================
--- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.23: 브리핑에서 취소 일정은 건수 제외·[취소] 표시 · v6.22: 첨부 형식 확대(동영상·소리·zip 변형)·조각 업로드 · v6.21: 뉴스 순위 소방 정책 +80 최우선, 인천 +50, 소방 무관 기사 −50 · v6.20: 브리핑 공유 이미지 경로 · v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
+-- SAIL:41 (지휘역량강화센터 일정·업무 보드) - Supabase 설정 (v6.24: 아침 브리핑 푸시 알림(ictc_push·ictc_kv·GitHub Actions 깨우기) · v6.23: 브리핑에서 취소 일정은 건수 제외·[취소] 표시 · v6.22: 첨부 형식 확대(동영상·소리·zip 변형)·조각 업로드 · v6.21: 뉴스 순위 소방 정책 +80 최우선, 인천 +50, 소방 무관 기사 −50 · v6.20: 브리핑 공유 이미지 경로 · v6.19: 해외 −15 · v6.18: 지역 −8·무피해 −3·해프닝 −10·칼럼 −6 · v6.17: 해프닝 기사 감점 · v6.16: 인천 사건·시 정책만 최우선, 사망 가점 · v6.15: 뉴스 창 24시간·지역/전국 가중 · v6.14: 뉴스 5개·인천 최우선 · v6.13: 뉴스 수집을 DB 안에서(pg_net) · v6.12: 브리핑에 소방 뉴스 3개 · 내일·업무 절 삭제 · v6.11: 브리핑 평일 07:00 · v6.10: 관리자 브리핑 테스트는 매번 새 글 · v6.9: 브리핑 내일 일정은 건수만 · v6.8: 브리핑 목록에서 기한 지난 업무 제외 · v6.7: 브리핑 지금 올리기(관리자) · v6.6: 평일 08:00 아침 브리핑(pg_cron) · v6.5: 일정·업무 사진 첨부 경로 items/ 허용 · v6.4: 입력 크기 제한 · 일정↔연동카드 삭제·복구 일관성 · 41망 삭제 글 휴지통 · v6.3: 첨부 100MB · v6: 부서별 톡방 + 입장코드)
 -- Supabase 대시보드 → SQL Editor → New query 에 전체를 붙여넣고 Run.
 -- 여러 번 실행해도 안전합니다. 기존 데이터와 이미 설정한 PIN은 유지됩니다.
 --
@@ -635,6 +635,7 @@ begin
       select id from public.ictc_items where kind = 'chat' and board = r.id order by updated_at desc limit 300);
     cnt := cnt + 1;
   end loop;
+  if not p_manual and cnt > 0 then begin perform public.ictc_push_kick(d); exception when others then null; end; end if;   -- 상태표시줄 알림(웹 푸시) 발송 요청. 실패해도 브리핑은 그대로
   return cnt;
 end $$;
 
@@ -654,6 +655,59 @@ returns int language plpgsql security definer set search_path = public, extensio
 begin
   perform public.ictc_require_edit(p_edit_pin);
   return public.ictc_chat_briefing((now() at time zone 'Asia/Seoul')::date, true);
+end $$;
+
+-- ---------- 아침 브리핑 푸시 알림 (v6.24, 웹 푸시) ----------
+-- 기기(폰·PC 브라우저)가 '알림 받기'를 켜면 구독 정보를 ictc_push 에 저장한다. 07:00 브리핑 게시 직후 ictc_push_kick() 이 GitHub Actions(briefing-push.yml)를
+-- repository_dispatch 로 깨우고, Actions 가 기기마다 웹 푸시(VAPID)를 보낸다. 서명 키는 ictc_kv 에 있고(anon 접근 불가), Actions 가 첫 실행 때 만든다.
+-- ictc_kv: 서버 전용 작은 설정 저장소(VAPID 키 · GitHub 토큰). anon 은 읽을 수 없다. 공개 키만 ictc_push_key() 로 내보낸다.
+create table if not exists public.ictc_kv (k text primary key, v text not null, updated_at timestamptz not null default now());
+alter table public.ictc_kv enable row level security;
+revoke all on public.ictc_kv from anon, authenticated;
+create table if not exists public.ictc_push (
+  endpoint text primary key, sub jsonb not null, room text not null, board text, ua text,
+  created_at timestamptz not null default now(), last_ok timestamptz, fails int not null default 0);
+alter table public.ictc_push enable row level security;
+revoke all on public.ictc_push from anon, authenticated;
+create table if not exists public.ictc_push_sent (day date not null, endpoint text not null, sent_at timestamptz not null default now(), primary key (day, endpoint));
+alter table public.ictc_push_sent enable row level security;
+revoke all on public.ictc_push_sent from anon, authenticated;
+
+-- 공개 키(없으면 null → 화면은 알림 버튼을 숨긴다)
+create or replace function public.ictc_push_key()
+returns text language sql security definer stable set search_path = public, extensions as $$
+  select v from public.ictc_kv where k = 'vapid_public';
+$$;
+-- 구독 저장: 조회 PIN + 톡방 입장코드를 확인한 기기만. 같은 endpoint 면 톡방·시각만 갱신
+create or replace function public.ictc_push_subscribe(p_pin text, p_room text, p_code text, p_sub jsonb, p_ua text default null)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare b text;
+begin
+  perform public.ictc_require_view(p_pin); perform public.ictc_chat_check(p_room, p_code);
+  if coalesce(p_sub->>'endpoint', '') !~ '^https://' or length(p_sub::text) > 4000 then raise exception 'PUSH_SUB_INVALID'; end if;
+  select x.id into b from public.ictc_boards x join public.ictc_chat_rooms r on r.name = x.name where r.id = p_room limit 1;
+  insert into public.ictc_push (endpoint, sub, room, board, ua) values (p_sub->>'endpoint', p_sub, p_room, coalesce(b, 'main'), left(p_ua, 200))
+  on conflict (endpoint) do update set sub = excluded.sub, room = excluded.room, board = excluded.board, ua = excluded.ua, fails = 0;
+end $$;
+-- 구독 해제: endpoint 를 아는 기기 자신만 할 수 있는 일이므로 PIN 검사 없음
+create or replace function public.ictc_push_unsubscribe(p_endpoint text)
+returns void language sql security definer set search_path = public, extensions as $$
+  delete from public.ictc_push where endpoint = p_endpoint;
+$$;
+-- GitHub Actions 깨우기(pg_net). ictc_kv 의 github_pat(담당자가 SQL Editor 로 넣음) 이 없으면 아무것도 안 함 → 그때는 Actions 의 예약 실행(07:03 KST)이 대신 보낸다
+create or replace function public.ictc_push_kick(p_day date default null)
+returns bigint language plpgsql security definer set search_path = public, extensions as $$
+declare tok text; repo text; rid bigint;
+begin
+  if not exists (select 1 from pg_extension where extname = 'pg_net') then return null; end if;
+  if not exists (select 1 from public.ictc_push) then return null; end if;
+  select v into tok from public.ictc_kv where k = 'github_pat'; select v into repo from public.ictc_kv where k = 'github_repo';
+  if coalesce(tok, '') = '' then return null; end if;
+  rid := net.http_post('https://api.github.com/repos/' || coalesce(repo, 'kwonyujin119/test2') || '/dispatches',
+    jsonb_build_object('event_type', 'briefing-push', 'client_payload', jsonb_build_object('day', to_char(coalesce(p_day, (now() at time zone 'Asia/Seoul')::date), 'YYYY-MM-DD'))),
+    '{}'::jsonb,
+    jsonb_build_object('Authorization', 'Bearer ' || tok, 'Accept', 'application/vnd.github+json', 'User-Agent', 'SAIL41-briefing', 'X-GitHub-Api-Version', '2022-11-28'), 10000);
+  return rid;
 end $$;
 
 -- ---------- 소방 뉴스 수집을 DB 안에서 (v6.13, pg_net) ----------
@@ -860,7 +914,7 @@ begin
   for f in select p.oid::regprocedure as sig, p.proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'ictc\_%' loop
     execute format('revoke all on function %s from public', f.sig);
-    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set', 'ictc_news_rank', 'ictc_news_fetch', 'ictc_news_pick', 'ictc_urlencode') then
+    if f.name in ('ictc_fail_delay', 'ictc_check_pin', 'ictc_check_view_pin', 'ictc_user_check', 'ictc_require_view', 'ictc_require_edit', 'ictc_trash', 'ictc_chat_check', 'ictc_check_item', 'ictc_dt', 'ictc_briefing_text', 'ictc_chat_briefing', 'ictc_news_set', 'ictc_news_rank', 'ictc_news_fetch', 'ictc_news_pick', 'ictc_urlencode', 'ictc_push_kick') then
       execute format('revoke all on function %s from anon, authenticated', f.sig);   -- 내부 전용
     else
       execute format('grant execute on function %s to anon, authenticated', f.sig);

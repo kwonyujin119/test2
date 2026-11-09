@@ -76,6 +76,10 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.chatRoomTitle = await P.locator('#chatTitle').innerText();
   await P.fill('#chatText', 'E2E 41망 첫 글'); await P.click('#chatSend'); await P.waitForTimeout(900);
   r.chatMine = await P.locator('#chatList .chat-msg.mine .chat-bubble', { hasText: 'E2E 41망 첫 글' }).count();
+  // 브리핑 알림(푸시) 버튼: 서버에 공개 키가 있을 때(Supabase 모의)만 톡방 목록 머리에 보인다
+  await P.click('#chatHead .chat-back'); await P.waitForTimeout(400);
+  r.pushBell = await P.locator('#pushBell').count();
+  await P.locator('#chatList .room-row', { hasText: '지휘역량강화센터' }).locator('.room-ico').click(); await P.waitForTimeout(700);   // 다시 톡방 안으로
   r.chatWho = await P.locator('#chatWho b').innerText().catch(() => '');
   // 첨부: + 토글 → 사진·파일 선택 → 대기 칩 2개 → 보내기 → 이미지·파일 카드
   await P.click('#chatPlus'); await P.waitForTimeout(400); r.chatAttachOpen = await P.locator('#attachModal.open').count();
@@ -171,8 +175,8 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.xlDue = await P.locator('#xlRows tbody tr').nth(0).locator('td').nth(2).innerText();
   r.xlAddLabel = await P.locator('#xlAddBtn').innerText();
   await P.click('#xlAddBtn'); await P.waitForTimeout(1500);
+  await P.evaluate(() => { state.showPastTasks.personal = true; renderPersonal(); }); await P.waitForTimeout(300);   // 표본의 기한은 고정 날짜라 시간이 지나면 '지난 기한'으로 접힘 → 펼쳐서 확인
   r.xlAdded = await P.locator('#personalList .task-title', { hasText: '장비 점검표 갱신' }).count();
-  await P.evaluate(() => { state.showPastTasks.personal = true; renderPersonal(); }); await P.waitForTimeout(300);   // 완료 건은 지난 기한이라 접혀 있음 → 펼쳐서 확인
   r.xlDone = await P.locator('#personalList .task.done .task-title', { hasText: '결과보고' }).count();
   await P.evaluate(() => { state.showPastTasks.personal = false; renderPersonal(); });
   await P.evaluate(() => importExcel()); await P.waitForTimeout(300);
@@ -211,7 +215,7 @@ const [,, URL = 'http://127.0.0.1:8767/', MODE = 'preview', OUT = '/tmp'] = proc
   r.mobileHscroll = await Q.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await Q.screenshot({ path: `${OUT}/e2e-${MODE}-mobile.png`, fullPage: true });
   const expect = { logos: true, schedSaved: 1, cancelled: 1, cancelPill: '취소', cancelWhy: 1, cancelBtn: '취소 해제', uncancelled: 0, popOpen: 1, timeChanged: 1, calendar: 1, calEvent: 1, backToList: true, boardTitle: 'E2E 보드', boardEmpty: 0, mainBack: 1, taskSaved: 1, ownerChip: 1, personalName: '홍길동', personalDefaultName: '직원 1234', personalSaved: 1, wideOn: true, wideBar: true, wideOff: true, helpOpen: true, helpClosed: true, briefNow: 4, briefAgain: 4, attPending: 1, attCard: 1, attLoaded: true, attExisting: 1, viewerOpen: true, viewerClosed: true, qMarks: 2, qOnly: 1, qFabHidden: true, tcal: 1, tcalHit: 1, tcalBack: 0, qCleared: true, chatOpen: 1, chatRooms: 4, chatRoomIcons: 4, chatWrongCode: true, chatRoomTitle: '지휘역량강화센터', chatMine: 1, chatWho: '테스터', chatAttachOpen: 1, chatPending: 2, chatStrip: ['1', '2'], chatImg: 1, chatImgLoaded: true, chatFileCard: 1, chatPendingCleared: 0, chatThumb: true, ctxItems: ['답장', '이미지 복사', '글 복사 글 없는 메시지', '공유', '사진 저장', '삭제'], replyBar: true, replyQuote: 1, deletedPh: 1, pasteAttached: true, chatRoomLast: '테스터: (삭제된 메시지)', chatBadgeHidden: true, pageCards: 5, pageLabel: '1–5 / 8건', page2Label: '6–8 / 8건', xlRows: 4, xlMap: '업무명,기한,상태,구분,비고', xlDue: '2026-10-28', xlAddLabel: '4건 추가', xlAdded: 1, xlDone: 1, xlDupCount: 4, xlDupBtnDisabled: true, teamNoPersonal: 0, mobileHscroll: false, usersSheet: 1, usersHasMe: 1, endAuto: '2026-12-07', multiDays: 3, dayIdx: ['1/3일차', '2/3일차', '3/3일차'], doneOneClick: 1, badgeOpensForm: 1, linkedTab: 'tasks', linkedCard: 1, linkedDue: true, linkedMark: 1, linkedGone: 0 };
-  if (shared) Object.assign(expect, { chatParts: 1, chatPartsName: 'big-video.mp4', chatPartsSame: true, chatPartsPending: 0, briefNews: { news: process.argv[2].includes('localhost') ? 5 : 0, hasOld: false }, chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: true, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
+  if (shared) Object.assign(expect, { pushBell: process.argv[2].includes('localhost') ? 1 : 0, chatParts: 1, chatPartsName: 'big-video.mp4', chatPartsSame: true, chatPartsPending: 0, briefNews: { news: process.argv[2].includes('localhost') ? 5 : 0, hasOld: false }, chatBadgeOther: true, chatOtherSees: 1, chatOtherImg: true, menuAdminLogin: '관리자 로그인', chatOtherName: true, pageCards: 1, pageLabel: '', page2Label: '', lock: 1, otherDeviceSees: 1, wrongName: '비밀번호가 맞지 않아요' });
   const fails = Object.entries(expect).filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v)).map(([k, v]) => `${k}: got ${JSON.stringify(r[k])}, want ${JSON.stringify(v)}`);
   console.log(JSON.stringify({ mode: MODE, result: r, fails, errors }, null, 1));
   await browser.close(); process.exit(fails.length || errors.length ? 1 : 0);

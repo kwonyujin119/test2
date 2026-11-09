@@ -12,6 +12,7 @@ EDIT='1234'; VIEW='0000'; ITEMS={}; BOARDS=[{'id':'main','name':'지휘역량강
 FILES={}
 # Storage 버킷 sail41 흉내: supabase.sql 의 allowed_mime_types · 업로드 정책 경로 형식(chat/<톡방>/… 또는 items/<종류>/…)과 같게
 MIMES={'image/*','video/*','audio/*','application/pdf','text/plain','text/csv','text/markdown','application/json','application/rtf','application/zip','application/x-zip-compressed','application/vnd.rar','application/x-rar-compressed','application/x-7z-compressed','application/x-hwp','application/haansofthwp','application/vnd.hancom.hwp','application/vnd.hancom.hwpx','application/x-hwpx','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-word.document.macroEnabled.12','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel.sheet.macroEnabled.12','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.openxmlformats-officedocument.presentationml.slideshow','application/vnd.ms-powerpoint.presentation.macroEnabled.12','application/octet-stream'}   # supabase.sql 과 같게
+PUSHES={}
 KEY_RE=re.compile(r'^(chat/[A-Za-z0-9_.%-]{1,64}|items/(schedule|tasks|personal|briefing))/[A-Za-z0-9_.-]{1,80}$')
 def check_item(it):   # supabase.sql ictc_check_item 과 동일
     if not isinstance(it,dict) or not it.get('id'): raise ValueError('ID_REQUIRED')
@@ -96,6 +97,15 @@ class H(BaseHTTPRequestHandler):
                 if not g('p_id'): raise ValueError('ID_REQUIRED')
                 trash(g('p_id'))
                 return self._send(204)
+            if fn=='ictc_push_key': return self._send(200,json.dumps('BPushTestKeyForE2E').encode())
+            if fn=='ictc_push_subscribe':
+                view(g('p_pin') or ''); room=g('p_room')
+                if room not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')
+                if (g('p_code') or '')!=ROOMS[room]['code']: raise ValueError('CHAT_CODE_INVALID')
+                sub=g('p_sub') or {}
+                if not str(sub.get('endpoint','')).startswith('https://'): raise ValueError('PUSH_SUB_INVALID')
+                PUSHES[sub['endpoint']]={'room':room,'sub':sub}; return self._send(204)
+            if fn=='ictc_push_unsubscribe': PUSHES.pop(g('p_endpoint'),None); return self._send(204)
             if fn=='ictc_chat_set_code':
                 edit(g('p_edit_pin'))
                 if g('p_room') not in ROOMS: raise ValueError('CHAT_ROOM_NOT_FOUND')

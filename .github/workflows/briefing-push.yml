@@ -1,0 +1,63 @@
+name: Briefing push (status bar notification)
+# 아침 브리핑을 '알림 받기'를 켠 기기의 상태표시줄로 보낸다(웹 푸시).
+# 깨우는 쪽: (1) DB 의 07:00 브리핑 직후 ictc_push_kick() 이 repository_dispatch 로 즉시(ictc_kv 에 github_pat 이 있을 때)
+#            (2) 보조로 예약 실행 07:03·07:20 KST (GitHub 예약은 지연될 수 있음). 같은 날 같은 기기에는 한 번만 보낸다(ictc_push_sent).
+# 서명 키(VAPID)는 첫 실행 때 만들어 DB 의 ictc_kv 에 넣는다(anon 은 못 읽음). 저장소 Secret 은 SUPABASE_DB_URL 하나면 된다.
+on:
+  repository_dispatch:
+    types: [briefing-push]
+  schedule:
+    - cron: '3 22 * * 0-4'    # KST 07:03 (월~금)
+    - cron: '20 22 * * 0-4'   # KST 07:20 보조
+  workflow_dispatch:
+  push:                         # 이 파일·발송 코드가 바뀌면 서명 키만 준비(알림은 보내지 않음)
+    branches: [main]
+    paths: ['.github/workflows/briefing-push.yml', 'server/push_send.js']
+
+concurrency:
+  group: briefing-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 보내기
+        env:
+          PGURL: ${{ secrets.SUPABASE_DB_URL }}
+          DAY_IN: ${{ github.event.client_payload.day }}
+        run: |
+          if [ -z "$PGURL" ]; then echo "::error::Secret SUPABASE_DB_URL 이 없습니다"; exit 1; fi
+          sudo apt-get install -y -q postgresql-client >/dev/null 2>&1 || true
+          npm install --no-audit --no-fund --silent web-push@3.6.7 >/dev/null
+          DAY=${DAY_IN:-$(TZ=Asia/Seoul date +%F)}; DAYC=$(echo "$DAY" | tr -d -)
+          # 1) 서명 키: 없으면 만들어 저장
+          HAVE=$(psql "$PGURL" -At -c "select count(*) from public.ictc_kv where k in ('vapid_public','vapid_private')")
+          if [ "$HAVE" != "2" ]; then
+            node -e "const k=require('web-push').generateVAPIDKeys();console.log(k.publicKey);console.log(k.privateKey)" > keys.txt
+            PUB=$(sed -n 1p keys.txt); PRIV=$(sed -n 2p keys.txt)
+            psql "$PGURL" -v ON_ERROR_STOP=1 -At -c "insert into public.ictc_kv (k, v) values ('vapid_public', '$PUB'), ('vapid_private', '$PRIV') on conflict (k) do update set v = excluded.v, updated_at = now()" >/dev/null
+            rm keys.txt; echo "::notice title=서명 키::VAPID 키를 새로 만들어 DB 에 저장했습니다(이미 알림을 켠 기기는 다시 켜야 합니다)"
+          fi
+          if [ "${{ github.event_name }}" = "push" ]; then echo "::notice title=키 준비::푸시 실행은 서명 키만 확인하고 알림은 보내지 않습니다"; exit 0; fi
+          # 2) 오늘 브리핑 본문(톡방별 자동 게시 글) + 아직 안 보낸 구독 → JSON
+          psql "$PGURL" -At -v ON_ERROR_STOP=1 -c "select json_build_object(
+              'day', '$DAY',
+              'vapid', json_build_object('publicKey', (select v from public.ictc_kv where k='vapid_public'), 'privateKey', (select v from public.ictc_kv where k='vapid_private'), 'subject', coalesce((select v from public.ictc_kv where k='vapid_subject'), 'https://github.com/${{ github.repository }}')),
+              'texts', coalesce((select json_object_agg(board, data->>'text') from public.ictc_items where kind='chat' and id like 'brief-%-$DAYC' and id not like '%-m%'), '{}'::json),
+              'subs', coalesce((select json_agg(json_build_object('endpoint', p.endpoint, 'sub', p.sub, 'room', p.room)) from public.ictc_push p where not exists (select 1 from public.ictc_push_sent s where s.day='$DAY'::date and s.endpoint=p.endpoint)), '[]'::json))" > in.json
+          echo "::notice title=대상::$(node -e "const d=require('./in.json');console.log('브리핑 톡방', Object.keys(d.texts).length, '개 · 구독 기기', d.subs.length, '대')")"
+          # 3) 발송
+          node server/push_send.js in.json out.json
+          # 4) 결과 반영: 보낸 기록, 만료 구독 삭제, 실패 횟수(5회 넘으면 삭제)
+          node -e "
+            const o=require('./out.json'); const q=s=>s.replace(/'/g,\"''\");
+            const L=[]; for(const e of o.sent) L.push(\"insert into public.ictc_push_sent (day, endpoint) values ('$DAY', '\"+q(e)+\"') on conflict do nothing; update public.ictc_push set last_ok=now(), fails=0 where endpoint='\"+q(e)+\"';\");
+            for(const e of o.gone) L.push(\"delete from public.ictc_push where endpoint='\"+q(e)+\"';\");
+            for(const f of o.failed) L.push(\"update public.ictc_push set fails=fails+1 where endpoint='\"+q(f.endpoint)+\"'; delete from public.ictc_push where endpoint='\"+q(f.endpoint)+\"' and fails>5;\");
+            require('fs').writeFileSync('apply.sql', L.join('\n')+'\n'); console.log('failed:', JSON.stringify(o.failed).slice(0,500));"
+          [ -s apply.sql ] && psql "$PGURL" -v ON_ERROR_STOP=1 -At -f apply.sql >/dev/null
+          echo "::notice title=결과::$(node -e "const o=require('./out.json');console.log('보냄',o.sent.length,'· 만료',o.gone.length,'· 실패',o.failed.length)")"
+          rm -f in.json out.json apply.sql

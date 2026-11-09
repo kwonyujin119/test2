@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 ok=1
 echo "== JS 문법"
 node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');new Function(s.slice(s.lastIndexOf('<script>')+8,s.lastIndexOf('</script>')));console.log('  ok')" || ok=0
+echo "== sw.js · push_send.js 문법"
+node -e "new Function(require('fs').readFileSync('sw.js','utf8')); new Function(require('fs').readFileSync('server/push_send.js','utf8').replace(/^#!.*\n/,''));" && echo "  ok" || { echo "  sw.js/push_send.js 문법 오류"; ok=0; }
 echo "== config.js 문법"
 node -e "const w={};require('vm').runInNewContext(require('fs').readFileSync('config.js','utf8'),{window:w});if(!w.ICTC_CONFIG||typeof w.ICTC_CONFIG!=='object')throw new Error('ICTC_CONFIG 없음');console.log('  ok')" || { echo "  config.js 문법 오류 → 앱이 테스트 모드로 열립니다!"; ok=0; }
 echo "== Python 문법"
@@ -45,6 +47,13 @@ if [[ " $* " != *" --no-sql "* ]]; then
     rank=$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')" 2>&1)
     [[ "$rank" == *"서울 아파트 화재로 주민 20명 대피"* ]] && [[ "$rank" == *"\"press\": \"연합뉴스\""* ]] && [[ "$rank" != *"창 밖"* ]] && [ "$($PS -d ictc_verify -At -c "select jsonb_array_length(ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30'))")" = "5" ] && [ "$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')->0->>'title'")" = "소방청, 겨울철 화재 안전대책 발표" ] && [ "$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')->1->>'title'")" = "소방청, 전국에 화재위험경보 ‘경계’ 발령" ] && [ "$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')->2->>'title'")" = "인천 부평 공장 화재…2시간 만에 진화, 인명피해 없어" ] && [ "$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')->3->>'title'")" = "인천소방본부, 겨울철 소방안전대책 추진…취약시설 집중 관리" ] && [[ "$rank" != *"인천시약"* ]] && [[ "$rank" != *"강원 전역"* ]] && [[ "$rank" != *"FPN-소방방재신문\""*"title"* ]] && [[ "$rank" != *"- FPN"* ]] && [[ "$($PS -d ictc_verify -At -c "select ictc_news_rank(array[xmlparse(document \$x\$$(cat scripts/fixtures/news-sample.xml)\$x\$)], '2026-10-30')->2->>'title'")" != *"부평구"* ]] && echo "  뉴스 순위(SQL, 표본 RSS: 5개·전국 정책 1위·소방청 경보 2위(지역판 묶임)·인천 사건 3위·인천소방본부 소식 4위·소방 무관 인천 기사 제외·하이픈 언론사 꼬리 제거·구 단위 행사 상위 제외·창 밖 제외·묶음·주요 언론 대표) ok" || { echo "  뉴스 순위(SQL) 실패: $rank"; ok=0; }
     enc=$($PS -d ictc_verify -At -c "select ictc_urlencode('소방서 구조 a-b')" 2>&1); [ "$enc" = "%EC%86%8C%EB%B0%A9%EC%84%9C%20%EA%B5%AC%EC%A1%B0%20a-b" ] && echo "  URL 인코딩(한글 검색어) ok" || { echo "  URL 인코딩 실패: $enc"; ok=0; }
+    # --- v6.24 푸시 알림: 키 없으면 null · 구독 저장(PIN+입장코드) · 틀린 코드 거부 · kv/push 표와 kick 함수 anon 차단
+    pk=$($PS -d ictc_verify -At -c "select coalesce(ictc_push_key(),'none')" 2>&1)
+    $PS -d ictc_verify -At -c "select ictc_push_subscribe('0000','ictc','5948','{\"endpoint\":\"https://push.example/abc\",\"keys\":{\"p256dh\":\"x\",\"auth\":\"y\"}}'::jsonb,'ua')" >/dev/null 2>&1
+    pbad=$($PS -d ictc_verify -At -c "select ictc_push_subscribe('0000','ictc','0000','{\"endpoint\":\"https://push.example/zzz\"}'::jsonb,'ua')" 2>&1)
+    pcnt=$($PS -d ictc_verify -At -c "select count(*) || ':' || string_agg(room, ',') from ictc_push" 2>&1)
+    pkv=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select * from ictc_kv" 2>&1); pkick=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select ictc_push_kick()" 2>&1)
+    { [ "$pk" = "none" ] && [[ "$pbad" == *"CHAT_CODE_INVALID"* ]] && [ "$pcnt" = "1:ictc" ] && [[ "$pkv" == *"permission denied"* ]] && [[ "$pkick" == *"permission denied"* ]]; } && echo "  푸시 알림(키 없음 null·구독 저장·틀린 코드 거부·kv/kick anon 차단) ok" || { echo "  푸시 알림 검사 실패: $pk / $pbad / $pcnt / $pkv / $pkick"; ok=0; }
     nanon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select * from ictc_news" 2>&1); [[ "$nanon" == *"permission denied"* ]] && echo "  뉴스 표 anon 차단 ok" || { echo "  뉴스 표가 anon 에 열려 있음: $nanon"; ok=0; }
     banon=$(psql -h $PGD -p 5499 -U anon -d ictc_verify -At -c "select ictc_chat_briefing('2026-10-27')" 2>&1); [[ "$banon" == *"permission denied"* ]] && echo "  브리핑 내부 함수 anon 거부 ok" || { echo "  브리핑 함수가 anon 에 열려 있음: $banon"; ok=0; }
     # --- v6.4 추가 검사 ---

@@ -722,6 +722,9 @@
   .chat-head > div:first-child, .chat-head .chat-title-wrap { flex: 1; min-width: 0; }
   .chat-head .chat-back + .chat-title-wrap { flex: 1; }
   .chat-sub { font-size: 12px; color: var(--text-3); }
+  .push-bell { display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; font-size: 14px; font-weight: 700; white-space: nowrap; margin-left: auto; margin-right: 4px; color: var(--text-2); }
+  .push-bell svg { width: 18px; height: 18px; } .push-bell.on { color: var(--primary); background: var(--primary-soft, #EEF2FF); }
+  .push-bell + .chat-readall { margin-left: 0; }
   .chat-readall { padding: 8px 14px; font-size: 15px; font-weight: 700; white-space: nowrap; margin-left: auto; margin-right: 4px; }
   .chat-who { margin-left: auto; font-size: 12.5px; color: var(--text-3); text-align: right; }
   .chat-who b { color: var(--text-2); }
@@ -1372,6 +1375,7 @@
   /* 선 아이콘 1세트 (이모지 대신). 크기는 CSS .ic 와 자리별 규칙이 정한다 */
   const svg = (d, cls) => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const I = {
+    bell: svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
     pin: svg('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>'),
     plus: svg('<path d="M12 5v14M5 12h14"/>'),
     close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
@@ -1535,7 +1539,7 @@
   /* 원인 + 해결을 함께 말한다. USER_PIN_INVALID 문구는 로그인 화면 검사(e2e)와 맞물려 있으니 그대로 둔다 */
   const ERR = { VIEW_PIN_REQUIRED: '팀 PIN이 필요해요. 담당자에게 받은 숫자를 넣으세요', VIEW_PIN_INVALID: '팀 PIN이 올바르지 않아요. 담당자에게 받은 숫자를 다시 확인하세요', PIN_INVALID: '관리자 PIN이 올바르지 않아요. 담당자(관리자)만 쓰는 기능이에요',
     USER_NOT_FOUND: '등록되지 않은 번호예요. 행정전화 뒤 4자리를 확인하세요', USER_PIN_INVALID: '비밀번호가 맞지 않아요', USER_EXISTS: '이미 등록된 번호예요. 비밀번호를 잊었으면 담당자에게 초기화를 요청하세요',
-    USER_ID_INVALID: '행정전화 뒤 4자리(숫자)를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요. 담당자에게 톡방 입장코드를 확인하세요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요. 톡방 목록을 새로 고치세요', CHAT_CODE_TOO_SHORT: '입장코드는 숫자 4자리 이상이어야 해요', CHAT_ROOM_EXISTS: '같은 이름의 톡방이 이미 있어요', FILE_TOO_LARGE: '파일 조각이 서버 한도를 넘었어요. 담당자에게 알려 주세요(config.js 의 fileMaxMB 를 Supabase 파일 상한 이하로)', FILE_TYPE: '서버가 이 파일 형식을 받지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', UPLOAD_FAILED: '파일이 끝까지 올라가지 않았어요. 인터넷 연결을 확인하고 다시 보내 주세요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하 파일만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리로 넣으세요', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '같은 이름의 대시보드가 이미 있어요',
+    PUSH_SUB_INVALID: '알림 구독 정보가 올바르지 않아요. 앱을 새로고침한 뒤 다시 켜 보세요', USER_ID_INVALID: '행정전화 뒤 4자리(숫자)를 확인하세요', CHAT_CODE_INVALID: '입장코드가 맞지 않아요. 담당자에게 톡방 입장코드를 확인하세요', CHAT_ROOM_NOT_FOUND: '없는 톡방이에요. 톡방 목록을 새로 고치세요', CHAT_CODE_TOO_SHORT: '입장코드는 숫자 4자리 이상이어야 해요', CHAT_ROOM_EXISTS: '같은 이름의 톡방이 이미 있어요', FILE_TOO_LARGE: '파일 조각이 서버 한도를 넘었어요. 담당자에게 알려 주세요(config.js 의 fileMaxMB 를 Supabase 파일 상한 이하로)', FILE_TYPE: '서버가 이 파일 형식을 받지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', UPLOAD_FAILED: '파일이 끝까지 올라가지 않았어요. 인터넷 연결을 확인하고 다시 보내 주세요', STORAGE_NOT_READY: '파일 저장소가 아직 준비되지 않았어요. 담당자에게 알려 주세요(SQL 재적용)', FILE_TOO_LARGE_PREVIEW: '미리보기 모드에서는 1.5MB 이하 파일만 올릴 수 있어요', PIN_TOO_SHORT: '비밀번호는 숫자 4자리로 넣으세요', NAME_REQUIRED: '이름을 입력하세요', BOARD_EXISTS: '같은 이름의 대시보드가 이미 있어요',
     BOARD_PROTECTED: '기본 대시보드는 삭제할 수 없어요', BOARD_NOT_FOUND: '이 대시보드가 지워졌어요. 과 이름▾에서 다른 대시보드를 고르세요', ID_REQUIRED: '항목 번호가 없어요. 화면을 새로고침한 뒤 다시 해 보세요', KIND_INVALID: '종류 오류예요. 화면을 새로고침한 뒤 다시 해 보세요',
     ITEM_TOO_LARGE: '내용이 너무 길어요. 메모·상세를 줄여서 저장하세요', ITEMS_REQUIRED: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', JSON_INVALID: '파일 형식이 맞지 않아요. JSON 내보내기로 받은 파일인지 확인하세요', NOT_FOUND: '요청한 주소가 없어요. 새로고침해 보세요',
     SERVER_ERROR: '서버에 문제가 생겼어요. 잠시 뒤 다시 시도하고, 계속되면 담당자에게 알려 주세요', SQL_OUTDATED: '서버 설정이 최신이 아니에요. 담당자에게 알려 주세요(SQL 재적용)', KEY_INVALID: '연결 키가 맞지 않아요. 담당자에게 알려 주세요',
@@ -1609,6 +1613,10 @@
       chatRoomRename: (pin, room, name) => rpc('ictc_chat_room_rename', { p_edit_pin: pin, p_room: room, p_name: name }),
       chatRoomAdd: (pin, id, name, code) => rpc('ictc_chat_room_add', { p_edit_pin: pin, p_id: id, p_name: name, p_code: code }),
       chatRoomDelete: (pin, room) => rpc('ictc_chat_room_delete', { p_edit_pin: pin, p_room: room }),
+      // 아침 브리핑 푸시 알림(상태표시줄): 공개 키 · 구독 저장/해제
+      pushKey: () => rpc('ictc_push_key', {}),
+      pushSubscribe: (room, code, sub) => rpc('ictc_push_subscribe', { p_pin: viewPin(), p_room: room, p_code: code, p_sub: sub, p_ua: (navigator.userAgent || '').slice(0, 200) }),
+      pushUnsubscribe: (endpoint) => rpc('ictc_push_unsubscribe', { p_endpoint: endpoint }),
       // 첨부: 입장코드를 먼저 확인한 뒤 Storage 버킷 sail41 의 chat/<톡방>/ 에 올린다 (공개 읽기, 경로는 추측 불가)
       chatUpload: async (room, code, file, onProgress) => {
         if (!api._joined || api._joined !== room + ':' + code) { await api.chatJoin(room, code); api._joined = room + ':' + code; }
@@ -1663,6 +1671,7 @@
       chatRoomRename: (pin, room, name) => post('/api/chat_room_rename', { pin, room, name }),
       chatRoomAdd: (pin, id, name, code) => post('/api/chat_room_add', { pin, id, name, code }),
       chatRoomDelete: (pin, room) => post('/api/chat_room_delete', { pin, room }),
+      pushKey: async () => null,   // 로컬 서버는 푸시 발송 기능이 없다(알림 버튼 숨김)
       chatUpload: async (room, code, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?room=${encodeURIComponent(room)}&code=${encodeURIComponent(code)}&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': upType(file) }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
       itemUpload: async (kind, file, onProgress) => { const { status, text } = await xhrUpload(`${CFG.apiUrl}/api/upload?kind=items&name=${encodeURIComponent(file.name || 'file')}`, file, { 'X-Pin': viewPin(), 'Content-Type': upType(file) }, onProgress); if (status < 200 || status >= 300) { let code2 = ''; try { code2 = JSON.parse(text).message; } catch (e) {} throw new ApiError(code2 || 'UPLOAD_FAILED', status); } return JSON.parse(text); },
     };
@@ -1706,6 +1715,7 @@
       // 미리보기 톡방: 이 브라우저에만 저장. 기본 톡방·코드는 실제 서버와 같다
       chatRooms: async () => { let r = lsGet('ictc.chat.rooms'); if (!r) { r = [{ id: 'ictc', name: '지휘역량강화센터', code: '5948', sort: 1 }, { id: 'edu-support', name: '교육지원과', code: '5914', sort: 2 }, { id: 'edu-plan', name: '교육기획과', code: '5926', sort: 3 }, { id: 'training', name: '훈련운영과', code: '5527', sort: 4 }]; lsSet('ictc.chat.rooms', r); } return r.map(({ id, name, sort }) => ({ id, name, sort })); },
       chatBriefingNow: async (pin) => { if (pin !== 'local' && pin !== (lsGet(LS.pin) || '1234')) throw new ApiError('PIN_INVALID'); return api.chatBriefing(true); },   // 미리보기는 관리자 PIN 이 'local'
+      pushKey: async () => null,
       chatBriefing: async (force) => {   // 미리보기: 이 브라우저 데이터로 같은 문장을 만든다
         const t = new Date(); if (!force && (t.getDay() === 0 || t.getDay() === 6 || t.getHours() < 7)) return 0;
         const d = todayStr(); let cnt = 0; const rooms = await api.chatRooms(); const boards = lsGet(LS.boards) || [{ id: 'main', name: '지휘역량강화센터' }];
@@ -2632,6 +2642,44 @@
     }
     if (document.getElementById('chatModal').classList.contains('open')) renderChat();
   }
+  /* ── 아침 브리핑 푸시 알림(상태표시줄). 서버(Supabase)에 공개 키가 있을 때만 버튼이 보인다. 구독은 기기별, 톡방 하나 ── */
+  const PUSH = { ready: false, key: null, on: false, info: null }; const LS_PUSH = 'ictc.push';
+  const b64ToU8 = str => { const b = (str + '='.repeat((4 - str.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'); const r = atob(b); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+  const u8ToB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  async function pushInit() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window) || !api.pushKey) return;
+    try { PUSH.key = await api.pushKey(); } catch (e) { PUSH.key = null; }
+    if (!PUSH.key) return;
+    PUSH.ready = true; PUSH.info = lsGet(LS_PUSH); PUSH.on = !!(PUSH.info && PUSH.info.endpoint && Notification.permission === 'granted');
+    if (PUSH.on) {   // 구독 주소가 바뀌었으면(브라우저가 갱신) 서버에 다시 알린다
+      try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription();
+        if (!sub) { PUSH.on = false; lsDel(LS_PUSH); PUSH.info = null; }
+        else if (sub.endpoint !== PUSH.info.endpoint && chatCode(PUSH.info.room)) { await api.pushSubscribe(PUSH.info.room, chatCode(PUSH.info.room), sub.toJSON()); PUSH.info.endpoint = sub.endpoint; lsSet(LS_PUSH, PUSH.info); }
+      } catch (e) {}
+    }
+    renderChat();
+  }
+  async function pushToggle() {
+    if (!PUSH.ready) return;
+    if (PUSH.on) {
+      try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) { await api.pushUnsubscribe(sub.endpoint).catch(() => {}); await sub.unsubscribe(); } } catch (e) {}
+      lsDel(LS_PUSH); PUSH.info = null; PUSH.on = false; renderChat(); toast('브리핑 알림을 껐어요'); return;
+    }
+    const joined = CHAT.rooms.filter(r => chatCode(r.id)); if (!joined.length) { toast('먼저 톡방에 한 번 들어간 뒤 알림을 켜 주세요'); return; }
+    let room = joined[0].id;
+    if (joined.length > 1) { const a = prompt(`어느 톡방의 아침 브리핑을 받을까요? 번호를 입력하세요\n${joined.map((r, i) => `${i + 1}. ${r.name}`).join('\n')}`, '1'); if (a === null) return; const k = parseInt(a, 10) - 1; if (!joined[k]) { toast('번호를 다시 확인하세요'); return; } room = joined[k].id; }
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !navigator.standalone) { toast('아이폰·아이패드는 홈 화면에 추가한 앱에서만 알림을 켤 수 있어요. ⋮ → 앱 설치 뒤 다시 켜 주세요', 7000); return; }
+    let perm = Notification.permission; if (perm !== 'granted') perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast(perm === 'denied' ? '알림이 차단돼 있어요. 폰 설정 → 앱 → SAIL:41(또는 브라우저) → 알림 허용 뒤 다시 누르세요' : '알림 허용을 눌러야 받을 수 있어요', 7000); return; }
+    try {
+      const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+      if (sub && sub.options && sub.options.applicationServerKey && u8ToB64(sub.options.applicationServerKey) !== PUSH.key.replace(/=+$/, '')) { await sub.unsubscribe(); sub = null; }   // 서버 키가 바뀌었으면 새로 구독
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(PUSH.key) });
+      await api.pushSubscribe(room, chatCode(room), sub.toJSON());
+      PUSH.info = { endpoint: sub.endpoint, room }; lsSet(LS_PUSH, PUSH.info); PUSH.on = true; renderChat();
+      toast(`켰어요. 평일 아침 7시 '${chatRoomName(room)}' 브리핑이 상태표시줄 알림으로 와요`, 6000);
+    } catch (e) { toast(e instanceof ApiError ? e.message : '알림을 켜지 못했어요. 이 브라우저가 푸시를 지원하지 않거나 네트워크 문제예요', 7000); }
+  }
   async function openChat() {
     CHAT.room = null; openModal('chatModal'); renderChat();
     await loadChatRooms(true); renderChat(); refreshChat(true);
@@ -2660,7 +2708,7 @@
     const admin = document.body.classList.contains('admin') || !REMOTE;
     const head = document.getElementById('chatHead'), list = document.getElementById('chatList'), input = document.getElementById('chatInputBar');
     if (!CHAT.room) {
-      head.innerHTML = `<div><h2 id="chatTitle">41망</h2></div>${CHAT.rooms.some(r => chatCode(r.id) && chatUnread(r.id)) ? `<button type="button" class="btn ghost chat-readall" onclick="chatMarkAllSeen()">모두 읽음</button>` : ''}${admin ? `<button type="button" class="btn ghost chat-manage ${CHAT.manage ? 'on' : ''}" onclick="CHAT.manage=!CHAT.manage;renderChat()" title="톡방 추가 · 입장코드 변경">관리</button>` : ''}<button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
+      head.innerHTML = `<div><h2 id="chatTitle">41망</h2></div>${PUSH.ready ? `<button type="button" class="btn ghost push-bell ${PUSH.on ? 'on' : ''}" id="pushBell" onclick="pushToggle()" title="평일 아침 7시 브리핑을 상태표시줄 알림으로 받아요" aria-pressed="${PUSH.on}">${I.bell}<span>${PUSH.on ? '알림 켜짐' : '브리핑 알림'}</span></button>` : ''}${CHAT.rooms.some(r => chatCode(r.id) && chatUnread(r.id)) ? `<button type="button" class="btn ghost chat-readall" onclick="chatMarkAllSeen()">모두 읽음</button>` : ''}${admin ? `<button type="button" class="btn ghost chat-manage ${CHAT.manage ? 'on' : ''}" onclick="CHAT.manage=!CHAT.manage;renderChat()" title="톡방 추가 · 입장코드 변경">관리</button>` : ''}<button type="button" class="icon-btn chat-close" aria-label="닫기" onclick="closeModal('chatModal')">${I.close || '✕'}</button>`;
       input.style.display = 'none'; list.classList.add('rooms');
       if (CHAT.source.rooms === 'error') { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${I.alert}<br>톡방 목록을 불러오지 못했어요<br><button type="button" class="retry-btn" onclick="openChat()">다시 시도</button></div>`; return; }
       if (!CHAT.rooms.length) { list.innerHTML = `<div class="empty" style="padding:28px;font-size:14px">${CHAT.source.rooms ? '톡방이 없어요' : '불러오는 중…'}</div>`; return; }
@@ -3643,6 +3691,9 @@
     setTimeout(maybeBriefing, 1500);
     const visits = (Number(lsGet('ictc.visits')) || 0) + 1; lsSet('ictc.visits', visits); updateInstallBtn(); updateAdminUI();
     if (!lsGet('ictc.hint.v2')) { lsSet('ictc.hint.v2', 1); lsSet('ictc.hint.v1', 1); setTimeout(() => toast('처음이세요? 누구나 추가·수정할 수 있어요.', 7000, openHelp, '사용 안내 보기'), 600); setTimeout(showTabTip, 1400); }
+    const hm = location.hash.match(/^#chat=([^&/]+)/);   // 알림을 누르면 #chat=<톡방> 으로 열린다 → 그 톡방으로
+    if (hm) { history.replaceState(null, '', location.pathname + location.search); setTimeout(async () => { try { await openChat(); await enterRoom(decodeURIComponent(hm[1])); } catch (e) {} }, 500); }
+    if (REMOTE) setTimeout(pushInit, 1200);
     if (location.hash === '#a2hs') { setTimeout(installApp, 600); }                       // 인앱 브라우저에서 '브라우저로 열기' 뒤 돌아온 경우
     else if (visits >= 2 || isInApp) setTimeout(showA2hs, isInApp ? 1500 : 2500);        // 설치 카드는 두 번째 방문부터. 카톡·네이버 앱 안에서는 첫 방문에도(바깥 브라우저로 안내)
   }
