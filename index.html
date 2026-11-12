@@ -1015,6 +1015,35 @@
   .ictc-pane .lead { margin: 0 0 12px; color: var(--muted, #667085); }
   .ictc-pane .empty { padding: 14px; border: 1px dashed var(--line); border-radius: 10px; background: var(--card-2); color: var(--muted, #667085); line-height: 1.5; }
   .ictc-pane ul { margin: 0; padding-left: 20px; line-height: 1.6; }
+  .ictc-kpi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+  @media (min-width: 1024px) { .ictc-kpi { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .ictc-kpi div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--navy); color: var(--on-navy); }
+  .ictc-kpi b { font-size: 20px; line-height: 1.2; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .ictc-kpi span { font-size: 13px; font-weight: 700; }
+  .ictc-kpi small { font-size: 11px; color: var(--on-navy-2); }
+  .ictc-all .big { font-size: 13px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+  :root[data-theme="dark"] .ictc-all .big { color: var(--gold); }
+  .ictc-key { display: flex; gap: 8px; align-items: baseline; margin: 0 0 12px; padding: 10px 12px; border-left: 4px solid var(--gold); background: var(--card-2); border-radius: 0 10px 10px 0; line-height: 1.5; font-weight: 600; }
+  .ictc-key b { flex: none; font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--navy); color: #fff; }
+  .ictc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .ictc-stats div { display: grid; gap: 2px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+  .ictc-stats b { font-size: 17px; line-height: 1.25; color: var(--navy); font-variant-numeric: tabular-nums; word-break: keep-all; }
+  :root[data-theme="dark"] .ictc-stats b { color: var(--gold); }
+  .ictc-stats span { font-size: 12px; color: var(--muted, #667085); }
+  .ictc-tb { margin: 0 0 16px; }
+  .ictc-tb figcaption { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+  .ictc-tb figcaption b { font-size: 15px; } .ictc-tb figcaption span { font-size: 12px; color: var(--muted, #667085); }
+  .ictc-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+  .ictc-scroll:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .ictc-tb table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; }
+  .ictc-tb th, .ictc-tb td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; word-break: keep-all; }
+  .ictc-tb thead th { background: var(--navy); color: #fff; font-weight: 700; white-space: nowrap; }
+  .ictc-tb tbody th { font-weight: 700; min-width: 7em; }
+  .ictc-tb tbody tr:last-child > * { border-bottom: 0; }
+  .ictc-tb tr.sum > * { background: var(--card-2); font-weight: 800; }
+  @media (max-width: 639px) { .ictc-tb table.wide { min-width: 560px; } .ictc-all button { padding: 10px; gap: 4px; } .ictc-stats b { font-size: 15px; } .ictc-kpi b { font-size: 17px; } .ictc-pane { padding: 14px; } }
+  .ictc-notes { margin: 0 0 12px; padding-left: 18px; line-height: 1.6; font-size: 14px; }
+  .ictc-src { margin: 0; font-size: 12px; color: var(--muted, #667085); }
 </style>
 </head>
 <body>
@@ -1093,6 +1122,7 @@
 
   <section id="ictc" role="region" aria-label="ICTC 운영">
     <div class="ictc-head"><img src="assets/ictc.png" alt=""><div><h2>ICTC 운영</h2><p>인천소방학교 지휘역량강화센터 운영을 한눈에</p></div><button type="button" class="btn ghost ictc-back" onclick="ictcExit()">‹ 보드로</button></div>
+    <div class="ictc-kpi" id="ictcKpi" aria-label="2026년 핵심 지표"></div>
     <div class="ictc-all" id="ictcAll" aria-label="7개 분야 현황"></div>
     <div class="ictc-pane" id="ictcPane" role="tabpanel"></div>
   </section>
@@ -1876,23 +1906,164 @@
     } catch (e) {}
   }
   function parseHash() { const m = location.hash.replace('#', '').split('/'); return { tab: TABS.includes(m[0]) ? m[0] : 'schedule', board: m[1] || lsGet(LS.board) || 'main' }; }
-  /* ── ICTC 운영(7개 탭). 내용은 붙임 자료를 받는 대로 items 에 채운다(비면 '자료 준비 중') ── */
+  /* ── ICTC 운영(7개 탭) — 출처: 「2027년 현장지휘관 자격인증제 운영계획(인천소방학교)」 v4(2026. 11. 12.) 4~11장·붙임 2~4.
+        탭 하나 = { k, t, s(한 줄), big(한눈에 칸 숫자), key(핵심 한 줄), stats[[값, 설명]], tables[{cap, unit, head[], rows[[]]}], notes[] } ── */
+  const ICTC_SRC = '「2027년 현장지휘관 자격인증제 운영계획(인천소방학교)」 v4 · 2026. 11. 12.';
+  const ICTC_KPI = [   // 〈표 4〉 2027년 성과지표 — 2026년 현황
+    ['13.4%', '보직자 교육이수율', "'26. 7월말 · 335명 중"], ['6.3%', '보직자 자격보유율', "'26. 7월말"],
+    ['58.2%', '초급 합격률', '누계 3회 153명'], ['49.3%', '중급 합격률', '누계 2회 69명'],
+    ['98.4점', '교육 만족도', '10개 기수 평균'], ['96.7점', '현업적용도', '9개 기수 · 전원 A'],
+  ];
   const ICTC = [
-    { k: 'edu',      t: '교육 운영',   s: '교육 과정·기수·일정 운영 현황', items: [] },
-    { k: 'eval',     t: '평가 운영',   s: '평가 기준·방법·결과 관리', items: [] },
-    { k: 'survey',   t: '설문 조사',   s: '교육생·현장 설문과 결과 정리', items: [] },
-    { k: 'council',  t: '실무 협의회', s: '실무 협의회 구성·안건·결과', items: [] },
-    { k: 'compare',  t: '비교 행정',   s: '다른 기관 사례와 비교', items: [] },
-    { k: 'research', t: '연구 계획',   s: '연구 과제와 추진 일정', items: [] },
-    { k: 'budget',   t: '소요 예산',   s: '운영에 드는 예산 항목', items: [] },
+    { k: 'edu', t: '교육 운영', s: '자격인증제 교육과정 편성·일정·개선사항', big: '16회 280명+',
+      key: '양성반 9회 180명 + 실무·특화 5회 100명 + 팀 단위 2회 = 총 16회(안)',
+      stats: [['16회', '2027년 교육(안)'], ['280명+', '교육 인원(안)'], ['11회 218명', '2025~26 양성반 누계']],
+      tables: [
+        { cap: '2027년 교육과정 편성(안)', unit: '단위: 일, 회, 명', head: ['과정명', '대상', '기간', '횟수', '인원', '방식'], rows: [
+          ['초급 현장지휘관 양성반', '소방위', '5일', '6회', '120명', '사이버+집합'],
+          ['중급 현장지휘관 양성반', '소방경', '10일', '2회', '40명', '사이버+집합'],
+          ['고급 현장지휘관 양성반', '소방령', '10일', '1회', '20명', '사이버+집합'],
+          ['현장지휘 실무과정', '미이수 보직자(위 이상)', '3일', '2회', '40명', '집합'],
+          ['드론활용 지휘·전술 실무과정', '드론운용부서', '3일', '3회', '60명', '집합'],
+          ['재난대응 팀 단위 교육·평가', '11개 소방서 현장대응단', '별도', '2회', '별도', '본부 협업'],
+          ['계', '', '', '16회', '280명+', '']] },
+        { cap: '2027년 교육 일정(안)', unit: '붙임 2 · 교육만', head: ['기간', '과정', '대상', '인원'], rows: [
+          ['1. 18.~1. 29.', '중급 양성반 제4기', '소방경', '20'], ['3. 22.~3. 26.', '초급 양성반 제8기', '소방위', '20'],
+          ['3. 29.~4. 2.', '초급 양성반 제9기', '소방위', '20'], ['4. 5.~4. 9.', '초급 양성반 제10기', '소방위', '20'],
+          ['4. 27.~4. 29.', '현장지휘 실무과정 제1기', '소방위 이상', '20'], ['5. 24.~6. 4.', '중급 양성반 제5기', '소방경', '20'],
+          ['7. 7.~7. 9.', '드론 실무과정 제4기', '드론운용부서', '20'], ['8. 23.~8. 27.', '초급 양성반 제11기', '소방위', '20'],
+          ['8. 30.~9. 3.', '초급 양성반 제12기', '소방위', '20'], ['9. 6.~9. 10.', '초급 양성반 제13기', '소방위', '20'],
+          ['9. 29.~10. 1.', '드론 실무과정 제5기', '드론운용부서', '20'], ['10. 26.~10. 28.', '현장지휘 실무과정 제2기', '소방위 이상', '20'],
+          ['11. 10.~11. 12.', '드론 실무과정 제6기', '드론운용부서', '20'], ['11. 22.~12. 3.', '고급 양성반 제2기', '소방령', '20'],
+          ['상·하반기', '재난대응 팀 단위 교육·평가', '11개 소방서 현장대응단', '-']] },
+        { cap: '2027년 교육 개선사항', head: ['개선과제', '2026년(현행)', '2027년(개선)'], rows: [
+          ['고급 양성반', '제1기 시범 운영(11~12월)', '정례화, 제1기 결과로 교과·시나리오 보완'],
+          ['사전과제', '기수별 제출', '현장경험 사례연구로 체계화, 사례연구 평가와 연계'],
+          ['실습 방식', '행동지표 중심 실습', '표준해설서 반영, 상황판단 중심(암기식 지시 지양)'],
+          ['취약지표', '일반 실습에 포함', '현장요소 파악·출동대 안전관리(RIT)·진행상황 관리 집중교육'],
+          ['시나리오', '표준 시나리오 위주', '물류창고·샌드위치패널·고층·항만 등 인천 특성화 확대'],
+          ['실습 기회', 'XVR 1인당 실습 부족(9개 기수 요구)', 'XVR 개별 연습실·AI 무전 트레이닝, 무전요원 역할 순환'],
+          ['강의형 과목', '무선통신·SOP 이론 "덜 도움" 57%', '무선통신은 무전 실습형, SOP는 사이버 선이수 후 사례 적용'],
+          ['입교 준비', '첫날 적응 부담·자료 요청', '입교 2주 전 교안·시범영상 제공, 1일차 시범 시연 후 실습']] },
+        { cap: '연도별 양성반 현황', unit: '붙임 3', head: ['구분', '초급', '중급', '고급', '계'], rows: [
+          ['2025년', '1회 20명', '1회 21명', '-', '2회 41명'], ['2026년', '6회 119명', '2회 38명', '1회 20명(예정)', '9회 177명'],
+          ['누계', '7회 139명', '3회 59명', '1회 20명', '11회 218명']] }],
+      notes: ['(1단계 사이버교육) 재난대응체계 실무 8·현장지휘론 13·지휘통제 SOP 7 = 28차시, 과목 40점·평균 60점 이상 합격',
+        '(2단계 집합교육) 초급 1주·중급 2주·고급 2주, 참여도·사례연구·지휘실습(VR) 100점 만점 70점 이상 수료',
+        '인원·회차는 2027년 인천소방학교 교육훈련계획 및 소방청 제출서식과 대조하여 확정'] },
+    { k: 'eval', t: '평가 운영', s: '인증평가 일정·기준·결과·개선사항', big: '5회 240명',
+      key: '초급 2회·중급 2회 + 고급 1회 신설 = 총 5회 240명 규모(안)',
+      stats: [['5회 240명', '2027년 인증평가(안)'], ['55.4%', '누계 합격률 · 222명 중 123명'], ['145명', '인천 자격인증자(26.10 추정)']],
+      tables: [
+        { cap: '2027년 인증평가 일정(안)', unit: '단위: 명', head: ['회차', '대상', '평가기간', '사전연습', '예상인원', '방법'], rows: [
+          ['제3회 중급', '소방경', '3. 2.~3. 12.', '2. 23.~2. 25.', '40명(1일 4명)', '실기+면접'],
+          ['제1회 고급(신설)', '소방령', '4. 19.~4. 23.', '4. 13.~4. 15.', '20명(1일 4명)', '실기+면접'],
+          ['제4회 초급', '소방위', '5. 10.~5. 21.', '5. 3.~5. 7.', '70명(1일 7명)', '실기'],
+          ['제4회 중급', '소방경', '6. 21.~7. 2.', '6. 15.~6. 17.', '40명(1일 4명)', '실기+면접'],
+          ['제5회 초급', '소방위', '10. 12.~10. 22.', '10. 5.~10. 7.', '70명(1일 7명)', '실기'],
+          ['계', '', '5회', '', '240명', '']] },
+        { cap: '등급별 평가 기준', head: ['구분', '평가지표', '합격기준', '평가관'], rows: [
+          ['초급', '5개 항목 20개 행동지표(100점), 주요지표 2개', "80점 이상, 주요지표에 평가관 2인 이상 '하' 평정 없음", '내부 3인 이상'],
+          ['중급', '6개 항목 35개 행동지표(200점), 주요지표 7개 / 면접 9개 요소', "실기 160점 이상, 면접 '하' 20% 이하, 평가관 회의 최종 결정", '내부 3인 + 외부 면접 1~2인'],
+          ['고급', '5개 항목 37개 행동지표(200점), 주요지표 5개', '중급과 동일', '내부 3인 + 외부 면접 1~2인']] },
+        { cap: '회차별 인증평가 결과', unit: '붙임 4 · 단위: 명', head: ['회차', '평가기간', '응시', '합격', '불합격', '합격률'], rows: [
+          ['제3회 초급', '2026. 10. 12.~10. 23.', '68', '44', '24', '64.7%'], ['제2회 중급', '2026. 6. 22.~7. 2.', '32', '15', '17', '46.9%'],
+          ['제2회 초급', '2026. 5월', '62', '33', '29', '53.2%'], ['제1회 중급', '2026. 3. 3.~3. 13.', '37', '19', '18', '51.4%'],
+          ['제1회 초급', '2025. 11. 17.~11. 20.', '23', '12', '11', '52.2%'], ['계', '5회', '222', '123', '99', '55.4%']] },
+        { cap: '2027년 평가 개선사항', head: ['개선과제', '내용', '근거'], rows: [
+          ['고급 평가 신설', '외부 면접위원·언론브리핑 기자역 등 평가인력 사전 확보', '관할 권역 조정'],
+          ['준비시간 통일', 'VR 실기 전 사전 준비시간 5분', '2026 제2차 실무협의회'],
+          ['부정행위 처리', '1차 구두 경고, 2차 실격', '2026 제2차 실무협의회'],
+          ['평가결과 환류', '불합격자에게 분야별 방사형 차트 결과서 통보', '운영규정 제13조 개정 검토'],
+          ['응시 제한', '2회 연속 불합격자 차기 회차 응시제한', '운영규정 제9조 개정 검토'],
+          ['심리검사 분석', '중앙소방학교 배포 공식 프로그램 사용', '2026 제2차 실무협의회'],
+          ['평가관 교육', '표준해설서 기반 사전교육으로 해석 편차 최소화', '표준해설서 배포']] }],
+      notes: ['(응시자격) 현장대응부서 1년 이상 근무 및 집합교육 이수·합격(운영규정 제8조), 2회 연속 불합격자는 제한기간 내 응시 불가(제9조)',
+        '초급 합격률은 회차마다 상승(52.2% → 64.7%), 중급은 4.5%p 하락(51.4% → 46.9%) → 중급 사전연습·면접 준비 강화',
+        '취약 지표: 화재현장 요소 파악관리(72%), 인명구조 목표달성(73%), 출동대 안전관리 → 집중교육'] },
+    { k: 'survey', t: '설문 조사', s: '교육 만족도·현업적용도 분석과 2027년 반영', big: '98.4점',
+      key: '교육 효과는 검증(만족도 98.4점·현업적용도 96.7점, 전 기수 A) → 2027년은 XVR 실습 확대·강의형 과목 실습형 전환·편의시설 개선',
+      stats: [['98.4점', '교육 만족도 · 10개 기수'], ['96.7점', '현업적용도 · 9개 기수 전원 A'], ['91.5% / 80.8%', '응답률(만족도 / 현업적용도)']],
+      tables: [
+        { cap: '설문 조사 개요', head: ['구분', '교육 만족도', '현업적용도'], rows: [
+          ['시기', '수료 당일', '수료 약 1개월 후(온라인)'], ['대상', '초급 1~7기, 중급 1~3기(10개 기수)', '초급 2~7기, 중급 1~3기(9개 기수)'],
+          ['응답', '200명 중 183명(91.5%)', '177명 중 143명(80.8%)'], ['영역', '교육과정 40%·시설환경 20%·교수역량 40%', '교육 이해도·실무 적용성·효과성 각 1/3']] },
+        { cap: '기수별 설문 결과', unit: '단위: 명, 점', head: ['기수', '교육기간', '응답', '만족도', '현업적용도', '특이사항'], rows: [
+          ['초급 1기', "'25. 9. 8.~9. 12.", '18/22', '99.1', '-', '현업적용도 미시행'], ['중급 1기', "'25. 10. 13.~10. 24.", '19/21', '99.1', '99.6', '교육과정 100점'],
+          ['중급 2기', "'26. 1. 26.~2. 6.", '19/19', '98.1', '95.9', '드론·언론대응 체감 낮음'], ['초급 2기', "'26. 3. 23.~3. 27.", '17/20', '99.4', '95.8', '교수역량 100점'],
+          ['초급 3기', "'26. 4. 6.~4. 10.", '18/20', '99.5', '98.1', ''], ['초급 4기', "'26. 4. 13.~4. 17.", '17/19', '99.6', '98.4', ''],
+          ['중급 3기', "'26. 6. 1.~6. 12.", '19/19', '98.6', '92.9', '언론대응·딜레마 과목 적합성'], ['초급 5기', "'26. 8. 24.~8. 28.", '19/20', '96.5', '91.0', '이해도 90.7점(최저)'],
+          ['초급 6기', "'26. 9. 7.~9. 11.", '18/20', '94.3', '99.1', '시설 90.6점(식당·화장실)'], ['초급 7기', "'26. 9. 14.~9. 18.", '19/20', '99.7', '99.7', '최고점 회복'],
+          ['평균', '', '183/200', '98.4', '96.7', '전 기수 A등급']] },
+        { cap: '설문 결과의 2027년 반영', head: ['설문 결과', '2027년 반영'], rows: [
+          ['실습 기회 부족(9/10 기수)', 'XVR 개별 연습실·AI 무전 트레이닝, 교육생 무전요원 역할 순환'],
+          ['강의형 과목 체감 효과 낮음(57%)', '무선통신을 무전 실습형으로, SOP는 사이버 선이수 후 사례 적용 중심'],
+          ['입교 초기 부담·자료 요청(6/10)', '입교 2주 전 교안·시범영상 제공, 1일차 시범 시연 후 실습'],
+          ['초급 교육기간 연장 요청(4/7)', '5일 유지, 인증평가 전 사전연습(3일)과 연계 · 2주 확대는 보조강사 확보 후 검토'],
+          ['교육 대상 확대 요구(8/10)', '현장지휘 보직자·발령 예정자 우선 선발, 미이수 보직자 추천 협조'],
+          ['사례·시나리오 다양화(7/10)', '다수사상자·구조·상황실 연계·법적 책임 사례 시나리오 개발'],
+          ['편의시설 최저(96.3점)', '식사·휴게·체력단련·탈의실·화장실 개선, 연속·동시 과정 운영 전 점검'],
+          ['평가 부담·수준차(4/10)', '무전 경험 수준별 사전연습, 실습 후 디브리핑 강화'],
+          ['중급 일부 과목 적합성', '언론대응·딜레마 과목은 고급 중심으로 재배치 검토']] }],
+      notes: ['(강점) XVR이 편성된 8개 기수 모두 XVR 지휘실습을 "업무에 가장 도움 된 과목" 1위로 선택(초급 64%)',
+        '(과제) ① 1인당 실습 기회 부족 ② 무선통신·SOP 이론 등 강의형 과목 체감 효과 낮음 ③ 편의시설 세부 만족도 최저',
+        '8~9월 4주 사이 3개 기수(5~7기) 연속 운영 구간에서 만족도가 내려갔다가(6기 94.3점) 7기에 회복 → 연속 편성 시 편의시설·운영인력 사전 점검'] },
+    { k: 'council', t: '실무 협의회', s: '소방청·인천 자체·평가관 협의회', big: '연 4회+',
+      key: '소방청 협의회 참여 + 인천 자체 협의회 연 4회 이상 → 제도 개편·평가 품질 동시 관리',
+      stats: [['3종', '협의회 구성'], ['32 / 59건', "'26 표준해설서 의견 반영"], ['14일', '이의제기 기간']],
+      tables: [
+        { cap: '실무 협의회 구성', head: ['구분', '주관', '구성', '시기', '주요 안건'], rows: [
+          ['자격인증제 실무(평가관) 협의회', '소방청 대응총괄과', '운영기관 실무자, 평가관협의회', '상·하반기', '운영규정·매뉴얼 개정, 표준해설서, 직무 중심 전환'],
+          ['인천 자격인증제 실무 협의회', '인천소방학교', '교육기획과, 지휘역량강화센터, 본부 현장대응과', '반기별', '교육대상자 선발, 보직자 이수 현황, 팀 단위 평가 협업'],
+          ['평가관 사전·사후 협의회', '지휘역량강화센터', '평가관·면접위원·운영요원', '회차별 평가 전·후', '평가기준 공유, 시나리오 점검, 결과 분석·이의제기 검토']] }],
+      notes: ['(2026년 협의 반영) 제2차 실무협의회(2026. 6. 1.~6. 2.): 표준해설서 의견 59건 중 32건 반영, 이의제기 14일, 준비시간 5분, 부정행위 처리기준',
+        '(2027년 제안 안건) 직무 기반 3단계 경과조치, 고급 평가인력 광역 공유, 평가 보조요원(상황판) 재검토, ICTC 퍼실리테이터(훈련 진행자) 양성'] },
+    { k: 'compare', t: '비교 행정', s: '선행 운영기관 벤치마킹 계획', big: '4곳',
+      key: '고급 과정 신설·제도 개편 대비 → 선행 운영기관 4곳 비교 조사(벤치마킹)(안)',
+      stats: [['4곳', '비교 대상(안)'], ['상반기 집중', '시기'], ['결과보고서', '환류 방법']],
+      tables: [
+        { cap: '비교 행정 계획(안)', head: ['대상기관', '시기', '확인사항', '활용'], rows: [
+          ['중앙소방학교', '1분기', '전략·고급 평가, 표준교재·VR 표준시나리오', '개편 대응'],
+          ['광주소방학교', '1분기', '고급 평가(대응계획·회의·브리핑), 면접도구 5종', '고급 평가 설계'],
+          ['강원·부산소방학교', '2분기', '고급 양성반 교과, 국면별 지휘 교수자료, 평가장 구성', '고급 양성반'],
+          ['서울재난본부·경기소방학교', '하반기', '대규모 평가 운영, 팀 단위 시뮬레이션 훈련', '평가 확대']] }],
+      notes: ['(방법) 방문 벤치마킹 및 평가 참관, 운영자료 교류', '(환류) 결과보고서를 작성하여 회차별 교육·평가 시행계획에 반영'] },
+    { k: 'research', t: '연구 계획', s: '현장지휘관 역량 강화를 위한 연구과제', big: '4개 과제',
+      key: '평가결과 데이터·직무 중심 전환 연구 기반 4개 과제 → 결과를 교육·평가에 환류(안)',
+      stats: [['4개', '연구과제(안)'], ['222명', '분석 대상 평가표(25~26)'], ['L1·L2·L3', '직무 중심 3단계 대응']],
+      tables: [
+        { cap: '연구과제(안)', head: ['연구과제', '내용', '시기', '활용'], rows: [
+          ['행동지표 분석', '2025~2026년 응시자 222명 평가표 분석, 취약점 도출', '1~2월', '교과 보완, 취약지표 집중교육'],
+          ['직무 중심 3단계 대응', 'L1·L2·L3 직무기술서 기반 교과·평가도구 재설계 검토', '개정 일정 연동', '경과조치·교육과정 개편'],
+          ['인천 특화 시나리오', '물류창고·샌드위치패널·고층·항만 XVR 시나리오 개발', '연중', '양성반·실무·팀 단위 훈련'],
+          ['드론 활용 지휘 전술', '드론 영상 기반 상황판단·지휘지원 모델', '연중', '드론 실무과정']] }],
+      notes: ['(교육효과 추적) 현업적용도 설문과 합격률을 연계한 성과지표 관리', '(성과 공유) 소방청 실무협의회 및 학술발표로 공유',
+        '협의·비교행정은 상반기에 집중하고, 평가 회차마다 평가관 사전·사후 협의 실시'] },
+    { k: 'budget', t: '소요 예산', s: '인증평가 소요예산(안)', big: '61,000천 원+',
+      key: '2026년 편성 61,000천 원 유지 + 고급 인증평가분 신규 산정 필요',
+      stats: [['61,000천 원', '2026년 편성(초급+중급)'], ['신규 산정', '고급 인증평가'], ['일 200천 원', '평가관 단가']],
+      tables: [
+        { cap: '소요예산(안)', unit: '단위: 천 원', head: ['구분', '2026년 편성', '2027년(안)'], rows: [
+          ['초급 인증평가', '27,900', '동일 수준'], ['중급 인증평가', '33,100', '동일 수준'], ['고급 인증평가', '-', '신규 산정 필요'], ['계', '61,000', '61,000 + 고급분']] },
+        { cap: '단가', unit: '2026년 운영계획 기준', head: ['구분', '단가'], rows: [['평가관', '일 200천 원'], ['면접위원', '일 300천 원'], ['실기종사자', '일 60천 원']] }],
+      notes: ['고급 평가 신설로 외부 면접위원·언론브리핑 기자역 등 평가인력 사전 확보 필요(고급분 산정 근거)'] },
   ];
   let ictcTab = (() => { try { const v = sessionStorage.getItem('ictcTab'); return ICTC.some(x => x.k === v) ? v : 'edu'; } catch (e) { return 'edu'; } })();
+  function ictcTable(tb) {
+    const total = r => r[0] === '계' || r[0] === '평균' || r[0] === '누계';
+    return `<figure class="ictc-tb"><figcaption><b>${esc(tb.cap)}</b>${tb.unit ? `<span>${esc(tb.unit)}</span>` : ''}</figcaption><div class="ictc-scroll" tabindex="0" role="region" aria-label="${esc(tb.cap)}"><table${tb.head.length >= 4 ? ' class="wide"' : ''}><thead><tr>${tb.head.map(h => `<th scope="col">${esc(h)}</th>`).join('')}</tr></thead><tbody>${tb.rows.map(r => `<tr${total(r) ? ' class="sum"' : ''}>${r.map((c, i) => i ? `<td>${esc(c)}</td>` : `<th scope="row">${esc(c)}</th>`).join('')}</tr>`).join('')}</tbody></table></div></figure>`;
+  }
   function renderIctc() {
     const cur = ICTC.find(x => x.k === ictcTab) || ICTC[0];
     document.getElementById('ictcSeg').innerHTML = ICTC.map(x => `<button type="button" role="tab" id="ictcT-${x.k}" aria-controls="ictcPane" aria-selected="${x.k === cur.k}" tabindex="${x.k === cur.k ? 0 : -1}" onclick="ictcPick('${x.k}', true)">${esc(x.t)}</button>`).join('');
-    document.getElementById('ictcAll').innerHTML = ICTC.map((x, i) => `<button type="button"${x.k === cur.k ? ' aria-current="true"' : ''} onclick="ictcPick('${x.k}')"><span class="n">0${i + 1}</span><b>${esc(x.t)}</b><span class="st">${x.items.length ? x.items.length + '건' : '자료 준비 중'}</span></button>`).join('');
+    document.getElementById('ictcKpi').innerHTML = ICTC_KPI.map(([v, l, d]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
+    document.getElementById('ictcAll').innerHTML = ICTC.map((x, i) => `<button type="button"${x.k === cur.k ? ' aria-current="true"' : ''} onclick="ictcPick('${x.k}')"><span class="n">0${i + 1}</span><b>${esc(x.t)}</b><span class="big">${esc(x.big)}</span></button>`).join('');
     const pane = document.getElementById('ictcPane'); pane.setAttribute('aria-labelledby', 'ictcT-' + cur.k);
-    pane.innerHTML = `<h3>${esc(cur.t)}</h3><p class="lead">${esc(cur.s)}</p>` + (cur.items.length ? `<ul>${cur.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : `<div class="empty"><b>${esc(cur.t)}</b> 자료는 붙임으로 받는 대로 이곳에 정리돼요.</div>`);
+    pane.innerHTML = `<h3>${esc(cur.t)}</h3><p class="lead">${esc(cur.s)}</p><p class="ictc-key"><b>핵심</b>${esc(cur.key)}</p>`
+      + `<div class="ictc-stats">${cur.stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`
+      + cur.tables.map(ictcTable).join('')
+      + (cur.notes.length ? `<ul class="ictc-notes">${cur.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '')
+      + `<p class="ictc-src">출처: ${esc(ICTC_SRC)} · (안)은 확정 전 계획</p>`;
     const a = document.getElementById('ictcT-' + cur.k); if (a) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function ictcPick(k, focus) { ictcTab = k; try { sessionStorage.setItem('ictcTab', k); } catch (e) {} renderIctc(); if (focus) { const b = document.getElementById('ictcT-' + k); if (b) b.focus(); } }
